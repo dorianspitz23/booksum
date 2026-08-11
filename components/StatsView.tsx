@@ -1,0 +1,208 @@
+
+import React, { useMemo, useState } from 'react';
+import { BookInsight, BookStatus } from '../types';
+import { BarChart3, BookCheck, Bookmark, Star, Timer, TrendingUp, ArrowLeft } from 'lucide-react';
+import { BookCard } from './BookCard';
+
+interface StatsViewProps {
+  books: BookInsight[];
+  onBookClick: (book: BookInsight) => void;
+}
+
+export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
+  const [filter, setFilter] = useState<BookStatus | null>(null);
+
+  const stats = useMemo(() => {
+    const finished = books.filter(b => b.status === 'Finished');
+    const wantToRead = books.filter(b => b.status === 'Want to Read');
+    const totalTime = finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0);
+    const avgRating = finished.length > 0 
+      ? (finished.reduce((acc, b) => acc + b.rating, 0) / finished.length).toFixed(1)
+      : 0;
+
+    const categoryMap: Record<string, number> = {};
+    books.forEach(b => {
+      categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;
+    });
+
+    const categoryData = Object.entries(categoryMap)
+      .sort((a, b) => b[1] - a[1]);
+
+    return {
+      total: books.length,
+      finished,
+      wantToRead,
+      totalTime,
+      avgRating,
+      categoryData
+    };
+  }, [books]);
+
+  const filteredBooks = useMemo(() => {
+    if (!filter) return [];
+    return books.filter(b => b.status === filter);
+  }, [books, filter]);
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <header>
+        <span className="text-orange-600 font-bold uppercase tracking-widest text-xs mb-2 block">Personal Dashboard</span>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Your Progress</h1>
+      </header>
+
+      {/* Hero Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          icon={<BookCheck className={filter === 'Finished' ? 'text-white' : 'text-orange-600'} />} 
+          label="Finished" 
+          value={stats.finished.length} 
+          subValue={`out of ${stats.total}`}
+          onClick={() => setFilter(filter === 'Finished' ? null : 'Finished')}
+          isActive={filter === 'Finished'}
+          colorClass="bg-orange-600"
+        />
+        <StatCard 
+          icon={<Bookmark className={filter === 'Want to Read' ? 'text-white' : 'text-amber-500'} />} 
+          label="To Read" 
+          value={stats.wantToRead.length} 
+          subValue="Waiting in queue"
+          onClick={() => setFilter(filter === 'Want to Read' ? null : 'Want to Read')}
+          isActive={filter === 'Want to Read'}
+          colorClass="bg-amber-500"
+        />
+        <StatCard 
+          icon={<Timer className="text-blue-500" />} 
+          label="Total Learning" 
+          value={`${stats.totalTime}m`} 
+          subValue="Active reading time"
+        />
+        <StatCard 
+          icon={<Star className="text-rose-500" />} 
+          label="Avg. Rating" 
+          value={stats.avgRating} 
+          subValue="Personal preference"
+        />
+      </div>
+
+      {filter ? (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-3">
+              {filter === 'Finished' ? <BookCheck className="text-orange-600" /> : <Bookmark className="text-amber-500" />}
+              {filter} Books
+            </h3>
+            <button 
+              onClick={() => setFilter(null)}
+              className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-600 transition-colors"
+            >
+              <ArrowLeft size={16} /> Back to Dashboard
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredBooks.map(book => (
+              <BookCard 
+                key={book.id} 
+                book={book} 
+                onClick={onBookClick}
+              />
+            ))}
+          </div>
+          
+          {filteredBooks.length === 0 && (
+            <div className="bg-white p-12 rounded-3xl border border-dashed border-gray-200 text-center">
+              <p className="text-gray-400 font-medium">No books found in this category.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Category Breakdown */}
+          <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="text-orange-600" />
+                Category Breakdown
+              </h3>
+            </div>
+            <div className="space-y-6">
+              {stats.categoryData.map(([cat, count]) => (
+                <div key={cat} className="space-y-2">
+                  <div className="flex justify-between text-sm font-bold">
+                    <span className="text-gray-700">{cat}</span>
+                    <span className="text-orange-600">{count} book{count !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="h-3 w-full bg-gray-50 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-orange-500 rounded-full transition-all duration-1000"
+                      style={{ width: `${(count / stats.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {stats.categoryData.length === 0 && (
+                <div className="py-12 text-center text-gray-400 font-medium">
+                  No category data available yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Insight Card */}
+          <div className="bg-orange-900 text-white p-8 rounded-3xl shadow-xl flex flex-col justify-between">
+            <div>
+              <TrendingUp size={40} className="mb-6 text-orange-400" />
+              <h3 className="text-2xl font-serif font-bold mb-4 italic">Wisdom Milestone</h3>
+              <p className="text-orange-100 leading-relaxed mb-6">
+                You've accumulated enough knowledge to discuss deep concepts for over {Math.floor(stats.totalTime / 60)} hours straight. 
+                {stats.finished.length > 5 ? " Your focus is shifting towards more productivity-centric topics recently." : " Keep adding more to see your personal knowledge map evolve."}
+              </p>
+            </div>
+            <div className="pt-6 border-t border-orange-800">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                <span className="font-bold uppercase tracking-widest text-orange-300">Continuous Learner</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const StatCard: React.FC<{ 
+  icon: React.ReactNode; 
+  label: string; 
+  value: string | number; 
+  subValue: string;
+  onClick?: () => void;
+  isActive?: boolean;
+  colorClass?: string;
+}> = ({ icon, label, value, subValue, onClick, isActive, colorClass }) => (
+  <div 
+    onClick={onClick}
+    className={`p-6 rounded-3xl border transition-all duration-300 group ${
+      onClick ? 'cursor-pointer hover:shadow-xl active:scale-95' : ''
+    } ${
+      isActive 
+        ? `border-transparent shadow-lg ${colorClass} text-white` 
+        : 'bg-white border-gray-100 shadow-sm text-gray-900'
+    }`}
+  >
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+      isActive ? 'bg-white/20' : 'bg-gray-50'
+    }`}>
+      {icon}
+    </div>
+    <p className={`text-sm font-bold uppercase tracking-widest mb-1 transition-colors ${
+      isActive ? 'text-white/70' : 'text-gray-400'
+    }`}>{label}</p>
+    <div className="flex items-baseline gap-2">
+      <h4 className="text-3xl font-bold">{value}</h4>
+      <span className={`text-xs font-medium transition-colors ${
+        isActive ? 'text-white/60' : 'text-gray-500'
+      }`}>{subValue}</span>
+    </div>
+  </div>
+);
