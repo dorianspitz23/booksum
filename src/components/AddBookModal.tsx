@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Search, Loader2, X, Sparkles, BookPlus, BookCheck, Bookmark, FileUp, FileText, Star } from 'lucide-react';
 import { summarizeBook, summarizePdf } from '../services/geminiService';
-import type { BookInsight, BookStatus, Priority } from '../types';
+import type { BookInsight, BookStatus, Priority } from '../legacy-types';
 
 interface AddBookModalProps {
   onClose: () => void;

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { BookInsight } from '../types';
+import type { BookInsight } from '../legacy-types';
 import { X, BookOpen, Sun, Sparkles } from 'lucide-react';
 
 interface DailyWisdomModalProps {

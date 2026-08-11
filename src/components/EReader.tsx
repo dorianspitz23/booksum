@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import type { BookInsight } from '../types';
+import type { BookInsight } from '../legacy-types';
 import { ChevronLeft, ChevronRight, X, Headphones, Type, Moon, Sun, Book } from 'lucide-react';
 import { generateAudioSummary, base64PCMToWavBlob } from '../services/geminiService';
 import type { AudioTrack } from './AudioPlayer';

@@ -1,7 +1,8 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { Chat } from "@google/genai";
-import type { BookInsight, QuizQuestion } from "../types";
+import type { BookInsight } from "../legacy-types";
+import type { QuizQuestion } from "../types";
 
 // Temporary shim. Task 6 replaces this with src/lib/ai/client.ts.
 // The key is read lazily from the browser at call time — it is never inlined

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { ViewState, BookInsight, UserProfile, BookStatus } from './types';
+import type { ViewState, BookInsight, UserProfile, BookStatus } from './legacy-types';
 import { BookCard } from './components/BookCard';
 import { BookDetail } from './components/BookDetail';
 import { AddBookModal } from './components/AddBookModal';

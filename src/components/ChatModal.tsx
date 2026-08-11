@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BookInsight } from '../types';
+import type { BookInsight } from '../legacy-types';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { createBookChatSession } from '../services/geminiService';
 import { Chat, GenerateContentResponse } from "@google/genai";

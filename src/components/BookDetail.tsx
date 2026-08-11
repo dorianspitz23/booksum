@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { BookInsight, Priority, BookStatus } from '../types';
+import type { BookInsight, Priority, BookStatus } from '../legacy-types';
 import { ArrowLeft, List, Zap, BookOpen, Share2, Trash2, Sparkles, FileText, Headphones, ExternalLink, Star, CheckCircle, RotateCcw, PlusCircle, MessageSquare, PenTool, BrainCircuit } from 'lucide-react';
 import { generateAudioSummary, generateDetailedSummary, base64PCMToWavBlob } from '../services/geminiService';
 import type { AudioTrack } from './AudioPlayer';
