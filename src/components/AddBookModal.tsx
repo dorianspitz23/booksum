@@ -1,15 +1,19 @@
 
 import React, { useState, useRef } from 'react';
 import { Search, Loader2, X, Sparkles, BookPlus, BookCheck, Bookmark, FileUp, FileText, Star } from 'lucide-react';
-import { summarizeBook, summarizePdf } from '../services/geminiService';
-import type { BookInsight, BookStatus, Priority } from '../legacy-types';
+import { summarizeBook, summarizePdf } from '../lib/ai/summarize';
+import type { GeneratedBook } from '../lib/ai/summarize';
+import type { AddBookOptions, BookDraft } from '../features/library/useLibrary';
+import type { BookStatus, Priority } from '../types';
 
 interface AddBookModalProps {
   onClose: () => void;
-  onAdd: (book: BookInsight) => void;
+  onAdd: (draft: BookDraft, options?: AddBookOptions) => Promise<void>;
+  /** Returns a user-facing message and routes key problems to the key dialog. */
+  onAiError: (error: unknown) => string;
 }
 
-export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd }) => {
+export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAiError }) => {
   const [mode, setMode] = useState<'search' | 'upload'>('search');
   const [query, setQuery] = useState('');
   const [author, setAuthor] = useState('');
@@ -39,20 +43,34 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd }) =>
     setError(null);
 
     try {
-      let bookData: BookInsight;
+      let generated: GeneratedBook;
+      let pdf: Blob | undefined;
+
       if (mode === 'search') {
         if (!query.trim()) return;
-        bookData = await summarizeBook(query, author);
+        generated = await summarizeBook(query, author);
       } else {
         if (!file) return;
         const base64 = await convertFileToBase64(file);
-        bookData = await summarizePdf(base64);
+        generated = await summarizePdf(base64);
+        pdf = file;
       }
-      onAdd({ ...bookData, status, rating, priority: status === 'Want to Read' ? priority : undefined });
+
+      await onAdd(
+        {
+          ...generated.book,
+          oneSentenceTakeaway: generated.summary.oneSentenceTakeaway,
+          status,
+          rating,
+          priority: status === 'Want to Read' ? priority : undefined,
+          hasPdf: Boolean(pdf),
+        },
+        { summary: generated.summary, pdf },
+      );
       onClose();
     } catch (err) {
       console.error(err);
-      setError("I couldn't process this request. If it was a PDF, make sure it's not too large or password-protected.");
+      setError(onAiError(err));
     } finally {
       setIsLoading(false);
     }

@@ -1,12 +1,12 @@
 
 import React, { useMemo, useState } from 'react';
-import type { BookInsight, BookStatus } from '../legacy-types';
+import type { Book, BookStatus } from '../types';
 import { BarChart3, BookCheck, Bookmark, Star, Timer, TrendingUp, ArrowLeft } from 'lucide-react';
 import { BookCard } from './BookCard';
 
 interface StatsViewProps {
-  books: BookInsight[];
-  onBookClick: (book: BookInsight) => void;
+  books: Book[];
+  onBookClick: (book: Book) => void;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {

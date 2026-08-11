@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { ViewState, BookInsight, UserProfile, BookStatus } from './legacy-types';
+import type { Book, BookStatus, Summary } from './types';
 import { BookCard } from './components/BookCard';
 import { BookDetail } from './components/BookDetail';
 import { AddBookModal } from './components/AddBookModal';
@@ -9,19 +8,29 @@ import { StatsView } from './components/StatsView';
 import { ProfileView } from './components/ProfileView';
 import { AudioPlayer } from './components/AudioPlayer';
 import type { AudioTrack } from './components/AudioPlayer';
-import { LoginView } from './components/LoginView';
 import { DailyWisdomModal } from './components/DailyWisdomModal';
-import { useAuth } from './contexts/AuthContext';
+import { useProfile } from './features/profile/ProfileContext';
+import { ProfilePicker } from './features/profile/ProfilePicker';
+import { useLibrary } from './features/library/useLibrary';
+import type { AddBookOptions, BookDraft } from './features/library/useLibrary';
 import { Plus, Library, Search, User as UserIcon, BarChart2, Filter, Sparkles, Loader2, BookOpen, ChevronLeft, ChevronRight, CheckCircle, Bookmark, Layers, LogOut } from 'lucide-react';
-import { summarizeBook, getAIRecommendations } from './services/geminiService';
+import { summarizeBook } from './lib/ai/summarize';
+import { placeholderCover } from './lib/covers';
+import { getAIRecommendations } from './lib/ai/recommend';
+import { toAiError } from './lib/ai/errors';
+import { ApiKeyDialog } from './features/settings/ApiKeyDialog';
 
-const DEFAULT_PROFILE: UserProfile = {
-  name: 'Lifelong Learner',
-  monthlyGoal: 4,
-  joinedAt: new Date().toISOString(),
-  bio: 'Passionate about distilling wisdom and applying it to daily life.',
-  favoriteVoice: 'Kore'
-};
+type ViewState = 'library' | 'book-detail' | 'adding-book' | 'e-reader' | 'stats' | 'profile';
+
+export interface Recommendation {
+  title: string;
+  author: string;
+  description: string;
+  coverUrl: string;
+}
+
+const RECS_CACHE_KEY = 'booksum.recs';
+const RECS_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Used ISBN-based URLs for stability and correctness - kept as fallback
 const RECOMMENDED_BOOKS = [
@@ -64,259 +73,202 @@ const RECOMMENDED_BOOKS = [
 ];
 
 const App: React.FC = () => {
-  const { user, logout, isLoading: authLoading } = useAuth();
-  
+  const { profile, signOut, isLoading: profileLoading, updateProfile } = useProfile();
+  const {
+    books,
+    isLoading: libraryLoading,
+    addBook,
+    updateBook,
+    removeBook,
+    getSummary,
+    saveSummary,
+    exportLibrary,
+    importLibrary,
+  } = useLibrary();
+
   const [view, setView] = useState<ViewState>('library');
-  const [books, setBooks] = useState<BookInsight[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [selectedBook, setSelectedBook] = useState<BookInsight | null>(null);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedSummary, setSelectedSummary] = useState<Summary | undefined>(undefined);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>(RECOMMENDED_BOOKS);
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
-  
+  const [showKeyDialog, setShowKeyDialog] = useState(false);
+
   // Daily Wisdom State
   const [showDailyWisdom, setShowDailyWisdom] = useState(false);
-  const [dailyBook, setDailyBook] = useState<BookInsight | null>(null);
+  const [dailyBook, setDailyBook] = useState<Book | null>(null);
+  const [dailySummary, setDailySummary] = useState<Summary | undefined>(undefined);
   const wisdomCheckedRef = useRef(false);
-  
+
   // Filtering States
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | BookStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [addingBookTitle, setAddingBookTitle] = useState<string | null>(null);
-  
+
   // Scroll Ref for Recommendations
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Audio Player State
   const [activeAudioTrack, setActiveAudioTrack] = useState<AudioTrack | null>(null);
 
-  // Load from local storage based on User ID
+  // Cached recommendations. No AI call fires on load — refreshing is explicit.
   useEffect(() => {
-    if (!user) return;
-
-    const userLibraryKey = `booksum_library_${user.id}`;
-    const userProfileKey = `booksum_profile_${user.id}`;
-    const userRecsKey = `booksum_recs_${user.id}`;
-
-    const savedLibrary = localStorage.getItem(userLibraryKey);
-    if (savedLibrary) {
-      setBooks(JSON.parse(savedLibrary));
-    } else {
-      setBooks([
-        {
-          id: '1',
-          title: 'Atomic Habits',
-          author: 'James Clear',
-          category: 'Productivity',
-          oneSentenceTakeaway: 'Small changes lead to remarkable results through the compounding effect of habits.',
-          summary: 'Atomic Habits provides a proven framework for improving every day. James Clear reveals practical strategies that will teach you exactly how to form good habits, break bad ones, and master the tiny behaviors that lead to remarkable results.',
-          keyInsights: [
-            'Forget about goals, focus on systems instead.',
-            'Habits are the compound interest of self-improvement.',
-            'The four laws of behavior change: Make it obvious, attractive, easy, and satisfying.',
-            'Identity-based habits are more powerful than outcome-based habits.'
-          ],
-          actionableSteps: [
-            'Use implementation intentions: I will [BEHAVIOR] at [TIME] in [LOCATION].',
-            'Try habit stacking: After [CURRENT HABIT], I will [NEW HABIT].',
-            'Design your environment for success.'
-          ],
-          coverImageUrl: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg',
-          rating: 4.8,
-          readingTimeMinutes: 12,
-          addedAt: new Date().toISOString(),
-          status: 'Finished'
-        }
-      ]);
-    }
-
-    const savedProfile = localStorage.getItem(userProfileKey);
-    if (savedProfile) {
-      setUserProfile(JSON.parse(savedProfile));
-    } else {
-      setUserProfile({
-        ...DEFAULT_PROFILE,
-        name: user.name || DEFAULT_PROFILE.name
-      });
-    }
-
-    const savedRecs = localStorage.getItem(userRecsKey);
-    if (savedRecs) {
-      setRecommendations(JSON.parse(savedRecs));
-    } else {
-      setRecommendations(RECOMMENDED_BOOKS);
-    }
-  }, [user]);
-
-  // AI Recommendation Update Logic
-  useEffect(() => {
-    if (!user) return;
-    
-    // Debounce to prevent rapid firing
-    const timer = setTimeout(async () => {
-      // Only refresh if we have books, to generate meaningful recs
-      if (books.length > 0) {
-        try {
-          // If we haven't generated custom recs yet (using fallback), or library changed
-          // We can just update silently.
-          setIsRefreshingRecs(true);
-          const newRecs = await getAIRecommendations(books);
-          if (newRecs && newRecs.length > 0) {
-            setRecommendations(newRecs);
-            localStorage.setItem(`booksum_recs_${user.id}`, JSON.stringify(newRecs));
-          }
-        } catch (e) {
-          console.error("Failed to refresh recommendations", e);
-        } finally {
-          setIsRefreshingRecs(false);
-        }
+    if (!profile) return;
+    const cached = localStorage.getItem(`${RECS_CACHE_KEY}.${profile.id}`);
+    if (!cached) return;
+    try {
+      const parsed = JSON.parse(cached) as { at: number; items: Recommendation[] };
+      if (Date.now() - parsed.at < RECS_TTL_MS && parsed.items?.length) {
+        setRecommendations(parsed.items);
       }
-    }, 3000); // 3 second delay after changes to library
-
-    return () => clearTimeout(timer);
-  }, [books, user]);
+    } catch {
+      localStorage.removeItem(`${RECS_CACHE_KEY}.${profile.id}`);
+    }
+  }, [profile]);
 
   // Daily Wisdom Logic
   useEffect(() => {
-    // Only run if we have books, user is logged in, and haven't checked yet this session
-    if (!user || books.length === 0 || wisdomCheckedRef.current) return;
+    if (!profile || books.length === 0 || wisdomCheckedRef.current) return;
 
-    const key = `booksum_daily_wisdom_${user.id}`;
+    const key = `booksum_daily_wisdom_${profile.id}`;
     const lastSeen = localStorage.getItem(key);
     const today = new Date().toDateString();
+    wisdomCheckedRef.current = true;
 
-    if (lastSeen !== today) {
-       // Prefer finished books for wisdom, but fallback to any
-       const pool = books.filter(b => b.status === 'Finished');
-       const targetPool = pool.length > 0 ? pool : books;
-       const randomBook = targetPool[Math.floor(Math.random() * targetPool.length)];
-       
-       setDailyBook(randomBook);
-       
-       // Small delay to appear elegantly after app load
-       const timer = setTimeout(() => {
-         setShowDailyWisdom(true);
-       }, 1500);
-       
-       wisdomCheckedRef.current = true;
-       return () => clearTimeout(timer);
-    } else {
-       wisdomCheckedRef.current = true;
-    }
-  }, [books, user]);
+    if (lastSeen === today) return;
 
-  // Save to local storage with namespacing
-  useEffect(() => {
-    if (user) {
-      const userLibraryKey = `booksum_library_${user.id}`;
-      localStorage.setItem(userLibraryKey, JSON.stringify(books));
-    }
-  }, [books, user]);
+    const pool = books.filter((b) => b.status === 'Finished');
+    const targetPool = pool.length > 0 ? pool : books;
+    const randomBook = targetPool[Math.floor(Math.random() * targetPool.length)];
+    if (!randomBook) return;
 
-  useEffect(() => {
-    if (user) {
-      const userProfileKey = `booksum_profile_${user.id}`;
-      localStorage.setItem(userProfileKey, JSON.stringify(userProfile));
-    }
-  }, [userProfile, user]);
+    setDailyBook(randomBook);
+    void getSummary(randomBook.id).then(setDailySummary);
+
+    const timer = setTimeout(() => setShowDailyWisdom(true), 1500);
+    return () => clearTimeout(timer);
+  }, [books, profile, getSummary]);
 
   const filteredBooks = useMemo(() => {
-    return books.filter(book => {
-      const matchesCategory = activeCategory === 'All' || book.category === activeCategory;
-      const matchesStatus = statusFilter === 'All' || book.status === statusFilter;
-      const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           book.author.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch && matchesStatus;
-    }).sort((a, b) => {
-      if (a.status === 'Want to Read' && b.status === 'Want to Read') {
-        const priorityScore: Record<string, number> = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        const scoreA = priorityScore[a.priority || 'Low'];
-        const scoreB = priorityScore[b.priority || 'Low'];
-        if (scoreA !== scoreB) return scoreB - scoreA;
-      }
-      return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-    });
+    return books
+      .filter((book) => {
+        const matchesCategory = activeCategory === 'All' || book.category === activeCategory;
+        const matchesStatus = statusFilter === 'All' || book.status === statusFilter;
+        const matchesSearch =
+          book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          book.author.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (a.status === 'Want to Read' && b.status === 'Want to Read') {
+          const priorityScore: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
+          const scoreA = priorityScore[a.priority || 'Low'] ?? 1;
+          const scoreB = priorityScore[b.priority || 'Low'] ?? 1;
+          if (scoreA !== scoreB) return scoreB - scoreA;
+        }
+        return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+      });
   }, [books, activeCategory, searchQuery, statusFilter]);
 
-  const categories = ['All', ...Array.from(new Set(books.map(b => b.category)))];
+  const categories = ['All', ...Array.from(new Set(books.map((b) => b.category)))];
 
-  const handleAddBook = (book: BookInsight) => {
-    setBooks(prev => [book, ...prev]);
+  /** Routes a missing or rejected key to the key dialog; returns the message otherwise. */
+  const handleAiError = (error: unknown): string => {
+    const aiError = toAiError(error);
+    if (aiError.kind === 'missing-key' || aiError.kind === 'invalid-key') {
+      setShowKeyDialog(true);
+    }
+    return aiError.message;
   };
 
-  const handlePreviewRecommendation = async (rec: typeof RECOMMENDED_BOOKS[0]) => {
+  const handleAddBook = async (draft: BookDraft, options?: AddBookOptions) => {
+    await addBook(draft, options);
+  };
+
+  const refreshRecommendations = async () => {
+    if (!profile || books.length === 0 || isRefreshingRecs) return;
+    setIsRefreshingRecs(true);
+    try {
+      const next = await getAIRecommendations(books);
+      if (next.length > 0) {
+        setRecommendations(next);
+        localStorage.setItem(
+          `${RECS_CACHE_KEY}.${profile.id}`,
+          JSON.stringify({ at: Date.now(), items: next }),
+        );
+      }
+    } catch (error) {
+      handleAiError(error);
+    } finally {
+      setIsRefreshingRecs(false);
+    }
+  };
+
+  const handlePreviewRecommendation = async (rec: Recommendation) => {
     if (addingBookTitle) return;
     setAddingBookTitle(rec.title);
     try {
-      const book = await summarizeBook(rec.title, rec.author);
-      setSelectedBook(book);
+      const { book, summary } = await summarizeBook(rec.title, rec.author);
+      const created = await addBook(book, { summary });
+      setSelectedBook(created);
+      setSelectedSummary(await getSummary(created.id));
       setView('book-detail');
     } catch (error) {
-      console.error("Failed to preview recommended book", error);
-      alert("Failed to open book summary. Please try again.");
+      alert(handleAiError(error));
     } finally {
       setAddingBookTitle(null);
     }
   };
 
-  const handleDeleteBook = (id: string) => {
-    if (confirm('Are you sure you want to remove this book from your library?')) {
-      setBooks(prev => prev.filter(b => b.id !== id));
-      setView('library');
-    }
+  const handleDeleteBook = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this book from your library?')) return;
+    await removeBook(id);
+    setSelectedBook(null);
+    setSelectedSummary(undefined);
+    setView('library');
   };
 
-  const handleUpdateBook = (updatedBook: BookInsight) => {
-    setBooks(prev => prev.map(b => b.id === updatedBook.id ? updatedBook : b));
-    setSelectedBook(updatedBook);
+  const handleUpdateBook = async (updated: Book) => {
+    await updateBook(updated);
+    setSelectedBook(updated);
   };
 
-  const handleBookSelect = (book: BookInsight) => {
+  const handleBookSelect = async (book: Book) => {
     setSelectedBook(book);
+    setSelectedSummary(await getSummary(book.id));
     setView('book-detail');
   };
 
-  const handleResetLibrary = () => {
-    if (confirm('DANGER: This will permanently delete all books and insights in your library. Continue?')) {
-      setBooks([]);
-      if (user) {
-        localStorage.removeItem(`booksum_library_${user.id}`);
-        localStorage.removeItem(`booksum_recs_${user.id}`);
-        localStorage.removeItem(`booksum_daily_wisdom_${user.id}`);
-      }
-      setRecommendations(RECOMMENDED_BOOKS);
-      setView('library');
-    }
-  };
+  const handleResetLibrary = async () => {
+    if (!confirm('DANGER: This will permanently delete all books and insights in your library. Continue?')) return;
 
-  const handleImportLibrary = (importedBooks: BookInsight[], importedProfile: UserProfile) => {
-    const currentBookIds = new Set(books.map(b => b.id));
-    const newBooks = importedBooks.filter(b => !currentBookIds.has(b.id));
-    setBooks(prev => [...newBooks, ...prev]);
-    setUserProfile(prev => ({
-       ...prev,
-       ...importedProfile,
-       name: prev.name 
-    }));
+    await Promise.all(books.map((book) => removeBook(book.id)));
+    if (profile) {
+      localStorage.removeItem(`${RECS_CACHE_KEY}.${profile.id}`);
+      localStorage.removeItem(`booksum_daily_wisdom_${profile.id}`);
+    }
+    setRecommendations(RECOMMENDED_BOOKS);
+    setSelectedBook(null);
+    setSelectedSummary(undefined);
+    setView('library');
   };
 
   const handlePlayAudio = (track: AudioTrack) => {
     setActiveAudioTrack(track);
   };
-  
+
   const handleCloseWisdom = () => {
     setShowDailyWisdom(false);
-    if (user) {
-      localStorage.setItem(`booksum_daily_wisdom_${user.id}`, new Date().toDateString());
+    if (profile) {
+      localStorage.setItem(`booksum_daily_wisdom_${profile.id}`, new Date().toDateString());
     }
   };
 
   const handleOpenWisdomBook = () => {
-    if (dailyBook) {
-        handleCloseWisdom();
-        handleBookSelect(dailyBook);
-    }
+    if (!dailyBook) return;
+    handleCloseWisdom();
+    void handleBookSelect(dailyBook);
   };
 
   const scrollRecommendations = (direction: 'left' | 'right') => {
@@ -327,7 +279,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (authLoading) {
+  if (profileLoading || libraryLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcfcf9]">
         <Loader2 className="animate-spin text-orange-600" size={40} />
@@ -335,8 +287,8 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return <LoginView />;
+  if (!profile) {
+    return <ProfilePicker />;
   }
 
   return (
@@ -380,18 +332,16 @@ const App: React.FC = () => {
 
           <div className="px-4 pb-4">
              <div className="p-3 mb-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center gap-3">
-                <img 
-                  src={user.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`} 
-                  alt={user.name} 
-                  className="w-8 h-8 rounded-full bg-orange-200"
-                />
+                <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">
+                  {profile.name.charAt(0).toUpperCase()}
+                </span>
                 <div className="hidden md:block overflow-hidden">
-                  <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                  <p className="text-xs font-bold text-gray-900 truncate">{profile.name}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{profile.bio}</p>
                 </div>
              </div>
              <button 
-                onClick={logout}
+                onClick={signOut}
                 className="w-full flex items-center justify-center gap-2 p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all text-sm font-semibold"
              >
                <LogOut size={18} />
@@ -417,7 +367,7 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto space-y-10">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <span className="text-orange-600 font-bold uppercase tracking-widest text-xs mb-2 block">Welcome, {user.name.split(' ')[0]}</span>
+                <span className="text-orange-600 font-bold uppercase tracking-widest text-xs mb-2 block">Welcome, {profile.name.split(' ')[0]}</span>
                 <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Your Library</h1>
               </div>
               <div className="flex items-center gap-3">
@@ -486,7 +436,7 @@ const App: React.FC = () => {
                   <BookCard 
                     key={book.id} 
                     book={book} 
-                    onClick={handleBookSelect}
+                    onClick={(book) => void handleBookSelect(book)}
                   />
                 ))}
               </div>
@@ -520,6 +470,14 @@ const App: React.FC = () => {
                     Recommended For You {isRefreshingRecs && <Loader2 size={16} className="animate-spin text-gray-300" />}
                   </h2>
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => void refreshRecommendations()}
+                      disabled={isRefreshingRecs || books.length === 0}
+                      className="px-3 py-2 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-all active:scale-95 text-xs font-bold uppercase tracking-widest disabled:opacity-40"
+                      title="Ask Gemini for fresh recommendations"
+                    >
+                      Refresh
+                    </button>
                     <button 
                       onClick={() => scrollRecommendations('left')}
                       className="p-2 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all active:scale-95"
@@ -550,7 +508,7 @@ const App: React.FC = () => {
                       {/* Base Card (Visible by default) */}
                       <div
                         className="h-full bg-white rounded-2xl p-4 border border-gray-100 flex flex-row gap-4 overflow-hidden cursor-pointer shadow-sm group-hover:shadow-none transition-shadow"
-                        onClick={() => handlePreviewRecommendation(rec)}
+                        onClick={() => void handlePreviewRecommendation(rec)}
                       >
                         <div className="w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden shadow-sm bg-gray-100 relative">
                            <img 
@@ -559,7 +517,7 @@ const App: React.FC = () => {
                               onError={(e) => {
                                   const target = e.currentTarget as HTMLImageElement;
                                   target.onerror = null;
-                                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(rec.title)}&background=f3f4f6&color=9ca3af&bold=true`;
+                                  target.src = placeholderCover(rec.title);
                               }}
                               className="w-full h-full object-cover" 
                            />
@@ -585,7 +543,7 @@ const App: React.FC = () => {
 
                       {/* Hover Preview Card (Overlay) */}
                       <div 
-                        onClick={() => handlePreviewRecommendation(rec)}
+                        onClick={() => void handlePreviewRecommendation(rec)}
                         className="absolute -top-4 -left-4 -right-4 bg-white rounded-2xl p-6 border border-orange-100 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 cursor-pointer flex flex-col gap-4 scale-95 group-hover:scale-100 origin-center"
                         style={{ height: 'auto', minHeight: 'calc(100% + 2rem)' }}
                       >
@@ -597,7 +555,7 @@ const App: React.FC = () => {
                                    onError={(e) => {
                                        const target = e.currentTarget as HTMLImageElement;
                                        target.onerror = null;
-                                       target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(rec.title)}&background=f3f4f6&color=9ca3af&bold=true`;
+                                       target.src = placeholderCover(rec.title);
                                    }}
                                    className="w-full h-full object-cover" 
                                 />
@@ -629,30 +587,34 @@ const App: React.FC = () => {
             )}
           </div>
         ) : view === 'stats' ? (
-          <StatsView books={books} onBookClick={handleBookSelect} />
+          <StatsView books={books} onBookClick={(book) => void handleBookSelect(book)} />
         ) : view === 'profile' ? (
-          <ProfileView 
-            profile={userProfile} 
-            onUpdate={setUserProfile}
+          <ProfileView
+            profile={profile}
+            onUpdate={(next) => void updateProfile(next)}
             books={books}
-            onResetLibrary={handleResetLibrary}
-            onImportLibrary={handleImportLibrary}
+            onResetLibrary={() => void handleResetLibrary()}
+            buildExport={exportLibrary}
+            onImportLibrary={importLibrary}
           />
         ) : selectedBook && view === 'book-detail' ? (
-          <BookDetail 
-            book={selectedBook} 
+          <BookDetail
+            book={selectedBook}
+            summary={selectedSummary}
+            voice={profile.favoriteVoice}
             onBack={() => setView('library')}
-            onDelete={handleDeleteBook}
-            onUpdate={handleUpdateBook}
+            onDelete={(id) => void handleDeleteBook(id)}
+            onUpdate={(next) => void handleUpdateBook(next)}
+            onSummaryUpdate={(next) => { setSelectedSummary(next); void saveSummary(next); }}
             onOpenReader={() => setView('e-reader')}
-            isPreview={!books.some(b => b.id === selectedBook.id)}
-            onAdd={() => handleAddBook(selectedBook)}
             onPlayAudio={handlePlayAudio}
           />
         ) : selectedBook && view === 'e-reader' ? (
-          <EReader 
-            book={selectedBook} 
-            onClose={() => setView('book-detail')} 
+          <EReader
+            book={selectedBook}
+            summary={selectedSummary}
+            voice={profile.favoriteVoice}
+            onClose={() => setView('book-detail')}
             onPlayAudio={handlePlayAudio}
             hasAudioPlayer={!!activeAudioTrack}
           />
@@ -669,9 +631,10 @@ const App: React.FC = () => {
       )}
 
       {view === 'adding-book' && (
-        <AddBookModal 
+        <AddBookModal
           onClose={() => setView('library')}
           onAdd={handleAddBook}
+          onAiError={handleAiError}
         />
       )}
 
@@ -683,10 +646,13 @@ const App: React.FC = () => {
         />
       )}
 
+      {showKeyDialog && <ApiKeyDialog onClose={() => setShowKeyDialog(false)} />}
+
       {/* Daily Wisdom Modal */}
       {showDailyWisdom && dailyBook && (
-        <DailyWisdomModal 
+        <DailyWisdomModal
           book={dailyBook}
+          summary={dailySummary}
           onClose={handleCloseWisdom}
           onReadMore={handleOpenWisdomBook}
         />

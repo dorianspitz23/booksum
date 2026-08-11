@@ -1,0 +1,110 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { BookOpen, Loader2, Plus, Trash2 } from 'lucide-react';
+import { useProfile } from './ProfileContext';
+
+export function ProfilePicker() {
+  const { allProfiles, selectProfile, createProfile, deleteProfile } = useProfile();
+  const [name, setName] = useState('');
+  const [isCreating, setIsCreating] = useState(allProfiles.length === 0);
+  const [isBusy, setIsBusy] = useState(false);
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim() || isBusy) return;
+    setIsBusy(true);
+    try {
+      await createProfile(name);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-parchment flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="flex items-center gap-3 justify-center mb-10">
+          <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center text-white font-serif font-bold italic text-2xl shadow-lg shadow-orange-100">
+            B
+          </div>
+          <h1 className="text-3xl font-serif font-bold text-orange-700 italic tracking-tighter">
+            BookSum
+          </h1>
+        </div>
+
+        <h2 className="text-2xl font-serif font-bold text-gray-900 text-center mb-2">
+          Who&rsquo;s reading?
+        </h2>
+        <p className="text-sm text-gray-500 text-center mb-8">
+          Profiles keep libraries separate on this device. No passwords, no accounts &mdash;
+          everything stays in this browser.
+        </p>
+
+        {!isCreating && (
+          <ul className="space-y-3 mb-6">
+            {allProfiles.map((candidate) => (
+              <li key={candidate.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => void selectProfile(candidate.id)}
+                  className="flex-1 flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-orange-200 hover:shadow-md transition-all text-left"
+                >
+                  <span className="w-10 h-10 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center">
+                    {candidate.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="font-semibold text-gray-900">{candidate.name}</span>
+                  <BookOpen size={18} className="ml-auto text-gray-300" />
+                </button>
+                <button
+                  onClick={() => void deleteProfile(candidate.id)}
+                  aria-label={`Delete profile ${candidate.name}`}
+                  className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {isCreating ? (
+          <form onSubmit={handleCreate} className="space-y-4">
+            <label className="block">
+              <span className="block text-sm font-semibold text-gray-700 mb-2">Your name</span>
+              <input
+                autoFocus
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="e.g. Dorian"
+                className="w-full px-4 py-4 bg-white border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={!name.trim() || isBusy}
+              className="w-full py-4 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2"
+            >
+              {isBusy ? <Loader2 size={20} className="animate-spin" /> : null}
+              Start reading
+            </button>
+            {allProfiles.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsCreating(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Back to profiles
+              </button>
+            )}
+          </form>
+        ) : (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:border-orange-400 hover:text-orange-600 transition-all font-semibold"
+          >
+            <Plus size={18} /> Add a profile
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

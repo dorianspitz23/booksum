@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import type { BookInsight, Priority, BookStatus } from '../legacy-types';
+import type { Book, Priority, BookStatus, Summary, VoiceName } from '../types';
 import { ArrowLeft, List, Zap, BookOpen, Share2, Trash2, Sparkles, FileText, Headphones, ExternalLink, Star, CheckCircle, RotateCcw, PlusCircle, MessageSquare, PenTool, BrainCircuit } from 'lucide-react';
-import { generateAudioSummary, generateDetailedSummary, base64PCMToWavBlob } from '../services/geminiService';
+import { generateAudioSummary } from '../lib/ai/tts';
+import { generateDetailedSummary } from '../lib/ai/summarize';
+import { blobs } from '../lib/storage/repo';
 import type { AudioTrack } from './AudioPlayer';
 import { ChatModal } from './ChatModal';
 import { QuizModal } from './QuizModal';
@@ -69,17 +71,20 @@ const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
 };
 
 interface BookDetailProps {
-  book: BookInsight;
+  book: Book;
+  summary: Summary | undefined;
+  voice: VoiceName;
+  onSummaryUpdate: (summary: Summary) => void;
   onBack: () => void;
   onDelete: (id: string) => void;
-  onUpdate: (updatedBook: BookInsight) => void;
-  onOpenReader: (book: BookInsight) => void;
+  onUpdate: (updatedBook: Book) => void;
+  onOpenReader: (book: Book) => void;
   isPreview?: boolean;
   onAdd?: () => void;
   onPlayAudio: (track: AudioTrack) => void;
 }
 
-export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, onUpdate, onOpenReader, isPreview, onAdd, onPlayAudio }) => {
+export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, onSummaryUpdate, onBack, onDelete, onUpdate, onOpenReader, isPreview, onAdd, onPlayAudio }) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -94,8 +99,8 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
   const handlePlayAudio = async (type: 'short' | 'long') => {
     try {
       setIsGeneratingAudio(true);
-      const base64 = await generateAudioSummary(book, type);
-      const wavBlob = base64PCMToWavBlob(base64);
+      if (!summary) return;
+      const wavBlob = await generateAudioSummary(book, summary, type, voice);
       const audioUrl = URL.createObjectURL(wavBlob);
       
       onPlayAudio({
@@ -113,17 +118,18 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
   };
 
   const handleMasterclassClick = async () => {
-    if (book.detailedSummary) {
+    if (summary?.detailedSummary) {
       onOpenReader(book);
       return;
     }
 
     setIsGeneratingDeepDive(true);
     try {
-      const longSummary = await generateDetailedSummary(book);
-      const updatedBook = { ...book, detailedSummary: longSummary };
-      onUpdate(updatedBook);
-      onOpenReader(updatedBook);
+      if (!summary) return;
+      const longSummary = await generateDetailedSummary(book, summary);
+      const updated = { ...summary, detailedSummary: longSummary };
+      onSummaryUpdate(updated);
+      onOpenReader(book);
     } catch (error) {
       console.error("Deep dive error:", error);
       alert("Failed to generate summary. Please try again.");
@@ -132,16 +138,11 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
     }
   };
 
-  const handleOpenPdf = () => {
-    if (!book.pdfData) return;
-    const byteCharacters = atob(book.pdfData);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
+  const handleOpenPdf = async () => {
+    if (!book.hasPdf) return;
+    const pdf = await blobs.get(book.id, 'pdf');
+    if (!pdf) return;
+    const url = URL.createObjectURL(pdf);
     window.open(url, '_blank');
   };
 
@@ -323,9 +324,9 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
                   {isGeneratingDeepDive ? "Synthesizing..." : "Read Full Summary"}
                 </button>
 
-                {book.pdfData && (
+                {book.hasPdf && (
                   <button 
-                    onClick={handleOpenPdf}
+                    onClick={() => void handleOpenPdf()}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                   >
                     <FileText size={16} className="text-rose-500" />
@@ -365,7 +366,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
               The One Sentence Takeaway
             </h2>
             <p className="text-xl font-serif text-orange-900 italic leading-relaxed">
-              "{book.oneSentenceTakeaway}"
+              {summary ? `"${summary.oneSentenceTakeaway}"` : ""}
             </p>
           </section>
 
@@ -374,7 +375,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
               <BookOpen size={24} className="text-orange-600" />
               Summary
             </h2>
-            <SummaryRenderer text={book.summary} />
+            <SummaryRenderer text={summary?.summary ?? "No summary yet."} />
           </section>
 
           <section>
@@ -383,7 +384,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
               Key Insights
             </h2>
             <ul className="space-y-4">
-              {book.keyInsights.map((insight, idx) => (
+              {(summary?.keyInsights ?? []).map((insight, idx) => (
                 <li key={idx} className="flex gap-4 items-start bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-sm">
                     {idx + 1}
@@ -400,7 +401,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
               Actionable Steps
             </h2>
             <div className="space-y-3">
-              {book.actionableSteps.map((step, idx) => (
+              {(summary?.actionableSteps ?? []).map((step, idx) => (
                 <div key={idx} className="flex gap-4 items-center p-4 rounded-xl bg-amber-50/30 border border-amber-100">
                   <div className="w-2 h-2 rounded-full bg-amber-400" />
                   <p className="text-gray-800 font-medium">{step}</p>
@@ -442,15 +443,17 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, onBack, onDelete, 
       </div>
 
       {showChat && (
-        <ChatModal 
-          book={book} 
+        <ChatModal
+          book={book}
+          summary={summary!} 
           onClose={() => setShowChat(false)} 
         />
       )}
       
       {showQuiz && (
-        <QuizModal 
-          book={book} 
+        <QuizModal
+          book={book}
+          summary={summary!} 
           onClose={() => setShowQuiz(false)} 
         />
       )}

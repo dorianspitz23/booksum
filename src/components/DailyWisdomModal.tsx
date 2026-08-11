@@ -1,15 +1,16 @@
 
 import React from 'react';
-import type { BookInsight } from '../legacy-types';
+import type { Book, Summary } from '../types';
 import { X, BookOpen, Sun, Sparkles } from 'lucide-react';
 
 interface DailyWisdomModalProps {
-  book: BookInsight;
+  book: Book;
+  summary: Summary | undefined;
   onClose: () => void;
   onReadMore: () => void;
 }
 
-export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({ book, onClose, onReadMore }) => {
+export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({ book, summary, onClose, onReadMore }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
@@ -31,7 +32,7 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({ book, onClos
             <h2 className="text-sm font-bold uppercase tracking-widest text-orange-600 mb-6 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">Daily Wisdom</h2>
 
             <blockquote className="text-2xl font-serif font-bold text-gray-900 leading-relaxed mb-8">
-                "{book.oneSentenceTakeaway}"
+                {summary?.oneSentenceTakeaway ? `"${summary.oneSentenceTakeaway}"` : "This book has no summary yet."}
             </blockquote>
 
             <div 

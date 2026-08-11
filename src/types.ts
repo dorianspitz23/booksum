@@ -39,11 +39,13 @@ export interface Book {
   addedAt: string;
   finishedAt?: string;
   /**
-   * Minutes to read this book's generated summary. Lives on Book, not Summary,
-   * because BookCard and StatsView render it for every book in a list and must
-   * not load every summary to do so.
+   * Two fields denormalised from Summary onto Book, for one reason: list views
+   * (BookCard, StatsView) render them for every book on screen and must not
+   * load every summary to do so. Both are written only when a summary is
+   * generated, so Summary remains the source of truth for everything else.
    */
   readingTimeMinutes: number;
+  oneSentenceTakeaway?: string;
   /** Absent until an AI summary has been generated for this book. */
   summaryId?: string;
   hasPdf: boolean;
@@ -90,6 +92,14 @@ export interface ReviewCard {
   intervalDays: number;
   dueAt: string;
   reviewCount: number;
+}
+
+/** Shape of a library backup file. */
+export interface LibraryExport {
+  version: 2;
+  exportedAt: string;
+  books: Book[];
+  summaries: Summary[];
 }
 
 export interface QuizQuestion {

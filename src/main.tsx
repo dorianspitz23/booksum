@@ -2,7 +2,7 @@ import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { AuthProvider } from './contexts/AuthContext';
+import { ProfileProvider } from './features/profile/ProfileContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,8 +12,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <AuthProvider>
+    <ProfileProvider>
       <App />
-    </AuthProvider>
+    </ProfileProvider>
   </React.StrictMode>
 );

@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import type { BookInsight } from '../legacy-types';
+import type { Book, Summary } from '../types';
 import type { QuizQuestion } from '../types';
 import { X, Trophy, AlertCircle, CheckCircle2, XCircle, ArrowRight, Loader2, BrainCircuit } from 'lucide-react';
-import { generateBookQuiz } from '../services/geminiService';
+import { generateBookQuiz } from '../lib/ai/quiz';
 
 interface QuizModalProps {
-  book: BookInsight;
+  book: Book;
+  summary: Summary;
   onClose: () => void;
 }
 
-export const QuizModal: React.FC<QuizModalProps> = ({ book, onClose }) => {
+export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -22,7 +23,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, onClose }) => {
   useEffect(() => {
     const loadQuiz = async () => {
       try {
-        const quizData = await generateBookQuiz(book);
+        const quizData = await generateBookQuiz(book, summary);
         setQuestions(quizData);
       } catch (error) {
         console.error("Failed to generate quiz", error);

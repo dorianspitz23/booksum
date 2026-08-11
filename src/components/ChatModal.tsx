@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { BookInsight } from '../legacy-types';
+import type { Book, Summary } from '../types';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
-import { createBookChatSession } from '../services/geminiService';
+import { createBookChatSession } from '../lib/ai/chat';
 import { Chat, GenerateContentResponse } from "@google/genai";
 
 interface ChatModalProps {
-  book: BookInsight;
+  book: Book;
+  summary: Summary;
   onClose: () => void;
 }
 
@@ -15,7 +16,7 @@ interface Message {
   text: string;
 }
 
-export const ChatModal: React.FC<ChatModalProps> = ({ book, onClose }) => {
+export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', text: `Hi! I'm here to help you get the most out of "${book.title}". Ask me anything about the key insights or how to apply them!` }
   ]);
@@ -25,7 +26,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, onClose }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatSession.current = createBookChatSession(book);
+    chatSession.current = createBookChatSession(book, summary);
   }, [book]);
 
   useEffect(() => {

@@ -1,17 +1,18 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import type { UserProfile, BookInsight } from '../legacy-types';
+import type { Book, LibraryExport, Profile } from '../types';
 import { Settings, ShieldAlert, BookOpen, Target, Calendar, Edit3, Save, Volume2, Trash2, Download, Upload, FileJson, Check } from 'lucide-react';
 
 interface ProfileViewProps {
-  profile: UserProfile;
-  onUpdate: (profile: UserProfile) => void;
-  books: BookInsight[];
+  profile: Profile;
+  onUpdate: (profile: Profile) => void;
+  books: Book[];
   onResetLibrary: () => void;
-  onImportLibrary: (books: BookInsight[], profile: UserProfile) => void;
+  buildExport: () => Promise<LibraryExport>;
+  onImportLibrary: (payload: LibraryExport) => Promise<number>;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdate, books, onResetLibrary, onImportLibrary }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdate, books, onResetLibrary, buildExport, onImportLibrary }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState(profile);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,7 +21,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdate, boo
   const stats = useMemo(() => {
     const finishedCount = books.filter(b => b.status === 'Finished').length;
     const progressPercent = Math.min(100, (finishedCount / profile.monthlyGoal) * 100);
-    const joinedDate = new Date(profile.joinedAt).toLocaleDateString('en-US', {
+    const joinedDate = new Date(profile.createdAt).toLocaleDateString('en-US', {
       month: 'long',
       year: 'numeric'
     });
@@ -52,13 +53,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdate, boo
       .slice(0, 2);
   };
 
-  const handleExport = () => {
-    const data = {
-      version: 1,
-      timestamp: new Date().toISOString(),
-      profile: profile,
-      books: books
-    };
+  const handleExport = async () => {
+    const data = await buildExport();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -81,14 +77,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdate, boo
         const data = JSON.parse(content);
         
         // Basic validation
-        if (!data.profile || !Array.isArray(data.books)) {
+        if (!Array.isArray(data.books)) {
           alert("Invalid backup file format. Please use a valid BookSum export file.");
           setImportStatus('error');
           return;
         }
 
         if (confirm(`Found ${data.books.length} books in backup. This will merge with your current library. Continue?`)) {
-           onImportLibrary(data.books, data.profile);
+           void onImportLibrary(data as LibraryExport);
            setImportStatus('success');
            setTimeout(() => setImportStatus('idle'), 3000);
         }

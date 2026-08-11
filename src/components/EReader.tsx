@@ -1,12 +1,14 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import type { BookInsight } from '../legacy-types';
-import { ChevronLeft, ChevronRight, X, Headphones, Type, Moon, Sun, Book } from 'lucide-react';
-import { generateAudioSummary, base64PCMToWavBlob } from '../services/geminiService';
+import type { Book, Summary, VoiceName } from '../types';
+import { ChevronLeft, ChevronRight, X, Headphones, Type, Moon, Sun, Book as BookIcon } from 'lucide-react';
+import { generateAudioSummary } from '../lib/ai/tts';
 import type { AudioTrack } from './AudioPlayer';
 
 interface EReaderProps {
-  book: BookInsight;
+  book: Book;
+  summary: Summary | undefined;
+  voice: VoiceName;
   onClose: () => void;
   onPlayAudio: (track: AudioTrack) => void;
   hasAudioPlayer?: boolean;
@@ -104,7 +106,7 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
   );
 };
 
-export const EReader: React.FC<EReaderProps> = ({ book, onClose, onPlayAudio, hasAudioPlayer }) => {
+export const EReader: React.FC<EReaderProps> = ({ book, summary, voice, onClose, onPlayAudio, hasAudioPlayer }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [theme, setTheme] = useState<Theme>('light');
   const [fontSize, setFontSize] = useState<FontSize>('text-lg');
@@ -115,11 +117,11 @@ export const EReader: React.FC<EReaderProps> = ({ book, onClose, onPlayAudio, ha
 
   // Pagination Logic
   const pages = useMemo(() => {
-    if (!book.detailedSummary) return ["No content available."];
+    if (!summary?.detailedSummary) return ["No content available."];
     // Split by major headers (##) to create distinct "Chapters" or "Sections"
-    const sections = book.detailedSummary.split(/(?=## )/g).map(s => s.trim()).filter(Boolean);
+    const sections = summary.detailedSummary.split(/(?=## )/g).map(s => s.trim()).filter(Boolean);
     return sections;
-  }, [book.detailedSummary]);
+  }, [summary?.detailedSummary]);
 
   // Scroll to top on page change
   useEffect(() => {
@@ -131,8 +133,8 @@ export const EReader: React.FC<EReaderProps> = ({ book, onClose, onPlayAudio, ha
   const handlePlayAudio = async () => {
     try {
       setIsGeneratingAudio(true);
-      const base64 = await generateAudioSummary(book, 'long');
-      const wavBlob = base64PCMToWavBlob(base64);
+      if (!summary) return;
+      const wavBlob = await generateAudioSummary(book, summary, 'long', voice);
       const audioUrl = URL.createObjectURL(wavBlob);
       
       onPlayAudio({
@@ -231,7 +233,7 @@ export const EReader: React.FC<EReaderProps> = ({ book, onClose, onPlayAudio, ha
                           color: t === 'dark' ? '#fff' : '#000'
                         }}
                       >
-                        {t === 'light' ? <Sun size={16} /> : t === 'sepia' ? <Book size={16} /> : <Moon size={16} />}
+                        {t === 'light' ? <Sun size={16} /> : t === 'sepia' ? <BookIcon size={16} /> : <Moon size={16} />}
                       </button>
                     ))}
                   </div>
@@ -292,7 +294,7 @@ export const EReader: React.FC<EReaderProps> = ({ book, onClose, onPlayAudio, ha
               </button>
             ) : (
                <div className="text-center py-10 opacity-60">
-                 <Book size={40} className="mx-auto mb-4 opacity-50" strokeWidth={1} />
+                 <BookIcon size={40} className="mx-auto mb-4 opacity-50" strokeWidth={1} />
                  <p className="font-serif italic">You have reached the end of this summary.</p>
                  <button onClick={onClose} className="mt-4 text-xs font-bold uppercase tracking-widest underline decoration-2 decoration-orange-500 underline-offset-4 hover:text-orange-500 transition-colors">Close Reader</button>
                </div>

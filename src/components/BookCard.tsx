@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import type { BookInsight } from '../legacy-types';
+import type { Book } from '../types';
+import { placeholderCover } from '../lib/covers';
 import { Clock, Star, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
 interface BookCardProps {
-  book: BookInsight;
-  onClick: (book: BookInsight) => void;
+  book: Book;
+  onClick: (book: Book) => void;
 }
 
 export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
@@ -23,8 +24,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
   }, [book.coverImageUrl, book.title]);
 
   const handleError = () => {
-    // Fallback to a clean UI Avatar if the real image fails
-    setImgSrc(`https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=f97316&color=fff&size=600&bold=true&format=svg`);
+    setImgSrc(placeholderCover(book.title));
     setImageLoaded(true);
   };
 
@@ -79,7 +79,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
         <p className="text-sm font-medium text-gray-500 mb-4 tracking-tight">by {book.author}</p>
         
         <p className="text-sm text-gray-600 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 pl-4">
-          "{book.oneSentenceTakeaway}"
+          {book.oneSentenceTakeaway ? `"${book.oneSentenceTakeaway}"` : "Not summarised yet"}
         </p>
         
         <div className="mt-auto pt-5 border-t border-gray-100 flex items-center justify-between">
