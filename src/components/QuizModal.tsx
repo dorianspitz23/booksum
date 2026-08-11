@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookInsight, QuizQuestion } from '../types';
+import type { BookInsight, QuizQuestion } from '../types';
 import { X, Trophy, AlertCircle, CheckCircle2, XCircle, ArrowRight, Loader2, BrainCircuit } from 'lucide-react';
 import { generateBookQuiz } from '../services/geminiService';
 

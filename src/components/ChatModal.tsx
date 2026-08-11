@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BookInsight } from '../types';
-import { X, Send, Bot, User, Sparkles, Loader2, MessageSquare } from 'lucide-react';
+import type { BookInsight } from '../types';
+import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { createBookChatSession } from '../services/geminiService';
 import { Chat, GenerateContentResponse } from "@google/genai";
 

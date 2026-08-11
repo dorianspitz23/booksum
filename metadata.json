@@ -1,8 +1,0 @@
-{
-  "name": "BookSum - AI Book Summarizer & Tracker",
-  "description": "A personal knowledge library inspired by Blinkist. Features AI-powered summarization, audio narration, interactive book chat, and personal note-taking.",
-  "requestFramePermissions": [
-    "microphone"
-  ],
-  "majorCapabilities": []
-}

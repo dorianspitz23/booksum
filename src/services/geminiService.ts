@@ -1,8 +1,30 @@
 
-import { GoogleGenAI, Type, Modality, Chat, GenerateContentResponse } from "@google/genai";
-import { BookInsight, Category, QuizQuestion } from "../types";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import type { Chat } from "@google/genai";
+import type { BookInsight, QuizQuestion } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Temporary shim. Task 6 replaces this with src/lib/ai/client.ts.
+// The key is read lazily from the browser at call time — it is never inlined
+// into the bundle, so `process.env.API_KEY` (which no longer exists) is gone.
+let client: GoogleGenAI | null = null;
+
+function getClient(): GoogleGenAI {
+  if (!client) {
+    const key = localStorage.getItem('booksum.apiKey');
+    if (!key) throw new Error('Missing Gemini API key');
+    client = new GoogleGenAI({ apiKey: key });
+  }
+  return client;
+}
+
+const ai = {
+  get models() {
+    return getClient().models;
+  },
+  get chats() {
+    return getClient().chats;
+  },
+};
 
 const GENERIC_BOOK_SCHEMA = {
   type: Type.OBJECT,

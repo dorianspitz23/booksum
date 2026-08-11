@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { BookInsight, BookStatus } from '../types';
+import type { BookInsight, BookStatus } from '../types';
 import { BarChart3, BookCheck, Bookmark, Star, Timer, TrendingUp, ArrowLeft } from 'lucide-react';
 import { BookCard } from './BookCard';
 

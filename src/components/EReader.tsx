@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { BookInsight } from '../types';
-import { ChevronLeft, ChevronRight, X, Headphones, Settings, Type, Moon, Sun, Book } from 'lucide-react';
+import type { BookInsight } from '../types';
+import { ChevronLeft, ChevronRight, X, Headphones, Type, Moon, Sun, Book } from 'lucide-react';
 import { generateAudioSummary, base64PCMToWavBlob } from '../services/geminiService';
-import { AudioTrack } from './AudioPlayer';
+import type { AudioTrack } from './AudioPlayer';
 
 interface EReaderProps {
   book: BookInsight;

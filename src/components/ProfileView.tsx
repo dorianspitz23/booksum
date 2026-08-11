@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { UserProfile, BookInsight } from '../types';
-import { User, Settings, ShieldAlert, BookOpen, Target, Calendar, Edit3, Save, Volume2, Trash2, Download, Upload, FileJson, Check } from 'lucide-react';
+import type { UserProfile, BookInsight } from '../types';
+import { Settings, ShieldAlert, BookOpen, Target, Calendar, Edit3, Save, Volume2, Trash2, Download, Upload, FileJson, Check } from 'lucide-react';
 
 interface ProfileViewProps {
   profile: UserProfile;

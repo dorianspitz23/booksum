@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookInsight } from '../types';
+import type { BookInsight } from '../types';
 import { Clock, Star, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
 interface BookCardProps {

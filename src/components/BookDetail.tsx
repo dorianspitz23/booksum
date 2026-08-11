@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookInsight, Priority, BookStatus } from '../types';
-import { ArrowLeft, Play, Pause, List, Zap, BookOpen, Share2, Trash2, Sparkles, FileText, Headphones, ExternalLink, Star, CheckCircle, RotateCcw, PlusCircle, MessageSquare, PenTool, BrainCircuit } from 'lucide-react';
+import type { BookInsight, Priority, BookStatus } from '../types';
+import { ArrowLeft, List, Zap, BookOpen, Share2, Trash2, Sparkles, FileText, Headphones, ExternalLink, Star, CheckCircle, RotateCcw, PlusCircle, MessageSquare, PenTool, BrainCircuit } from 'lucide-react';
 import { generateAudioSummary, generateDetailedSummary, base64PCMToWavBlob } from '../services/geminiService';
-import { AudioTrack } from './AudioPlayer';
+import type { AudioTrack } from './AudioPlayer';
 import { ChatModal } from './ChatModal';
 import { QuizModal } from './QuizModal';
 

@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ViewState, BookInsight, Category, UserProfile, BookStatus } from './types';
+import type { ViewState, BookInsight, UserProfile, BookStatus } from './types';
 import { BookCard } from './components/BookCard';
 import { BookDetail } from './components/BookDetail';
 import { AddBookModal } from './components/AddBookModal';
 import { EReader } from './components/EReader';
 import { StatsView } from './components/StatsView';
 import { ProfileView } from './components/ProfileView';
-import { AudioPlayer, AudioTrack } from './components/AudioPlayer';
+import { AudioPlayer } from './components/AudioPlayer';
+import type { AudioTrack } from './components/AudioPlayer';
 import { LoginView } from './components/LoginView';
 import { DailyWisdomModal } from './components/DailyWisdomModal';
 import { useAuth } from './contexts/AuthContext';
