@@ -71,7 +71,7 @@ src/
     profile/             # ProfilePage, ProfilePicker
     settings/            # ApiKeyDialog, theme toggle
   lib/
-    ai/                  # client, prompts, schemas, summarize, chat, quiz, tts, recommend, errors
+    ai/                  # client, models, prompts, schemas, summarize, chat, quiz, tts, recommend, errors
     covers/              # googleBooks, openLibrary, placeholder, index (fallback chain)
     storage/             # db, repo, migrate
     audio/wav.ts
@@ -125,7 +125,7 @@ Consequences: "Want to Read" entries cost nothing, imports are instant, and summ
 
 ## 6. Storage
 
-IndexedDB accessed only through a typed `repo.ts`. Four object stores:
+IndexedDB accessed only through a typed `repo.ts`. Five object stores:
 
 | Store | Key | Contents |
 |---|---|---|
