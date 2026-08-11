@@ -103,6 +103,7 @@ interface Book {
   coverImageUrl: string;
   addedAt: string;
   finishedAt?: string;
+  readingTimeMinutes: number;    // on Book, not Summary: list views render it without loading summaries
   summaryId?: string;            // absent = not yet summarised
   hasPdf: boolean;               // bytes live in `blobs`
 }
@@ -115,7 +116,6 @@ interface Summary {
   keyInsights: string[];
   actionableSteps: string[];
   detailedSummary?: string;
-  readingTimeMinutes: number;
   generatedAt: string;
   model: string;
 }
