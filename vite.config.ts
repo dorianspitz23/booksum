@@ -15,6 +15,10 @@ export default defineConfig({
     // project path contains a space ("Timeout waiting for worker to respond").
     // Threads are unaffected and measurably faster to boot here.
     pool: 'threads',
+    // jsdom + fake-indexeddb setup costs several seconds per file on a cold
+    // cache, which pushed genuine passes past the 5s default on a first run.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     restoreMocks: true,
