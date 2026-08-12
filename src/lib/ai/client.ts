@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { getApiKey } from './apiKey';
-import { MissingKeyError } from './errors';
+import { MissingKeyError, toAiError } from './errors';
+import { MODELS } from './models';
 
 let cached: { key: string; client: GoogleGenAI } | null = null;
 
@@ -14,4 +15,14 @@ export function getClient(): GoogleGenAI {
 
 export function resetClientCache(): void {
   cached = null;
+}
+
+/** Validates a candidate key with one trivial call. Throws a typed AiError. */
+export async function testApiKey(key: string): Promise<void> {
+  try {
+    const probe = new GoogleGenAI({ apiKey: key.trim() });
+    await probe.models.generateContent({ model: MODELS.summary, contents: 'ping' });
+  } catch (error) {
+    throw toAiError(error);
+  }
 }

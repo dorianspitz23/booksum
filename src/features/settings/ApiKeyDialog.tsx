@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 import { setApiKey } from '../../lib/ai/apiKey';
-import { resetClientCache } from '../../lib/ai/client';
-import { MODELS } from '../../lib/ai/models';
+import { resetClientCache, testApiKey } from '../../lib/ai/client';
 import { toAiError } from '../../lib/ai/errors';
 import { Dialog } from '../../components/ui/Dialog';
 
@@ -25,8 +23,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
     setStatus('testing');
     setMessage(null);
     try {
-      const probe = new GoogleGenAI({ apiKey: value.trim() });
-      await probe.models.generateContent({ model: MODELS.summary, contents: 'ping' });
+      await testApiKey(value);
       setApiKey(value);
       resetClientCache();
       onSaved?.();

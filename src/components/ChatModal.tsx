@@ -2,8 +2,9 @@ import React, { useId, useState, useEffect, useRef } from 'react';
 import { useFocusTrap } from './ui/useFocusTrap';
 import type { Book, Summary } from '../types';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
-import { createBookChatSession } from '../lib/ai/chat';
-import type { Chat, GenerateContentResponse } from '@google/genai';
+import { createBookChatSession, sendMessageStream } from '../lib/ai/chat';
+import type { Chat } from '../lib/ai/chat';
+import { toAiError } from '../lib/ai/errors';
 
 interface ChatModalProps {
   book: Book;
@@ -54,36 +55,28 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
     setIsLoading(true);
 
     try {
-      // Create a placeholder for the model response
+      // Placeholder the reply streams into.
       setMessages((prev) => [...prev, { role: 'model', text: '' }]);
 
-      const result = await chatSession.current.sendMessageStream({ message: userMsg.text });
-
-      let fullText = '';
-
-      for await (const chunk of result) {
-        const text = (chunk as GenerateContentResponse).text;
-        if (text) {
-          fullText += text;
-          setMessages((prev) => {
-            const newArr = [...prev];
-            const lastMsg = newArr[newArr.length - 1];
-            if (lastMsg.role === 'model') {
-              lastMsg.text = fullText;
-            }
-            return newArr;
-          });
-        }
-      }
+      await sendMessageStream(chatSession.current, userMsg.text, (textSoFar) => {
+        setMessages((prev) =>
+          prev.map((message, index) =>
+            index === prev.length - 1 && message.role === 'model'
+              ? { ...message, text: textSoFar }
+              : message,
+          ),
+        );
+      });
     } catch (err) {
       console.error('Chat error', err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'model',
-          text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
-        },
-      ]);
+      const message = toAiError(err).message;
+      setMessages((prev) =>
+        prev.map((entry, index) =>
+          index === prev.length - 1 && entry.role === 'model' && entry.text === ''
+            ? { ...entry, text: message }
+            : entry,
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
