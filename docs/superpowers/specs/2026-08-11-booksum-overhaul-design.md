@@ -20,38 +20,38 @@ Three things have to become true:
 
 Verified against the source, not inferred.
 
-| # | Defect | Evidence |
-|---|--------|----------|
-| 1 | Does not install | `package.json` pins `@google/genai@^0.1.1`; no version in `[0.1.1, 0.2.0)` exists on npm (404). Published versions start at `0.2.0`. |
-| 2 | API key ships to the browser | `vite.config.ts:13` — `define: { 'process.env.API_KEY': JSON.stringify(env.API_KEY) }` inlines the key into the bundle. |
-| 3 | Key never resolves anyway | README instructs setting `GEMINI_API_KEY`; `vite.config.ts` reads `API_KEY`. Resolves to `''`. |
-| 4 | Two dependency universes | `package.json`: React 18 + genai 0.1.1. `index.html` importmap: React 19 + genai 1.35. Code uses 1.x APIs (`Modality`, `ai.chats.create`). |
-| 5 | Plaintext passwords persisted | `contexts/AuthContext.tsx:86-95` writes `password` into `localStorage` key `booksum_db_users`. |
-| 6 | Storage exceeds quota | `types.ts:37-38` — `audioData` (base64 WAV) and `pdfData` (base64 PDF) live inside each book record; the whole array is serialised to `localStorage` on every change (`App.tsx:209-214`). A single 10MB PDF exceeds the ~5MB origin quota; `setItem` throws and persistence stops. |
-| 7 | Unprompted API spend | `App.tsx:152-177` — a 3s-debounced effect calls `getAIRecommendations` after *any* library change including first load; each call fans out 6 cover lookups. |
-| 8 | Wasteful cover lookup | `services/geminiService.ts:78-110` — third fallback spends an image-model call with the search tool, then regexes a URL out of prose. |
-| 9 | Dead profile setting | `UserProfile.favoriteVoice` is settable; `geminiService.ts:303` hardcodes `voiceName: 'Kore'`. |
-| 10 | No routing | View is `useState<ViewState>`. Browser back does nothing; no view is linkable. |
-| 11 | `App.tsx` does too much | 700 lines: routing, state, persistence, layout, recommendations carousel, daily-wisdom scheduling. |
-| 12 | Generic error handling | Every AI failure becomes one string (`AddBookModal.tsx:55`); `alert()` / `confirm()` used for UX (`App.tsx:256, 263, 280`). |
-| 13 | Inaccessible modals | Five modals, none with focus trap, Escape handling, focus restore, or `aria-modal`. |
-| 14 | Tailwind from CDN | `index.html:9` — `cdn.tailwindcss.com`, which Tailwind documents as development-only. No purge, no build. |
-| 15 | No tests, lint, CI, LICENSE, or `.gitignore` | — |
+| #   | Defect                                       | Evidence                                                                                                                                                                                                                                                                           |
+| --- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Does not install                             | `package.json` pins `@google/genai@^0.1.1`; no version in `[0.1.1, 0.2.0)` exists on npm (404). Published versions start at `0.2.0`.                                                                                                                                               |
+| 2   | API key ships to the browser                 | `vite.config.ts:13` — `define: { 'process.env.API_KEY': JSON.stringify(env.API_KEY) }` inlines the key into the bundle.                                                                                                                                                            |
+| 3   | Key never resolves anyway                    | README instructs setting `GEMINI_API_KEY`; `vite.config.ts` reads `API_KEY`. Resolves to `''`.                                                                                                                                                                                     |
+| 4   | Two dependency universes                     | `package.json`: React 18 + genai 0.1.1. `index.html` importmap: React 19 + genai 1.35. Code uses 1.x APIs (`Modality`, `ai.chats.create`).                                                                                                                                         |
+| 5   | Plaintext passwords persisted                | `contexts/AuthContext.tsx:86-95` writes `password` into `localStorage` key `booksum_db_users`.                                                                                                                                                                                     |
+| 6   | Storage exceeds quota                        | `types.ts:37-38` — `audioData` (base64 WAV) and `pdfData` (base64 PDF) live inside each book record; the whole array is serialised to `localStorage` on every change (`App.tsx:209-214`). A single 10MB PDF exceeds the ~5MB origin quota; `setItem` throws and persistence stops. |
+| 7   | Unprompted API spend                         | `App.tsx:152-177` — a 3s-debounced effect calls `getAIRecommendations` after _any_ library change including first load; each call fans out 6 cover lookups.                                                                                                                        |
+| 8   | Wasteful cover lookup                        | `services/geminiService.ts:78-110` — third fallback spends an image-model call with the search tool, then regexes a URL out of prose.                                                                                                                                              |
+| 9   | Dead profile setting                         | `UserProfile.favoriteVoice` is settable; `geminiService.ts:303` hardcodes `voiceName: 'Kore'`.                                                                                                                                                                                     |
+| 10  | No routing                                   | View is `useState<ViewState>`. Browser back does nothing; no view is linkable.                                                                                                                                                                                                     |
+| 11  | `App.tsx` does too much                      | 700 lines: routing, state, persistence, layout, recommendations carousel, daily-wisdom scheduling.                                                                                                                                                                                 |
+| 12  | Generic error handling                       | Every AI failure becomes one string (`AddBookModal.tsx:55`); `alert()` / `confirm()` used for UX (`App.tsx:256, 263, 280`).                                                                                                                                                        |
+| 13  | Inaccessible modals                          | Five modals, none with focus trap, Escape handling, focus restore, or `aria-modal`.                                                                                                                                                                                                |
+| 14  | Tailwind from CDN                            | `index.html:9` — `cdn.tailwindcss.com`, which Tailwind documents as development-only. No purge, no build.                                                                                                                                                                          |
+| 15  | No tests, lint, CI, LICENSE, or `.gitignore` | —                                                                                                                                                                                                                                                                                  |
 
 ## 3. Stack
 
-| Concern | Choice | Note |
-|---|---|---|
-| Build | Vite 7 | |
-| UI | React 19 | Matches what the importmap already implied |
-| Language | TypeScript 5.x, `strict` | |
-| Styling | Tailwind v4 via `@tailwindcss/vite` | Replaces the CDN; enables dark mode + purge |
-| AI | `@google/genai@^2.x` | Current major |
-| Routing | `react-router` | Fixes back button and deep links |
-| Storage | `idb` over IndexedDB | ~1KB wrapper; removes a class of raw-IDB bugs |
-| Tests | Vitest, Testing Library, `fake-indexeddb`, jsdom | |
-| Quality | ESLint 9 flat config, typescript-eslint, Prettier | |
-| PWA | `vite-plugin-pwa` | Installable, offline shell |
+| Concern  | Choice                                            | Note                                          |
+| -------- | ------------------------------------------------- | --------------------------------------------- |
+| Build    | Vite 7                                            |                                               |
+| UI       | React 19                                          | Matches what the importmap already implied    |
+| Language | TypeScript 5.x, `strict`                          |                                               |
+| Styling  | Tailwind v4 via `@tailwindcss/vite`               | Replaces the CDN; enables dark mode + purge   |
+| AI       | `@google/genai@^2.x`                              | Current major                                 |
+| Routing  | `react-router`                                    | Fixes back button and deep links              |
+| Storage  | `idb` over IndexedDB                              | ~1KB wrapper; removes a class of raw-IDB bugs |
+| Tests    | Vitest, Testing Library, `fake-indexeddb`, jsdom  |                                               |
+| Quality  | ESLint 9 flat config, typescript-eslint, Prettier |                                               |
+| PWA      | `vite-plugin-pwa`                                 | Installable, offline shell                    |
 
 ## 4. Structure
 
@@ -91,7 +91,7 @@ Split into two entities:
 
 ```ts
 interface Book {
-  id: string;                    // crypto.randomUUID()
+  id: string; // crypto.randomUUID()
   profileId: string;
   title: string;
   author: string;
@@ -103,9 +103,9 @@ interface Book {
   coverImageUrl: string;
   addedAt: string;
   finishedAt?: string;
-  readingTimeMinutes: number;    // on Book, not Summary: list views render it without loading summaries
-  summaryId?: string;            // absent = not yet summarised
-  hasPdf: boolean;               // bytes live in `blobs`
+  readingTimeMinutes: number; // on Book, not Summary: list views render it without loading summaries
+  summaryId?: string; // absent = not yet summarised
+  hasPdf: boolean; // bytes live in `blobs`
 }
 
 interface Summary {
@@ -127,13 +127,13 @@ Consequences: "Want to Read" entries cost nothing, imports are instant, and summ
 
 IndexedDB accessed only through a typed `repo.ts`. Five object stores:
 
-| Store | Key | Contents |
-|---|---|---|
-| `profiles` | `id` | name, bio, monthlyGoal, favoriteVoice, theme, createdAt |
-| `books` | `id` | `Book` records, indexed by `profileId` |
-| `summaries` | `id` | `Summary` records, indexed by `bookId` |
-| `blobs` | `bookId:kind` | real `Blob`s — `pdf`, `audio-short`, `audio-long` |
-| `reviewCards` | `id` | SRS cards, indexed by `profileId` and `dueAt` |
+| Store         | Key           | Contents                                                |
+| ------------- | ------------- | ------------------------------------------------------- |
+| `profiles`    | `id`          | name, bio, monthlyGoal, favoriteVoice, theme, createdAt |
+| `books`       | `id`          | `Book` records, indexed by `profileId`                  |
+| `summaries`   | `id`          | `Summary` records, indexed by `bookId`                  |
+| `blobs`       | `bookId:kind` | real `Blob`s — `pdf`, `audio-short`, `audio-long`       |
+| `reviewCards` | `id`          | SRS cards, indexed by `profileId` and `dueAt`           |
 
 Binary data is never base64 inside a record. Writes are per-entity, not whole-array rewrites.
 
@@ -180,15 +180,15 @@ Any gated action opens `ApiKeyDialog`, which explains what the key is for, links
 
 ## 11. New capability
 
-| Feature | Design |
-|---|---|
-| Dark mode | Tailwind v4 `@custom-variant dark`. Follows system by default; manual override persists per profile. |
-| Full-text search | Client-side index over title, author, summary, insights, steps, and personal notes. Currently title/author only. |
-| Markdown export | Per book and whole library. Deterministic output, snapshot-tested. |
-| ⌘K palette | Navigate, search books, add book, toggle theme, start review. |
-| Goodreads import | Parses the official CSV export. `Exclusive Shelf` → status (`read`→Finished, `to-read`→Want to Read), `My Rating` → rating, ISBN13 → cover lookup. **Zero AI calls.** Dry-run preview with a duplicate report before committing. |
-| PWA | `vite-plugin-pwa`, offline app shell, installable, cached covers. |
-| Spaced repetition | Generated quiz questions become `reviewCards` with SM-2-lite scheduling (`ease`, `interval`, `dueAt`; grades 1–4). A Review route surfaces cards due across all books. `srs.ts` is pure and fully unit-tested. |
+| Feature           | Design                                                                                                                                                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dark mode         | Tailwind v4 `@custom-variant dark`. Follows system by default; manual override persists per profile.                                                                                                                             |
+| Full-text search  | Client-side index over title, author, summary, insights, steps, and personal notes. Currently title/author only.                                                                                                                 |
+| Markdown export   | Per book and whole library. Deterministic output, snapshot-tested.                                                                                                                                                               |
+| ⌘K palette        | Navigate, search books, add book, toggle theme, start review.                                                                                                                                                                    |
+| Goodreads import  | Parses the official CSV export. `Exclusive Shelf` → status (`read`→Finished, `to-read`→Want to Read), `My Rating` → rating, ISBN13 → cover lookup. **Zero AI calls.** Dry-run preview with a duplicate report before committing. |
+| PWA               | `vite-plugin-pwa`, offline app shell, installable, cached covers.                                                                                                                                                                |
+| Spaced repetition | Generated quiz questions become `reviewCards` with SM-2-lite scheduling (`ease`, `interval`, `dueAt`; grades 1–4). A Review route surfaces cards due across all books. `srs.ts` is pure and fully unit-tested.                   |
 
 ## 12. Testing
 
@@ -221,13 +221,13 @@ Repo: `dorianspitz23/booksum`, public, MIT, with topics and a live Pages demo li
 
 Each phase ends in a verifiable state.
 
-**Phase 1 — Foundation.** Dependencies resolve and install; Tailwind build replaces the CDN; `vite.config.ts` define block removed; IndexedDB + repo + migration; profiles replace auth; BYOK dialog and gating. *Verify:* clean clone installs, builds, runs; no key appears in `dist/`; adding a 10MB PDF does not break persistence.
+**Phase 1 — Foundation.** Dependencies resolve and install; Tailwind build replaces the CDN; `vite.config.ts` define block removed; IndexedDB + repo + migration; profiles replace auth; BYOK dialog and gating. _Verify:_ clean clone installs, builds, runs; no key appears in `dist/`; adding a 10MB PDF does not break persistence.
 
-**Phase 2 — Quality.** `App.tsx` decomposition; routing; Dialog primitive and modal migration; typed AI errors; toasts; error boundary; contrast and keyboard fixes; test suite; CI. *Verify:* CI green; a11y checks pass on every modal; back button works.
+**Phase 2 — Quality.** `App.tsx` decomposition; routing; Dialog primitive and modal migration; typed AI errors; toasts; error boundary; contrast and keyboard fixes; test suite; CI. _Verify:_ CI green; a11y checks pass on every modal; back button works.
 
-**Phase 3 — Features.** Dark mode, full-text search, Markdown export, ⌘K palette, Goodreads import, PWA, spaced repetition. *Verify:* each feature has tests; PWA installs; import of a real Goodreads CSV makes zero network calls to Gemini.
+**Phase 3 — Features.** Dark mode, full-text search, Markdown export, ⌘K palette, Goodreads import, PWA, spaced repetition. _Verify:_ each feature has tests; PWA installs; import of a real Goodreads CSV makes zero network calls to Gemini.
 
-**Phase 4 — Publish.** README with real screenshots, LICENSE, CONTRIBUTING, SECURITY, templates; final secret scan of the full git history; public repo; Pages deploy. *Verify:* `git log -p | grep` finds no key material; the Pages demo loads and prompts for a key.
+**Phase 4 — Publish.** README with real screenshots, LICENSE, CONTRIBUTING, SECURITY, templates; final secret scan of the full git history; public repo; Pages deploy. _Verify:_ `git log -p | grep` finds no key material; the Pages demo loads and prompts for a key.
 
 ## 16. Out of scope
 

@@ -34,41 +34,41 @@ Phase 1 moves existing components to `src/components/` **verbatim**, changing im
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `package.json` | Real, resolvable dependencies and scripts |
-| `tsconfig.json` | Single strict config covering `src` and `vite.config.ts` |
-| `vite.config.ts` | React + Tailwind plugins, Vitest config. **No `define`.** |
-| `index.html` | Entry document. No importmap, no Tailwind CDN, no `noindex` |
-| `public/favicon.svg` | Extracted from the old inline data URI |
-| `src/index.css` | Tailwind import + `@theme` tokens + base styles |
-| `src/main.tsx` | React root, providers |
-| `src/types.ts` | `Profile`, `Book`, `Summary`, `StoredBlob`, `ReviewCard`, enums |
-| `src/lib/base64.ts` | `base64ToBytes`, `bytesToBase64` |
-| `src/lib/storage/db.ts` | IndexedDB schema, singleton connection, test reset |
-| `src/lib/storage/repo.ts` | Typed CRUD: `profiles`, `books`, `summaries`, `blobs`. The only module that touches `db.ts` |
-| `src/lib/storage/migrate.ts` | One-time non-destructive localStorage → IndexedDB migration |
-| `src/lib/ai/models.ts` | Model ID constants |
-| `src/lib/ai/apiKey.ts` | BYOK read/write/subscribe |
-| `src/lib/ai/client.ts` | `GoogleGenAI` factory bound to the stored key |
-| `src/lib/ai/errors.ts` | `AiError` union + `toAiError` mapping |
-| `src/lib/ai/schemas.ts` | Response schemas |
-| `src/lib/ai/prompts.ts` | Prompt templates |
-| `src/lib/ai/summarize.ts` | `summarizeBook`, `summarizePdf`, `generateDetailedSummary` |
-| `src/lib/ai/quiz.ts` | `generateBookQuiz` |
-| `src/lib/ai/chat.ts` | `createBookChatSession` |
-| `src/lib/ai/tts.ts` | `generateAudioSummary` (honours `profile.favoriteVoice`) |
-| `src/lib/ai/recommend.ts` | `getAIRecommendations` |
-| `src/lib/covers/googleBooks.ts` | Google Books cover lookup |
-| `src/lib/covers/openLibrary.ts` | OpenLibrary cover lookup |
-| `src/lib/covers/placeholder.ts` | Locally generated SVG data URI |
-| `src/lib/covers/index.ts` | Fallback chain |
-| `src/lib/audio/wav.ts` | PCM → WAV `Blob` |
-| `src/features/profile/ProfileContext.tsx` | Active profile state |
-| `src/features/profile/ProfilePicker.tsx` | "Who's reading?" screen |
-| `src/features/settings/ApiKeyDialog.tsx` | BYOK entry + test-key button |
-| `src/features/library/useLibrary.ts` | Library state bound to the repo |
-| `src/test/setup.ts` | Vitest global setup |
+| File                                      | Responsibility                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `package.json`                            | Real, resolvable dependencies and scripts                                                   |
+| `tsconfig.json`                           | Single strict config covering `src` and `vite.config.ts`                                    |
+| `vite.config.ts`                          | React + Tailwind plugins, Vitest config. **No `define`.**                                   |
+| `index.html`                              | Entry document. No importmap, no Tailwind CDN, no `noindex`                                 |
+| `public/favicon.svg`                      | Extracted from the old inline data URI                                                      |
+| `src/index.css`                           | Tailwind import + `@theme` tokens + base styles                                             |
+| `src/main.tsx`                            | React root, providers                                                                       |
+| `src/types.ts`                            | `Profile`, `Book`, `Summary`, `StoredBlob`, `ReviewCard`, enums                             |
+| `src/lib/base64.ts`                       | `base64ToBytes`, `bytesToBase64`                                                            |
+| `src/lib/storage/db.ts`                   | IndexedDB schema, singleton connection, test reset                                          |
+| `src/lib/storage/repo.ts`                 | Typed CRUD: `profiles`, `books`, `summaries`, `blobs`. The only module that touches `db.ts` |
+| `src/lib/storage/migrate.ts`              | One-time non-destructive localStorage → IndexedDB migration                                 |
+| `src/lib/ai/models.ts`                    | Model ID constants                                                                          |
+| `src/lib/ai/apiKey.ts`                    | BYOK read/write/subscribe                                                                   |
+| `src/lib/ai/client.ts`                    | `GoogleGenAI` factory bound to the stored key                                               |
+| `src/lib/ai/errors.ts`                    | `AiError` union + `toAiError` mapping                                                       |
+| `src/lib/ai/schemas.ts`                   | Response schemas                                                                            |
+| `src/lib/ai/prompts.ts`                   | Prompt templates                                                                            |
+| `src/lib/ai/summarize.ts`                 | `summarizeBook`, `summarizePdf`, `generateDetailedSummary`                                  |
+| `src/lib/ai/quiz.ts`                      | `generateBookQuiz`                                                                          |
+| `src/lib/ai/chat.ts`                      | `createBookChatSession`                                                                     |
+| `src/lib/ai/tts.ts`                       | `generateAudioSummary` (honours `profile.favoriteVoice`)                                    |
+| `src/lib/ai/recommend.ts`                 | `getAIRecommendations`                                                                      |
+| `src/lib/covers/googleBooks.ts`           | Google Books cover lookup                                                                   |
+| `src/lib/covers/openLibrary.ts`           | OpenLibrary cover lookup                                                                    |
+| `src/lib/covers/placeholder.ts`           | Locally generated SVG data URI                                                              |
+| `src/lib/covers/index.ts`                 | Fallback chain                                                                              |
+| `src/lib/audio/wav.ts`                    | PCM → WAV `Blob`                                                                            |
+| `src/features/profile/ProfileContext.tsx` | Active profile state                                                                        |
+| `src/features/profile/ProfilePicker.tsx`  | "Who's reading?" screen                                                                     |
+| `src/features/settings/ApiKeyDialog.tsx`  | BYOK entry + test-key button                                                                |
+| `src/features/library/useLibrary.ts`      | Library state bound to the repo                                                             |
+| `src/test/setup.ts`                       | Vitest global setup                                                                         |
 
 Deleted: `metadata.json`, `tsconfig.node.json`, `contexts/AuthContext.tsx`, `components/LoginView.tsx`, `services/geminiService.ts`.
 
@@ -79,12 +79,14 @@ Deleted: `metadata.json`, `tsconfig.node.json`, `contexts/AuthContext.tsx`, `com
 Makes the project install, typecheck, test, and build. Nothing else in this plan can start until this is green.
 
 **Files:**
+
 - Modify: `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`
 - Create: `src/index.css`, `src/test/setup.ts`, `src/test/smoke.test.tsx`, `public/favicon.svg`
 - Move: all `.tsx`/`.ts` sources into `src/`
 - Delete: `tsconfig.node.json`, `metadata.json`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces: working `npm run dev|build|typecheck|test`; all app source importable from `src/`
 
@@ -378,10 +380,12 @@ git commit -m "build: replace AI Studio toolchain with a real Vite 8 + React 19 
 ## Task 2: IndexedDB storage layer
 
 **Files:**
+
 - Create: `src/lib/storage/db.ts`, `src/lib/storage/repo.ts`, `src/lib/storage/repo.test.ts`, `src/lib/base64.ts`
 - Modify: `src/types.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from Task 1 beyond the toolchain
 - Produces:
   - `getDb(): Promise<IDBPDatabase<BookSumDB>>`, `resetDb(): Promise<void>` from `db.ts`
@@ -889,12 +893,7 @@ export interface BookInsight {
 }
 
 export type ViewState =
-  | 'library'
-  | 'book-detail'
-  | 'adding-book'
-  | 'e-reader'
-  | 'stats'
-  | 'profile';
+  'library' | 'book-detail' | 'adding-book' | 'e-reader' | 'stats' | 'profile';
 ```
 
 Then in `src/App.tsx`, `src/components/*.tsx`, `src/contexts/AuthContext.tsx` and `src/services/geminiService.ts`, change imports of `BookInsight`, `User`, `UserProfile`, `ViewState` and `QuizQuestion` to come from the legacy module — for example `import type { BookInsight, ViewState } from './legacy-types';`. Leave `Category` and `QuizQuestion` importing from `./types`, which still exports both.
@@ -918,10 +917,12 @@ Splits BookInsight into Book + Summary so a book can exist unsummarised."
 ## Task 3: Legacy migration
 
 **Files:**
+
 - Create: `src/lib/storage/migrate.ts`, `src/lib/storage/migrate.test.ts`
 - Depends on: Task 2
 
 **Interfaces:**
+
 - Consumes: `profiles`, `books`, `summaries`, `blobs` from `repo.ts`; `base64ToBytes` from `lib/base64.ts`
 - Produces: `migrateLegacyData(): Promise<MigrationResult>` and `MIGRATION_MARKER` from `migrate.ts`, where `MigrationResult = { migrated: boolean; profiles: number; books: number; summaries: number; blobs: number }`
 
@@ -1267,12 +1268,14 @@ reads the plaintext passwords from booksum_db_users."
 ## Task 4: Local profiles replace the fake auth
 
 **Files:**
+
 - Create: `src/features/profile/ProfileContext.tsx`, `src/features/profile/ProfilePicker.tsx`, `src/features/profile/ProfileContext.test.tsx`
 - Modify: `src/main.tsx`, `src/App.tsx`
 - Delete: `src/contexts/AuthContext.tsx`, `src/components/LoginView.tsx`
 - Depends on: Tasks 2, 3
 
 **Interfaces:**
+
 - Consumes: `profiles` from `repo.ts`, `migrateLegacyData` from `migrate.ts`
 - Produces: `ProfileProvider`, `useProfile()` returning `{ profile: Profile | null, allProfiles: Profile[], isLoading: boolean, selectProfile(id): Promise<void>, createProfile(name): Promise<Profile>, updateProfile(p): Promise<void>, deleteProfile(id): Promise<void>, signOut(): void }`, and `ACTIVE_PROFILE_KEY = 'booksum.activeProfile'`
 
@@ -1662,6 +1665,7 @@ const { profile, isLoading: profileLoading, signOut } = useProfile();
 ```
 
 Then:
+
 - `if (authLoading)` becomes `if (profileLoading)`.
 - `if (!user) return <LoginView />;` becomes `if (!profile) return <ProfilePicker />;`.
 - Every `user.id` becomes `profile.id`, `user.name` becomes `profile.name`, and `logout` becomes `signOut`.
@@ -1700,12 +1704,14 @@ by profileId, so migrated data maps across unchanged."
 ## Task 5: Library state reads and writes through the repo
 
 **Files:**
+
 - Create: `src/features/library/useLibrary.ts`, `src/features/library/useLibrary.test.tsx`
 - Modify: `src/App.tsx`, `src/components/BookDetail.tsx`, `src/components/AddBookModal.tsx`, `src/components/EReader.tsx`, `src/components/BookCard.tsx`, `src/components/StatsView.tsx`, `src/components/ProfileView.tsx`
 - Delete: `src/legacy-types.ts`
 - Depends on: Tasks 2, 4
 
 **Interfaces:**
+
 - Consumes: `books`, `summaries`, `blobs` from `repo.ts`; `useProfile` from `ProfileContext`
 - Produces: `useLibrary()` returning `{ books: Book[], isLoading: boolean, addBook(input, options?): Promise<Book>, updateBook(book): Promise<void>, removeBook(id): Promise<void>, getSummary(bookId): Promise<Summary | undefined>, saveSummary(summary): Promise<void>, reload(): Promise<void> }` where `options` is `{ summary?: Omit<Summary,'id'|'bookId'>, pdf?: Blob }`
 
@@ -1908,10 +1914,7 @@ export function useLibrary() {
     [reload],
   );
 
-  const getSummary = useCallback(
-    (bookId: string) => summaryRepo.getByBook(bookId),
-    [],
-  );
+  const getSummary = useCallback((bookId: string) => summaryRepo.getByBook(bookId), []);
 
   const saveSummary = useCallback(
     async (summary: Summary) => {
@@ -1950,7 +1953,12 @@ const { books, isLoading: libraryLoading, addBook, updateBook, removeBook } = us
 
 ```tsx
 const handleResetLibrary = async () => {
-  if (!confirm('DANGER: This will permanently delete all books and insights in your library. Continue?')) return;
+  if (
+    !confirm(
+      'DANGER: This will permanently delete all books and insights in your library. Continue?',
+    )
+  )
+    return;
   await Promise.all(books.map((book) => removeBook(book.id)));
   setRecommendations(RECOMMENDED_BOOKS);
   setView('library');
@@ -1983,7 +1991,7 @@ interface BookDetailProps {
   onBack: () => void;
   onDelete: (id: string) => void;
   onUpdate: (book: Book) => void;
-  onSummaryUpdate: (summary: Summary) => void;   // replaces mutating book.detailedSummary
+  onSummaryUpdate: (summary: Summary) => void; // replaces mutating book.detailedSummary
   onOpenReader: () => void;
   isPreview: boolean;
   onAdd: () => void;
@@ -2000,10 +2008,18 @@ interface EReaderProps {
 }
 
 // src/components/ChatModal.tsx
-interface ChatModalProps { book: Book; summary: Summary; onClose: () => void; }
+interface ChatModalProps {
+  book: Book;
+  summary: Summary;
+  onClose: () => void;
+}
 
 // src/components/QuizModal.tsx
-interface QuizModalProps { book: Book; summary: Summary; onClose: () => void; }
+interface QuizModalProps {
+  book: Book;
+  summary: Summary;
+  onClose: () => void;
+}
 
 // src/components/DailyWisdomModal.tsx
 interface DailyWisdomModalProps {
@@ -2060,6 +2076,7 @@ load on demand. Drops the hardcoded Atomic Habits seed book."
 ## Task 6: AI module split, BYOK gating, and cost fixes
 
 **Files:**
+
 - Create: `src/lib/ai/models.ts`, `apiKey.ts`, `client.ts`, `errors.ts`, `schemas.ts`, `prompts.ts`, `summarize.ts`, `quiz.ts`, `chat.ts`, `tts.ts`, `recommend.ts`; `src/lib/covers/googleBooks.ts`, `openLibrary.ts`, `placeholder.ts`, `index.ts`; `src/lib/audio/wav.ts`; `src/features/settings/ApiKeyDialog.tsx`
 - Create tests: `src/lib/ai/errors.test.ts`, `src/lib/ai/apiKey.test.ts`, `src/lib/covers/index.test.ts`, `src/lib/audio/wav.test.ts`
 - Delete: `src/services/geminiService.ts`
@@ -2067,6 +2084,7 @@ load on demand. Drops the hardcoded Atomic Habits seed book."
 - Depends on: Tasks 1–5
 
 **Interfaces:**
+
 - Consumes: `base64ToBytes` from `lib/base64.ts`, `Summary`/`Book`/`QuizQuestion`/`VoiceName` from `types.ts`
 - Produces:
   - `MODELS` from `models.ts`
@@ -2216,7 +2234,14 @@ Create `src/lib/ai/apiKey.test.ts`:
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { API_KEY_STORAGE_KEY, clearApiKey, getApiKey, hasApiKey, setApiKey, subscribeToApiKey } from './apiKey';
+import {
+  API_KEY_STORAGE_KEY,
+  clearApiKey,
+  getApiKey,
+  hasApiKey,
+  setApiKey,
+  subscribeToApiKey,
+} from './apiKey';
 
 beforeEach(() => {
   localStorage.clear();
@@ -2396,7 +2421,12 @@ describe('fetchCover', () => {
   });
 
   it('falls back to the placeholder when the network throws', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
     await expect(fetchCover('Offline', 'Nobody')).resolves.toBe(placeholderCover('Offline'));
   });
 
@@ -2438,10 +2468,7 @@ export function placeholderCover(title: string): string {
 `src/lib/covers/googleBooks.ts`:
 
 ```ts
-export async function fetchGoogleBooksCover(
-  title: string,
-  author: string,
-): Promise<string | null> {
+export async function fetchGoogleBooksCover(title: string, author: string): Promise<string | null> {
   const queries = [
     `intitle:${title}${author ? ` inauthor:${author}` : ''}`,
     `${title} ${author}`.trim(),
@@ -2459,7 +2486,11 @@ export async function fetchGoogleBooksCover(
     for (const item of data.items ?? []) {
       const links = item.volumeInfo?.imageLinks;
       const url =
-        links?.extraLarge ?? links?.large ?? links?.medium ?? links?.thumbnail ?? links?.smallThumbnail;
+        links?.extraLarge ??
+        links?.large ??
+        links?.medium ??
+        links?.thumbnail ??
+        links?.smallThumbnail;
       if (url) return url.replace(/^http:\/\//, 'https://');
     }
   }
@@ -2471,10 +2502,7 @@ export async function fetchGoogleBooksCover(
 `src/lib/covers/openLibrary.ts`:
 
 ```ts
-export async function fetchOpenLibraryCover(
-  title: string,
-  author: string,
-): Promise<string | null> {
+export async function fetchOpenLibraryCover(title: string, author: string): Promise<string | null> {
   const query = encodeURIComponent(`${title} ${author}`.trim());
   const response = await fetch(`https://openlibrary.org/search.json?q=${query}&limit=1`);
   if (!response.ok) return null;
@@ -2789,11 +2817,13 @@ git commit -m "feat(ai): split the Gemini service, gate on a user-supplied key
 ## Task 7: Phase 1 verification and README
 
 **Files:**
+
 - Modify: `README.md`
 - Create: `.env.example`
 - Depends on: Tasks 1–6
 
 **Interfaces:**
+
 - Consumes: everything
 - Produces: a repository a stranger can clone and run
 
@@ -2828,14 +2858,14 @@ features — summarising, audio, chat, quizzes and recommendations — need one.
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` | Typecheck, then build to `dist/` |
-| `npm run preview` | Serve the production build |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Run the test suite once |
-| `npm run test:watch` | Run tests in watch mode |
+| Command              | What it does                     |
+| -------------------- | -------------------------------- |
+| `npm run dev`        | Start the dev server             |
+| `npm run build`      | Typecheck, then build to `dist/` |
+| `npm run preview`    | Serve the production build       |
+| `npm run typecheck`  | `tsc --noEmit`                   |
+| `npm test`           | Run the test suite once          |
+| `npm run test:watch` | Run tests in watch mode          |
 
 ## Architecture
 

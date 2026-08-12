@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Book } from '../types';
 import { placeholderCover } from '../lib/covers';
@@ -16,10 +15,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
   useEffect(() => {
     // Immediate fallback if the URL is empty to prevent broken image flash
     if (!book.coverImageUrl || book.coverImageUrl === 'null') {
-        handleError();
+      setImgSrc(placeholderCover(book.title));
+      setImageLoaded(true);
     } else {
-        setImgSrc(book.coverImageUrl);
-        setImageLoaded(false);
+      setImgSrc(book.coverImageUrl);
+      setImageLoaded(false);
     }
   }, [book.coverImageUrl, book.title]);
 
@@ -30,14 +30,17 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
 
   const getPriorityColor = (p?: string) => {
     switch (p) {
-      case 'High': return 'bg-rose-100 text-rose-700 border-rose-200';
-      case 'Medium': return 'bg-amber-100 text-amber-700 border-amber-200';
-      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'High':
+        return 'bg-rose-100 text-rose-700 border-rose-200';
+      case 'Medium':
+        return 'bg-amber-100 text-amber-700 border-amber-200';
+      default:
+        return 'bg-blue-100 text-blue-700 border-blue-200';
     }
   };
 
   return (
-    <div 
+    <div
       onClick={() => onClick(book)}
       className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 flex flex-col h-full"
     >
@@ -47,8 +50,8 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
             <Loader2 className="animate-spin" size={24} />
           </div>
         )}
-        <img 
-          src={imgSrc} 
+        <img
+          src={imgSrc}
           alt={book.title}
           onLoad={() => setImageLoaded(true)}
           onError={handleError}
@@ -64,24 +67,26 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
             {book.category}
           </div>
           {book.status === 'Want to Read' && book.priority && (
-            <div className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] border backdrop-blur-md shadow-xl flex items-center gap-1.5 w-fit ${getPriorityColor(book.priority)}`}>
+            <div
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] border backdrop-blur-md shadow-xl flex items-center gap-1.5 w-fit ${getPriorityColor(book.priority)}`}
+            >
               <AlertCircle size={12} />
               {book.priority}
             </div>
           )}
         </div>
       </div>
-      
+
       <div className="p-6 flex-grow flex flex-col">
         <h3 className="text-xl font-serif font-bold text-gray-900 line-clamp-2 mb-2 group-hover:text-orange-700 transition-colors leading-tight">
           {book.title}
         </h3>
         <p className="text-sm font-medium text-gray-500 mb-4 tracking-tight">by {book.author}</p>
-        
+
         <p className="text-sm text-gray-600 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 pl-4">
-          {book.oneSentenceTakeaway ? `"${book.oneSentenceTakeaway}"` : "Not summarised yet"}
+          {book.oneSentenceTakeaway ? `"${book.oneSentenceTakeaway}"` : 'Not summarised yet'}
         </p>
-        
+
         <div className="mt-auto pt-5 border-t border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest">
             <Clock size={14} className="text-orange-500" />

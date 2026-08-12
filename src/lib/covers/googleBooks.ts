@@ -1,7 +1,4 @@
-export async function fetchGoogleBooksCover(
-  title: string,
-  author: string,
-): Promise<string | null> {
+export async function fetchGoogleBooksCover(title: string, author: string): Promise<string | null> {
   const queries = [
     `intitle:${title}${author ? ` inauthor:${author}` : ''}`,
     `${title} ${author}`.trim(),

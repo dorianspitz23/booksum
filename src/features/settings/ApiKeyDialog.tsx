@@ -42,7 +42,11 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
         <div className="flex justify-between items-start mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Connect Gemini</h2>
-          <button onClick={onClose} aria-label="Close" className="p-2 hover:bg-gray-100 rounded-full">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
             <X size={20} />
           </button>
         </div>

@@ -1,7 +1,24 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Book, Priority, BookStatus, Summary, VoiceName } from '../types';
-import { ArrowLeft, List, Zap, BookOpen, Share2, Trash2, Sparkles, FileText, Headphones, ExternalLink, Star, CheckCircle, RotateCcw, PlusCircle, MessageSquare, PenTool, BrainCircuit } from 'lucide-react';
+import {
+  ArrowLeft,
+  List,
+  Zap,
+  BookOpen,
+  Share2,
+  Trash2,
+  Sparkles,
+  FileText,
+  Headphones,
+  ExternalLink,
+  Star,
+  CheckCircle,
+  RotateCcw,
+  PlusCircle,
+  MessageSquare,
+  PenTool,
+  BrainCircuit,
+} from 'lucide-react';
 import { generateAudioSummary } from '../lib/ai/tts';
 import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
@@ -14,10 +31,18 @@ const formatInline = (text: string) => {
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>;
+      return (
+        <strong key={i} className="font-bold text-gray-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
     }
     if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={i} className="italic text-gray-800">{part.slice(1, -1)}</em>;
+      return (
+        <em key={i} className="italic text-gray-800">
+          {part.slice(1, -1)}
+        </em>
+      );
     }
     return part;
   });
@@ -26,10 +51,10 @@ const formatInline = (text: string) => {
 // Component to render Markdown-styled summaries (headers, paragraphs, lists)
 const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
-  
+
   // CRITICAL FIX: Replace literal "\n" string characters with actual newlines
   const cleanText = text.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-  const blocks = cleanText.split(/\n\n+/); 
+  const blocks = cleanText.split(/\n\n+/);
 
   return (
     <div className="space-y-4 text-gray-800 leading-relaxed text-lg">
@@ -42,29 +67,41 @@ const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
           const level = headerMatch[1].length;
           const content = headerMatch[2];
           if (level === 1 || level === 2) {
-             return <h3 key={idx} className="text-xl font-bold text-gray-900 mt-8 mb-3">{formatInline(content)}</h3>;
+            return (
+              <h3 key={idx} className="text-xl font-bold text-gray-900 mt-8 mb-3">
+                {formatInline(content)}
+              </h3>
+            );
           }
-          return <h4 key={idx} className="text-lg font-bold text-gray-900 mt-6 mb-2">{formatInline(content)}</h4>;
+          return (
+            <h4 key={idx} className="text-lg font-bold text-gray-900 mt-6 mb-2">
+              {formatInline(content)}
+            </h4>
+          );
         }
 
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-           const items = trimmed.split('\n');
-           return (
-             <ul key={idx} className="space-y-3 pl-2 my-4">
-               {items.map((item, i) => {
-                 const cleanItem = item.replace(/^[-*]\s+/, '');
-                 return (
-                   <li key={i} className="flex gap-3 items-start">
-                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2.5 flex-shrink-0" />
-                     <span className="flex-1">{formatInline(cleanItem)}</span>
-                   </li>
-                 );
-               })}
-             </ul>
-           );
+          const items = trimmed.split('\n');
+          return (
+            <ul key={idx} className="space-y-3 pl-2 my-4">
+              {items.map((item, i) => {
+                const cleanItem = item.replace(/^[-*]\s+/, '');
+                return (
+                  <li key={i} className="flex gap-3 items-start">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2.5 flex-shrink-0" />
+                    <span className="flex-1">{formatInline(cleanItem)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
         }
 
-        return <p key={idx} className="mb-2">{formatInline(trimmed)}</p>;
+        return (
+          <p key={idx} className="mb-2">
+            {formatInline(trimmed)}
+          </p>
+        );
       })}
     </div>
   );
@@ -84,7 +121,19 @@ interface BookDetailProps {
   onPlayAudio: (track: AudioTrack) => void;
 }
 
-export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, onSummaryUpdate, onBack, onDelete, onUpdate, onOpenReader, isPreview, onAdd, onPlayAudio }) => {
+export const BookDetail: React.FC<BookDetailProps> = ({
+  book,
+  summary,
+  voice,
+  onSummaryUpdate,
+  onBack,
+  onDelete,
+  onUpdate,
+  onOpenReader,
+  isPreview,
+  onAdd,
+  onPlayAudio,
+}) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -102,16 +151,16 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
       if (!summary) return;
       const wavBlob = await generateAudioSummary(book, summary, type, voice);
       const audioUrl = URL.createObjectURL(wavBlob);
-      
+
       onPlayAudio({
         src: audioUrl,
         title: book.title,
         author: book.author,
-        coverUrl: book.coverImageUrl
+        coverUrl: book.coverImageUrl,
       });
     } catch (error) {
-      console.error("Audio error:", error);
-      alert("Failed to generate audio summary.");
+      console.error('Audio error:', error);
+      alert('Failed to generate audio summary.');
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -131,8 +180,8 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
       onSummaryUpdate(updated);
       onOpenReader(book);
     } catch (error) {
-      console.error("Deep dive error:", error);
-      alert("Failed to generate summary. Please try again.");
+      console.error('Deep dive error:', error);
+      alert('Failed to generate summary. Please try again.');
     } finally {
       setIsGeneratingDeepDive(false);
     }
@@ -155,10 +204,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
   };
 
   const toggleStatus = (newStatus: BookStatus) => {
-    onUpdate({ 
-      ...book, 
+    onUpdate({
+      ...book,
       status: newStatus,
-      rating: newStatus === 'Finished' ? (book.rating || 5) : book.rating 
+      rating: newStatus === 'Finished' ? book.rating || 5 : book.rating,
     });
   };
 
@@ -170,12 +219,12 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
 
   return (
     <div className="max-w-4xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-      <button 
+      <button
         onClick={onBack}
         className="mb-8 flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors group"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        {isPreview ? "Discard Preview" : "Back to Library"}
+        {isPreview ? 'Discard Preview' : 'Back to Library'}
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
@@ -183,43 +232,50 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
         <div className="md:col-span-4">
           <div className="sticky top-8">
             <div className="relative mb-6">
-               <img 
-                 src={book.coverImageUrl} 
-                 alt={book.title}
-                 className="w-full rounded-2xl shadow-2xl"
-               />
-               {isPreview && (
-                 <div className="absolute -top-3 -right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-white">
-                   PREVIEW
-                 </div>
-               )}
+              <img
+                src={book.coverImageUrl}
+                alt={book.title}
+                className="w-full rounded-2xl shadow-2xl"
+              />
+              {isPreview && (
+                <div className="absolute -top-3 -right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-white">
+                  PREVIEW
+                </div>
+              )}
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
               {isPreview && onAdd ? (
-                 <div className="pb-4 border-b border-gray-100">
-                   <button 
-                     onClick={onAdd}
-                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-orange-200 animate-pulse active:scale-95"
-                   >
-                     <PlusCircle size={20} />
-                     Add to Library
-                   </button>
-                   <p className="text-xs text-gray-400 text-center mt-2 font-medium">Save to keep your progress</p>
-                 </div>
+                <div className="pb-4 border-b border-gray-100">
+                  <button
+                    onClick={onAdd}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-orange-200 animate-pulse active:scale-95"
+                  >
+                    <PlusCircle size={20} />
+                    Add to Library
+                  </button>
+                  <p className="text-xs text-gray-400 text-center mt-2 font-medium">
+                    Save to keep your progress
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {book.status === 'Finished' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">My Rating</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">
+                        My Rating
+                      </span>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((num) => (
-                          <button 
+                          <button
                             key={num}
                             onClick={() => updateRating(num)}
                             className={`transition-all ${num <= Math.round(book.rating) ? 'text-amber-400' : 'text-gray-200'} hover:scale-125`}
                           >
-                            <Star size={24} fill={num <= Math.round(book.rating) ? "currentColor" : "none"} />
+                            <Star
+                              size={24}
+                              fill={num <= Math.round(book.rating) ? 'currentColor' : 'none'}
+                            />
                           </button>
                         ))}
                         <span className="ml-2 font-bold text-gray-900">{book.rating}</span>
@@ -229,15 +285,17 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
 
                   {book.status === 'Want to Read' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">Priority</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">
+                        Priority
+                      </span>
                       <div className="flex gap-2">
                         {(['Low', 'Medium', 'High'] as Priority[]).map((p) => (
                           <button
                             key={p}
                             onClick={() => updatePriority(p)}
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${
-                              book.priority === p 
-                                ? 'bg-orange-600 text-white border-orange-600' 
+                              book.priority === p
+                                ? 'bg-orange-600 text-white border-orange-600'
                                 : 'bg-white text-gray-400 border-gray-100 hover:border-orange-200'
                             }`}
                           >
@@ -252,38 +310,42 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
 
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-50">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">Category</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">
+                    Category
+                  </span>
                   <p className="font-medium text-gray-900">{book.category}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">Length</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">
+                    Length
+                  </span>
                   <p className="font-medium text-gray-900">{book.readingTimeMinutes} mins</p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                 {/* Chat with Book Button (New) */}
-                 {!isPreview && (
-                   <div className="grid grid-cols-2 gap-2">
-                     <button 
-                       onClick={() => setShowChat(true)}
-                       className="w-full flex items-center justify-center gap-2 py-3 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 text-xs lg:text-sm shadow-lg shadow-indigo-100"
-                     >
-                       <MessageSquare size={16} />
-                       Chat
-                     </button>
-                     <button 
-                       onClick={() => setShowQuiz(true)}
-                       className="w-full flex items-center justify-center gap-2 py-3 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all active:scale-95 text-xs lg:text-sm shadow-lg shadow-rose-100"
-                     >
-                       <BrainCircuit size={16} />
-                       Quiz
-                     </button>
-                   </div>
-                 )}
+                {/* Chat with Book Button (New) */}
+                {!isPreview && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setShowChat(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all active:scale-95 text-xs lg:text-sm shadow-lg shadow-indigo-100"
+                    >
+                      <MessageSquare size={16} />
+                      Chat
+                    </button>
+                    <button
+                      onClick={() => setShowQuiz(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all active:scale-95 text-xs lg:text-sm shadow-lg shadow-rose-100"
+                    >
+                      <BrainCircuit size={16} />
+                      Quiz
+                    </button>
+                  </div>
+                )}
 
                 {book.status === 'Want to Read' ? (
-                  <button 
+                  <button
                     onClick={() => toggleStatus('Finished')}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all active:scale-95 text-sm shadow-lg shadow-emerald-100"
                   >
@@ -291,7 +353,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
                     Mark as Finished
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => toggleStatus('Want to Read')}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl font-bold transition-all active:scale-95 text-sm"
                   >
@@ -302,30 +364,34 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
 
                 <div className="h-px bg-gray-100 my-2" />
 
-                <button 
+                <button
                   onClick={() => handlePlayAudio('short')}
                   disabled={isGeneratingAudio}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 text-sm"
                 >
                   {isGeneratingAudio ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : <Headphones size={16} />}
-                  {isGeneratingAudio ? "Generating Audio..." : "Quick Listen"}
+                  ) : (
+                    <Headphones size={16} />
+                  )}
+                  {isGeneratingAudio ? 'Generating Audio...' : 'Quick Listen'}
                 </button>
 
-                <button 
+                <button
                   onClick={handleMasterclassClick}
                   disabled={isGeneratingDeepDive}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 active:scale-95"
                 >
                   {isGeneratingDeepDive ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : <Sparkles size={16} />}
-                  {isGeneratingDeepDive ? "Synthesizing..." : "Read Full Summary"}
+                  ) : (
+                    <Sparkles size={16} />
+                  )}
+                  {isGeneratingDeepDive ? 'Synthesizing...' : 'Read Full Summary'}
                 </button>
 
                 {book.hasPdf && (
-                  <button 
+                  <button
                     onClick={() => void handleOpenPdf()}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                   >
@@ -335,13 +401,13 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
                   </button>
                 )}
               </div>
-              
+
               <div className="flex gap-2 pt-2">
                 <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm">
                   <Share2 size={16} /> Share
                 </button>
                 {!isPreview && (
-                  <button 
+                  <button
                     onClick={() => onDelete(book.id)}
                     className="p-2 border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                   >
@@ -356,7 +422,9 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
         {/* Main Content */}
         <div className="md:col-span-8 space-y-12">
           <header>
-            <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4 leading-tight">{book.title}</h1>
+            <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4 leading-tight">
+              {book.title}
+            </h1>
             <p className="text-xl text-gray-500 font-medium">By {book.author}</p>
           </header>
 
@@ -366,7 +434,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
               The One Sentence Takeaway
             </h2>
             <p className="text-xl font-serif text-orange-900 italic leading-relaxed">
-              {summary ? `"${summary.oneSentenceTakeaway}"` : ""}
+              {summary ? `"${summary.oneSentenceTakeaway}"` : ''}
             </p>
           </section>
 
@@ -375,7 +443,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
               <BookOpen size={24} className="text-orange-600" />
               Summary
             </h2>
-            <SummaryRenderer text={summary?.summary ?? "No summary yet."} />
+            <SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />
           </section>
 
           <section>
@@ -385,7 +453,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
             </h2>
             <ul className="space-y-4">
               {(summary?.keyInsights ?? []).map((insight, idx) => (
-                <li key={idx} className="flex gap-4 items-start bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                <li
+                  key={idx}
+                  className="flex gap-4 items-start bg-white p-5 rounded-xl border border-gray-100 shadow-sm"
+                >
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-sm">
                     {idx + 1}
                   </span>
@@ -402,7 +473,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
             </h2>
             <div className="space-y-3">
               {(summary?.actionableSteps ?? []).map((step, idx) => (
-                <div key={idx} className="flex gap-4 items-center p-4 rounded-xl bg-amber-50/30 border border-amber-100">
+                <div
+                  key={idx}
+                  className="flex gap-4 items-center p-4 rounded-xl bg-amber-50/30 border border-amber-100"
+                >
                   <div className="w-2 h-2 rounded-full bg-amber-400" />
                   <p className="text-gray-800 font-medium">{step}</p>
                 </div>
@@ -412,51 +486,39 @@ export const BookDetail: React.FC<BookDetailProps> = ({ book, summary, voice, on
 
           {/* Personal Notes Section (New) */}
           <section className="pt-8 border-t border-gray-100">
-             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-               <PenTool size={24} className="text-indigo-500" />
-               My Personal Notes
-             </h2>
-             <div className="relative">
-               <textarea 
-                 value={notes}
-                 onChange={(e) => setNotes(e.target.value)}
-                 onBlur={handleSaveNotes}
-                 placeholder="Write down your thoughts, ideas for application, or things you want to remember..."
-                 className="w-full h-48 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-lg leading-relaxed text-gray-800 placeholder:text-gray-400"
-               />
-               <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur">
-                  Auto-saves when you click away
-               </div>
-             </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <PenTool size={24} className="text-indigo-500" />
+              My Personal Notes
+            </h2>
+            <div className="relative">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={handleSaveNotes}
+                placeholder="Write down your thoughts, ideas for application, or things you want to remember..."
+                className="w-full h-48 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-lg leading-relaxed text-gray-800 placeholder:text-gray-400"
+              />
+              <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur">
+                Auto-saves when you click away
+              </div>
+            </div>
           </section>
 
           {isGeneratingDeepDive && (
-             <div className="bg-stone-50 rounded-2xl p-12 text-center space-y-4 border-2 border-dashed border-stone-200 animate-pulse">
-                <div className="w-12 h-12 border-4 border-stone-900 border-t-transparent rounded-full animate-spin mx-auto" />
-                <h3 className="text-xl font-bold text-stone-900">Synthesizing Full Summary...</h3>
-                <p className="text-stone-500 max-w-md mx-auto">
-                  Our AI is analyzing the full depth of this book to prepare your e-reader experience.
-                </p>
-              </div>
+            <div className="bg-stone-50 rounded-2xl p-12 text-center space-y-4 border-2 border-dashed border-stone-200 animate-pulse">
+              <div className="w-12 h-12 border-4 border-stone-900 border-t-transparent rounded-full animate-spin mx-auto" />
+              <h3 className="text-xl font-bold text-stone-900">Synthesizing Full Summary...</h3>
+              <p className="text-stone-500 max-w-md mx-auto">
+                Our AI is analyzing the full depth of this book to prepare your e-reader experience.
+              </p>
+            </div>
           )}
         </div>
       </div>
 
-      {showChat && (
-        <ChatModal
-          book={book}
-          summary={summary!} 
-          onClose={() => setShowChat(false)} 
-        />
-      )}
-      
-      {showQuiz && (
-        <QuizModal
-          book={book}
-          summary={summary!} 
-          onClose={() => setShowQuiz(false)} 
-        />
-      )}
+      {showChat && <ChatModal book={book} summary={summary!} onClose={() => setShowChat(false)} />}
+
+      {showQuiz && <QuizModal book={book} summary={summary!} onClose={() => setShowQuiz(false)} />}
     </div>
   );
 };

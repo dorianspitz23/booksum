@@ -26,14 +26,14 @@ profiles. Only the AI features — summarising, audio, chat, quizzes and recomme
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` | Typecheck, then build to `dist/` |
-| `npm run preview` | Serve the production build |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Run the test suite once |
-| `npm run test:watch` | Run tests in watch mode |
+| Command              | What it does                     |
+| -------------------- | -------------------------------- |
+| `npm run dev`        | Start the dev server             |
+| `npm run build`      | Typecheck, then build to `dist/` |
+| `npm run preview`    | Serve the production build       |
+| `npm run typecheck`  | `tsc --noEmit`                   |
+| `npm test`           | Run the test suite once          |
+| `npm run test:watch` | Run tests in watch mode          |
 
 ## Architecture
 

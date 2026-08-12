@@ -30,24 +30,24 @@ Dark mode, full-text search, Markdown export, ⌘K palette, Goodreads CSV import
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `eslint.config.js` | Flat config: js + typescript-eslint + react-hooks + no-restricted-globals |
-| `.prettierrc.json`, `.prettierignore` | Formatting |
-| `.github/workflows/ci.yml` | typecheck · lint · test · build on push and PR |
-| `src/app/AppShell.tsx` | Sidebar, mobile FAB, audio player, global dialogs, `<Outlet/>` |
-| `src/app/routes.tsx` | Route table |
-| `src/app/ErrorBoundary.tsx` | Route-level error boundary with recovery |
-| `src/features/library/LibraryPage.tsx` | Library route (was the `view === 'library'` branch) |
-| `src/features/book/BookDetailPage.tsx` | `/book/:id` route |
-| `src/features/book/ReaderPage.tsx` | `/book/:id/read` route |
-| `src/features/stats/StatsPage.tsx` | `/stats` route wrapper |
-| `src/features/profile/ProfilePage.tsx` | `/profile` route wrapper |
-| `src/features/library/RecommendationCarousel.tsx` | Carousel + keyboard nav, lifted out of App |
-| `src/components/ui/Dialog.tsx` | Focus-trapping modal primitive |
-| `src/components/ui/ConfirmDialog.tsx` | Promise-based confirm |
-| `src/components/ui/Toast.tsx`, `src/components/ui/toastStore.ts` | Toast host + store |
-| `src/features/book/useBookRoute.ts` | Loads book + summary for the `:id` param |
+| File                                                             | Responsibility                                                            |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `eslint.config.js`                                               | Flat config: js + typescript-eslint + react-hooks + no-restricted-globals |
+| `.prettierrc.json`, `.prettierignore`                            | Formatting                                                                |
+| `.github/workflows/ci.yml`                                       | typecheck · lint · test · build on push and PR                            |
+| `src/app/AppShell.tsx`                                           | Sidebar, mobile FAB, audio player, global dialogs, `<Outlet/>`            |
+| `src/app/routes.tsx`                                             | Route table                                                               |
+| `src/app/ErrorBoundary.tsx`                                      | Route-level error boundary with recovery                                  |
+| `src/features/library/LibraryPage.tsx`                           | Library route (was the `view === 'library'` branch)                       |
+| `src/features/book/BookDetailPage.tsx`                           | `/book/:id` route                                                         |
+| `src/features/book/ReaderPage.tsx`                               | `/book/:id/read` route                                                    |
+| `src/features/stats/StatsPage.tsx`                               | `/stats` route wrapper                                                    |
+| `src/features/profile/ProfilePage.tsx`                           | `/profile` route wrapper                                                  |
+| `src/features/library/RecommendationCarousel.tsx`                | Carousel + keyboard nav, lifted out of App                                |
+| `src/components/ui/Dialog.tsx`                                   | Focus-trapping modal primitive                                            |
+| `src/components/ui/ConfirmDialog.tsx`                            | Promise-based confirm                                                     |
+| `src/components/ui/Toast.tsx`, `src/components/ui/toastStore.ts` | Toast host + store                                                        |
+| `src/features/book/useBookRoute.ts`                              | Loads book + summary for the `:id` param                                  |
 
 ---
 
@@ -56,10 +56,12 @@ Dark mode, full-text search, Markdown export, ⌘K palette, Goodreads CSV import
 Comes first so every later task is checked by the same gate.
 
 **Files:**
+
 - Create: `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `.github/workflows/ci.yml`
 - Modify: `package.json`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces: `npm run lint`, `npm run format`, `npm run format:check`
 
@@ -199,11 +201,13 @@ Typecheck, lint, format check, tests and build now run on every push and PR."
 ## Task 2: Routing and page decomposition
 
 **Files:**
+
 - Create: `src/app/AppShell.tsx`, `src/app/routes.tsx`, `src/features/library/LibraryPage.tsx`, `src/features/library/RecommendationCarousel.tsx`, `src/features/book/BookDetailPage.tsx`, `src/features/book/ReaderPage.tsx`, `src/features/book/useBookRoute.ts`, `src/features/stats/StatsPage.tsx`, `src/features/profile/ProfilePage.tsx`
 - Modify: `src/App.tsx` (becomes the router host), `src/main.tsx`
 - Test: `src/app/routing.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useLibrary`, `useProfile`
 - Produces: routes `/` (library), `/book/:id`, `/book/:id/read`, `/stats`, `/profile`; `useBookRoute(): { book, summary, isLoading, setSummary }`
 
@@ -340,7 +344,7 @@ export function useBookRoute() {
 
 Move each branch of the current `view === ...` ternary into its own component, changing only what routing requires:
 
-- `LibraryPage.tsx` — the `view === 'library'` JSX, its filter state, `filteredBooks`, and the recommendations block. Navigation becomes `navigate(\`/book/\${book.id}\`)` instead of `setView('book-detail')`.
+- `LibraryPage.tsx` — the `view === 'library'` JSX, its filter state, `filteredBooks`, and the recommendations block. Navigation becomes `navigate(\`/book/\${book.id}\`)`instead of`setView('book-detail')`.
 - `RecommendationCarousel.tsx` — the carousel markup plus `scrollRecommendations`, taking `{ recommendations, isRefreshing, onRefresh, onPreview, addingBookTitle }`.
 - `BookDetailPage.tsx` — reads `useBookRoute()`, renders the existing `BookDetail` component.
 - `ReaderPage.tsx` — reads `useBookRoute()`, renders `EReader`.
@@ -402,10 +406,12 @@ to a shell plus one page component per route."
 ## Task 3: Accessible dialog primitive
 
 **Files:**
+
 - Create: `src/components/ui/Dialog.tsx`, `src/components/ui/Dialog.test.tsx`
 - Modify: `AddBookModal.tsx`, `ChatModal.tsx`, `QuizModal.tsx`, `DailyWisdomModal.tsx`, `ApiKeyDialog.tsx`
 
 **Interfaces:**
+
 - Produces: `<Dialog open title onClose labelledBy? size?>` rendering a focus-trapped modal
 
 - [ ] **Step 1: Write the failing Dialog test**
@@ -638,10 +644,12 @@ each dialog is exposed as a labelled aria-modal."
 ## Task 4: Toasts, confirm dialog, error boundary
 
 **Files:**
+
 - Create: `src/components/ui/toastStore.ts`, `src/components/ui/Toast.tsx`, `src/components/ui/ConfirmDialog.tsx`, `src/components/ui/toastStore.test.ts`, `src/app/ErrorBoundary.tsx`
 - Modify: `AppShell.tsx`, `LibraryPage.tsx`, `BookDetailPage.tsx`, `ProfileView.tsx`, `BookDetail.tsx`, `EReader.tsx`, `eslint.config.js`
 
 **Interfaces:**
+
 - Produces: `toast.error(msg)`, `toast.success(msg)`, `useToasts()`, `useConfirm(): (opts) => Promise<boolean>`
 
 - [ ] **Step 1: Write the failing toast store test**
@@ -791,10 +799,12 @@ cannot come back."
 ## Task 5: Contrast and keyboard access
 
 **Files:**
+
 - Modify: `src/index.css`, `RecommendationCarousel.tsx`, and every file using the failing orange utilities
 - Test: `src/lib/contrast.test.ts`, `src/lib/contrast.ts`
 
 **Interfaces:**
+
 - Produces: `contrastRatio(hex, hex): number`
 
 - [ ] **Step 1: Write the contrast helper and its test**
@@ -849,6 +859,7 @@ cards are buttons now, and the hover-only preview is reachable via focus."
 ## Task 6: Streaming chat and browser verification
 
 **Files:**
+
 - Modify: `src/lib/ai/chat.ts`, `src/components/ChatModal.tsx`
 
 - [ ] **Step 1: Add a streaming send to `chat.ts`**

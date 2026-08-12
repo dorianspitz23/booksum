@@ -93,7 +93,9 @@ const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}`;
 export const blobs = {
   async put(bookId: string, kind: BlobKind, blob: Blob): Promise<void> {
     const bytes = await blob.arrayBuffer();
-    await (await getDb()).put('blobs', {
+    await (
+      await getDb()
+    ).put('blobs', {
       key: blobKey(bookId, kind),
       bookId,
       kind,
