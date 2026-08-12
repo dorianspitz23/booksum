@@ -13,6 +13,10 @@ import {
   BrainCircuit,
 } from 'lucide-react';
 import { generateBookQuiz } from '../lib/ai/quiz';
+import { reviewCards } from '../lib/storage/repo';
+import { newCard } from '../lib/srs';
+import { toast } from './ui/toastStore';
+import { toAiError } from '../lib/ai/errors';
 
 interface QuizModalProps {
   book: Book;
@@ -39,8 +43,26 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
       try {
         const quizData = await generateBookQuiz(book, summary);
         setQuestions(quizData);
+
+        // Every generated question becomes a review card, skipping any question
+        // already stored for this book so retaking a quiz cannot duplicate them.
+        const seen = new Set((await reviewCards.listByBook(book.id)).map((c) => c.question));
+        for (const question of quizData) {
+          if (seen.has(question.question)) continue;
+          await reviewCards.upsert(
+            newCard({
+              profileId: book.profileId,
+              bookId: book.id,
+              question: question.question,
+              options: question.options,
+              correctAnswerIndex: question.correctAnswerIndex,
+              explanation: question.explanation,
+            }),
+          );
+        }
       } catch (error) {
         console.error('Failed to generate quiz', error);
+        toast.error(toAiError(error).message);
       } finally {
         setIsLoading(false);
       }

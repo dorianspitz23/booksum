@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { BarChart2, Library, LogOut, Plus, User as UserIcon } from 'lucide-react';
+import { BarChart2, BrainCircuit, Library, LogOut, Plus, User as UserIcon } from 'lucide-react';
 import { AudioPlayer } from '../components/AudioPlayer';
 import type { AudioTrack } from '../components/AudioPlayer';
 import { AddBookModal } from '../components/AddBookModal';
@@ -16,6 +16,7 @@ import type { Book, Summary } from '../types';
 
 const NAV_ITEMS = [
   { to: '/', label: 'My Library', icon: Library, end: true },
+  { to: '/review', label: 'Review', icon: BrainCircuit, end: false },
   { to: '/stats', label: 'Stats', icon: BarChart2, end: false },
   { to: '/profile', label: 'My Profile', icon: UserIcon, end: false },
 ];

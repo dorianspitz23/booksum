@@ -7,6 +7,7 @@ import { BookDetailPage } from '../features/book/BookDetailPage';
 import { ReaderPage } from '../features/book/ReaderPage';
 import { StatsPage } from '../features/stats/StatsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { ReviewPage } from '../features/review/ReviewPage';
 
 export const routeTable = [
   {
@@ -17,6 +18,7 @@ export const routeTable = [
       { index: true, element: <LibraryPage /> },
       { path: 'book/:id', element: <BookDetailPage /> },
       { path: 'book/:id/read', element: <ReaderPage /> },
+      { path: 'review', element: <ReviewPage /> },
       { path: 'stats', element: <StatsPage /> },
       { path: 'profile', element: <ProfilePage /> },
     ],

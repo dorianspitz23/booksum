@@ -1,5 +1,5 @@
 import { getDb } from './db';
-import type { BlobKind, Book, Profile, Summary } from '../../types';
+import type { BlobKind, Book, Profile, ReviewCard, Summary } from '../../types';
 
 const newId = () => crypto.randomUUID();
 
@@ -69,7 +69,42 @@ export const books = {
     const summary = await summaries.getByBook(id);
     if (summary) await summaries.remove(summary.id);
     await blobs.removeByBook(id);
+    await reviewCards.removeByBook(id);
     await (await getDb()).delete('books', id);
+  },
+};
+
+export const reviewCards = {
+  async listByProfile(profileId: string): Promise<ReviewCard[]> {
+    const all = await (await getDb()).getAll('reviewCards');
+    return all.filter((card) => card.profileId === profileId);
+  },
+
+  /** ISO timestamps sort chronologically, so a string compare is enough. */
+  async listDue(profileId: string, now: Date = new Date()): Promise<ReviewCard[]> {
+    const cutoff = now.toISOString();
+    const owned = await reviewCards.listByProfile(profileId);
+    return owned
+      .filter((card) => card.dueAt <= cutoff)
+      .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  },
+
+  // Filtered in memory rather than via an index: the v1 schema has no by-book
+  // index, and a book carries only a handful of cards.
+  async listByBook(bookId: string): Promise<ReviewCard[]> {
+    const all = await (await getDb()).getAll('reviewCards');
+    return all.filter((card) => card.bookId === bookId);
+  },
+
+  async upsert(card: ReviewCard): Promise<ReviewCard> {
+    await (await getDb()).put('reviewCards', card);
+    return card;
+  },
+
+  async removeByBook(bookId: string): Promise<void> {
+    const db = await getDb();
+    const owned = await reviewCards.listByBook(bookId);
+    await Promise.all(owned.map((card) => db.delete('reviewCards', card.id)));
   },
 };
 
