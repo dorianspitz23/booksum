@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useId, useRef } from 'react';
+import { useFocusTrap } from './ui/useFocusTrap';
 import type { Book, Summary } from '../types';
 import { X, BookOpen, Sun, Sparkles } from 'lucide-react';
 
@@ -15,17 +16,29 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
   onClose,
   onReadMore,
 }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useFocusTrap(panelRef, { active: true, onClose });
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
+      >
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-orange-400 to-rose-500" />
 
         <button
           onClick={onClose}
+          aria-label="Close"
           className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
         >
           <X size={20} />
@@ -36,7 +49,10 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
             <Sun size={40} className="text-orange-500 fill-orange-500" />
           </div>
 
-          <h2 className="text-sm font-bold uppercase tracking-widest text-orange-600 mb-6 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+          <h2
+            id={titleId}
+            className="text-sm font-bold uppercase tracking-widest text-orange-700 mb-6 bg-orange-50 px-3 py-1 rounded-full border border-orange-100"
+          >
             Daily Wisdom
           </h2>
 
@@ -58,7 +74,7 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 line-clamp-1 group-hover:text-orange-600 transition-colors">
+              <h3 className="font-bold text-gray-900 line-clamp-1 group-hover:text-orange-700 transition-colors">
                 {book.title}
               </h3>
               <p className="text-xs text-gray-500 truncate">by {book.author}</p>

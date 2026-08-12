@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { blobs, books as bookRepo, summaries as summaryRepo } from '../../lib/storage/repo';
 import { useProfile } from '../profile/ProfileContext';
 import type { Book, LibraryExport, Summary } from '../../types';
@@ -10,7 +11,7 @@ export interface AddBookOptions {
   pdf?: Blob;
 }
 
-export function useLibrary() {
+function useLibraryState() {
   const { profile, isLoading: profileLoading } = useProfile();
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,4 +130,23 @@ export function useLibrary() {
     importLibrary,
     reload,
   };
+}
+
+export type LibraryApi = ReturnType<typeof useLibraryState>;
+
+const LibraryContext = createContext<LibraryApi | undefined>(undefined);
+
+/**
+ * One library instance for the whole app. Without this each routed page would
+ * mount its own copy and re-query IndexedDB on every navigation.
+ */
+export function LibraryProvider({ children }: { children: ReactNode }) {
+  const value = useLibraryState();
+  return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
+}
+
+export function useLibrary(): LibraryApi {
+  const context = useContext(LibraryContext);
+  if (!context) throw new Error('useLibrary must be used within a LibraryProvider');
+  return context;
 }

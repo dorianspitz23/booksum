@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import type { Book, LibraryExport, Profile } from '../types';
+import { toast } from './ui/toastStore';
+import { useConfirm } from './ui/ConfirmDialog';
 import type { VoiceName } from '../types';
 
 const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
@@ -40,6 +42,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [editedProfile, setEditedProfile] = useState(profile);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const confirm = useConfirm();
 
   const stats = useMemo(() => {
     const finishedCount = books.filter((b) => b.status === 'Finished').length;
@@ -94,30 +97,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
-        const data = JSON.parse(content);
+        const data = JSON.parse(content) as LibraryExport;
 
-        // Basic validation
         if (!Array.isArray(data.books)) {
-          alert('Invalid backup file format. Please use a valid BookSum export file.');
+          toast.error('That is not a BookSum backup file.');
           setImportStatus('error');
           return;
         }
 
-        if (
-          confirm(
-            `Found ${data.books.length} books in backup. This will merge with your current library. Continue?`,
-          )
-        ) {
-          void onImportLibrary(data as LibraryExport);
-          setImportStatus('success');
-          setTimeout(() => setImportStatus('idle'), 3000);
-        }
+        const proceed = await confirm({
+          title: 'Import this backup?',
+          body: `Found ${data.books.length} book${data.books.length === 1 ? '' : 's'}. They will be merged into your current library; nothing is removed.`,
+          confirmLabel: 'Import',
+        });
+        if (!proceed) return;
+
+        const added = await onImportLibrary(data);
+        toast.success(`Imported ${added} new book${added === 1 ? '' : 's'}.`);
+        setImportStatus('success');
+        setTimeout(() => setImportStatus('idle'), 3000);
       } catch (err) {
         console.error(err);
-        alert('Failed to read backup file.');
+        toast.error('Could not read that backup file.');
         setImportStatus('error');
       }
     };
@@ -140,7 +144,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Calendar size={16} /> Joined {stats.joinedDate}
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-              <span className="flex items-center gap-1.5 text-orange-600 font-bold">
+              <span className="flex items-center gap-1.5 text-orange-700 font-bold">
                 <BookOpen size={16} /> {books.length} Books in Library
               </span>
             </div>
@@ -218,7 +222,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 }
                 className="w-full accent-orange-600"
               />
-              <span className="text-orange-600 font-bold">{editedProfile.monthlyGoal} books</span>
+              <span className="text-orange-700 font-bold">{editedProfile.monthlyGoal} books</span>
             </div>
           )}
         </div>
@@ -228,7 +232,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm h-full">
             <div className="mb-8">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                <Target className="text-orange-600" /> Bio & Motivation
+                <Target className="text-orange-700" /> Bio & Motivation
               </h3>
               {isEditing ? (
                 <textarea
@@ -245,7 +249,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div>
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                <Volume2 className="text-orange-600" /> AI Preferences
+                <Volume2 className="text-orange-700" /> AI Preferences
               </h3>
               <div className="flex flex-wrap gap-2">
                 {VOICES.map((voice) => (

@@ -11,6 +11,8 @@ import {
   Book as BookIcon,
 } from 'lucide-react';
 import { generateAudioSummary } from '../lib/ai/tts';
+import { toast } from './ui/toastStore';
+import { toAiError } from '../lib/ai/errors';
 import type { AudioTrack } from './AudioPlayer';
 
 interface EReaderProps {
@@ -56,7 +58,7 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
   const lines = content.split('\n');
   const accentColor = theme === 'dark' ? 'text-orange-400' : 'text-orange-700';
   const headingColor = theme === 'dark' ? 'text-gray-100' : 'text-gray-900';
-  const dropCapColor = theme === 'dark' ? 'text-orange-500' : 'text-orange-600';
+  const dropCapColor = theme === 'dark' ? 'text-orange-500' : 'text-orange-700';
 
   return (
     <div className="space-y-6 max-w-none">
@@ -208,8 +210,7 @@ export const EReader: React.FC<EReaderProps> = ({
         coverUrl: book.coverImageUrl,
       });
     } catch (error) {
-      console.error('Audio error:', error);
-      alert('Failed to play podcast. Please try again.');
+      toast.error(toAiError(error).message);
     } finally {
       setIsGeneratingAudio(false);
     }

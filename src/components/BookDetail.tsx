@@ -22,6 +22,8 @@ import {
 import { generateAudioSummary } from '../lib/ai/tts';
 import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
+import { toast } from './ui/toastStore';
+import { toAiError } from '../lib/ai/errors';
 import type { AudioTrack } from './AudioPlayer';
 import { ChatModal } from './ChatModal';
 import { QuizModal } from './QuizModal';
@@ -159,8 +161,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
         coverUrl: book.coverImageUrl,
       });
     } catch (error) {
-      console.error('Audio error:', error);
-      alert('Failed to generate audio summary.');
+      toast.error(toAiError(error).message);
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -180,8 +181,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       onSummaryUpdate(updated);
       onOpenReader(book);
     } catch (error) {
-      console.error('Deep dive error:', error);
-      alert('Failed to generate summary. Please try again.');
+      toast.error(toAiError(error).message);
     } finally {
       setIsGeneratingDeepDive(false);
     }
@@ -221,7 +221,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
     <div className="max-w-4xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       <button
         onClick={onBack}
-        className="mb-8 flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors group"
+        className="mb-8 flex items-center gap-2 text-gray-500 hover:text-orange-700 transition-colors group"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         {isPreview ? 'Discard Preview' : 'Back to Library'}
@@ -262,7 +262,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 <div className="space-y-4">
                   {book.status === 'Finished' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-2 block">
                         My Rating
                       </span>
                       <div className="flex items-center gap-1">
@@ -285,7 +285,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
                   {book.status === 'Want to Read' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-2 block">
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-2 block">
                         Priority
                       </span>
                       <div className="flex gap-2">
@@ -310,13 +310,13 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-50">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-1 block">
                     Category
                   </span>
                   <p className="font-medium text-gray-900">{book.category}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-600 mb-1 block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-1 block">
                     Length
                   </span>
                   <p className="font-medium text-gray-900">{book.readingTimeMinutes} mins</p>
@@ -440,7 +440,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <BookOpen size={24} className="text-orange-600" />
+              <BookOpen size={24} className="text-orange-700" />
               Summary
             </h2>
             <SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />
@@ -448,7 +448,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <List size={24} className="text-orange-600" />
+              <List size={24} className="text-orange-700" />
               Key Insights
             </h2>
             <ul className="space-y-4">

@@ -20,6 +20,11 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-restricted-globals': [
+        'error',
+        { name: 'alert', message: 'Use toast.error() from components/ui/toastStore.' },
+        { name: 'confirm', message: 'Use useConfirm() from components/ui/ConfirmDialog.' },
+      ],
     },
   },
   {

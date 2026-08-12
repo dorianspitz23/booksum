@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useId, useState, useEffect, useRef } from 'react';
+import { useFocusTrap } from './ui/useFocusTrap';
 import type { Book, Summary } from '../types';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { createBookChatSession } from '../lib/ai/chat';
@@ -26,6 +27,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
   const [isLoading, setIsLoading] = useState(false);
   const chatSession = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useFocusTrap(panelRef, { active: true, onClose });
 
   useEffect(() => {
     chatSession.current = createBookChatSession(book, summary);
@@ -93,15 +98,23 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
       />
 
       {/* Chat Drawer */}
-      <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+      >
         {/* Header */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-700">
               <Bot size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 leading-tight">Book Assistant</h3>
+              <h3 id={titleId} className="font-bold text-gray-900 leading-tight">
+                Book Assistant
+              </h3>
               <p className="text-xs text-gray-500 truncate max-w-[200px]">{book.title}</p>
             </div>
           </div>
@@ -160,7 +173,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 p-2 bg-white rounded-lg text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-50 transition-colors"
+              className="absolute right-2 p-2 bg-white rounded-lg text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-50 transition-colors"
             >
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>

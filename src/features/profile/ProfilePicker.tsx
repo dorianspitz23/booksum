@@ -99,7 +99,7 @@ export function ProfilePicker() {
         ) : (
           <button
             onClick={() => setIsCreating(true)}
-            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:border-orange-400 hover:text-orange-600 transition-all font-semibold"
+            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:border-orange-400 hover:text-orange-700 transition-all font-semibold"
           >
             <Plus size={18} /> Add a profile
           </button>

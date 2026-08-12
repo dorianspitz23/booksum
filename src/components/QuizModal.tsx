@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect, useRef } from 'react';
+import { useFocusTrap } from './ui/useFocusTrap';
 import type { Book, Summary } from '../types';
 import type { QuizQuestion } from '../types';
 import {
@@ -20,6 +21,11 @@ interface QuizModalProps {
 }
 
 export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useFocusTrap(panelRef, { active: true, onClose });
+
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -71,10 +77,19 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 min-h-[400px] flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 min-h-[400px] flex flex-col"
+      >
+        <h2 id={titleId} className="sr-only">
+          Knowledge check for {book.title}
+        </h2>
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 animate-pulse">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 animate-pulse">
               <BrainCircuit size={32} />
             </div>
             <h3 className="text-xl font-bold text-gray-900">Generating Knowledge Check...</h3>
@@ -87,7 +102,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <AlertCircle size={48} className="text-red-400 mb-4" />
             <p className="text-gray-900 font-bold mb-2">Could not generate quiz.</p>
-            <button onClick={onClose} className="text-orange-600 font-bold hover:underline">
+            <button onClick={onClose} className="text-orange-700 font-bold hover:underline">
               Close
             </button>
           </div>
@@ -95,7 +110,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-orange-500 to-rose-600 text-white relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
-            <div className="w-24 h-24 bg-white text-orange-600 rounded-full flex items-center justify-center shadow-xl mb-6 animate-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-white text-orange-700 rounded-full flex items-center justify-center shadow-xl mb-6 animate-in zoom-in duration-500">
               <Trophy size={48} fill="currentColor" />
             </div>
 
@@ -106,7 +121,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
 
             <button
               onClick={onClose}
-              className="px-8 py-3 bg-white text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-colors shadow-lg"
+              className="px-8 py-3 bg-white text-orange-700 rounded-xl font-bold hover:bg-orange-50 transition-colors shadow-lg"
             >
               Complete
             </button>
@@ -116,7 +131,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-widest text-orange-600 bg-orange-100 px-2 py-1 rounded-md">
+                <span className="text-xs font-black uppercase tracking-widest text-orange-700 bg-orange-100 px-2 py-1 rounded-md">
                   Question {currentQuestionIndex + 1}/{questions.length}
                 </span>
               </div>

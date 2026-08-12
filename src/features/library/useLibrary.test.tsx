@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from '../../lib/storage/db';
 import { blobs, books as bookRepo, profiles } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
-import { useLibrary } from './useLibrary';
+import { LibraryProvider, useLibrary } from './useLibrary';
 import type { Book } from '../../types';
 
 let api: ReturnType<typeof useLibrary>;
@@ -18,7 +18,9 @@ async function renderLibrary() {
   localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
   render(
     <ProfileProvider>
-      <Probe />
+      <LibraryProvider>
+        <Probe />
+      </LibraryProvider>
     </ProfileProvider>,
   );
   await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('0'));
