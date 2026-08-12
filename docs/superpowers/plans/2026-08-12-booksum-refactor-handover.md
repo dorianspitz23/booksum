@@ -1,7 +1,7 @@
 # Refactor Handover
 
-**Status:** Not started. **The user is doing this in a dedicated session** — do not begin it
-unprompted.
+**Status:** Not started. The user has since decided the assistant should do it rather than
+handling it themselves — confirm the approach before starting.
 
 **Context:** Phases 1–3 are complete and verified on a clean clone (153 tests, lint and build
 green). Phase 4, the open-source launch, is agreed and waits on this refactor landing.
