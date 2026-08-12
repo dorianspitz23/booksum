@@ -32,8 +32,12 @@ profiles. Only the AI features — summarising, audio, chat, quizzes and recomme
 | `npm run build`      | Typecheck, then build to `dist/` |
 | `npm run preview`    | Serve the production build       |
 | `npm run typecheck`  | `tsc --noEmit`                   |
+| `npm run lint`       | ESLint                           |
+| `npm run format`     | Prettier, writing in place       |
 | `npm test`           | Run the test suite once          |
 | `npm run test:watch` | Run tests in watch mode          |
+
+CI runs typecheck, lint, format check, tests and build on every push and pull request.
 
 ## Architecture
 
@@ -55,7 +59,8 @@ separate libraries, not to provide security.
 
 ## Status
 
-Phase 1 of a planned overhaul is complete: the project builds, stores data in IndexedDB, and asks
-each user for their own Gemini key. Still to come are routing and accessible dialogs (Phase 2),
-dark mode, full-text search, Goodreads import, an offline PWA and spaced-repetition review
-(Phase 3). See `docs/superpowers/` for the design and plans.
+Phases 1 and 2 of a planned overhaul are complete. The project builds, stores data in IndexedDB,
+asks each user for their own Gemini key, gives every screen a URL, and traps focus in every dialog.
+Still to come: dark mode, full-text search, Markdown export, a command palette, Goodreads import,
+an offline PWA and spaced-repetition review (Phase 3). See `docs/superpowers/` for the design and
+plans.

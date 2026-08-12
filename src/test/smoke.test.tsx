@@ -77,6 +77,9 @@ describe('smoke', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: /connect gemini/i })).toBeInTheDocument(),
     );
+
+    // Only one modal at a time: two aria-modal dialogs means two focus traps.
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
 
   it('exposes indexedDB to tests', () => {

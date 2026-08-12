@@ -41,6 +41,9 @@ export function AppShell() {
   const handleAiError = useCallback((error: unknown): string => {
     const aiError = toAiError(error);
     if (aiError.kind === 'missing-key' || aiError.kind === 'invalid-key') {
+      // Close whatever asked for the key first: two aria-modal dialogs on screen
+      // means two competing focus traps.
+      setShowAddBook(false);
       setShowKeyDialog(true);
     }
     return aiError.message;
