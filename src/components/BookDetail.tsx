@@ -5,7 +5,7 @@ import {
   List,
   Zap,
   BookOpen,
-  Share2,
+  Download,
   Trash2,
   Sparkles,
   FileText,
@@ -24,6 +24,8 @@ import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
 import { toast } from './ui/toastStore';
 import { toAiError } from '../lib/ai/errors';
+import { bookToMarkdown } from '../lib/markdown';
+import { downloadText, slugify } from '../lib/download';
 import type { AudioTrack } from './AudioPlayer';
 import { ChatModal } from './ChatModal';
 import { QuizModal } from './QuizModal';
@@ -410,8 +412,14 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
-                  <Share2 size={16} /> Share
+                <button
+                  onClick={() => {
+                    downloadText(`${slugify(book.title)}.md`, bookToMarkdown(book, summary));
+                    toast.success('Markdown downloaded.');
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+                >
+                  <Download size={16} /> Export Markdown
                 </button>
                 {!isPreview && (
                   <button

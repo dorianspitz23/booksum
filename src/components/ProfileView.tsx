@@ -3,6 +3,8 @@ import type { Book, LibraryExport, Profile } from '../types';
 import { toast } from './ui/toastStore';
 import { useConfirm } from './ui/ConfirmDialog';
 import { ThemeToggle } from '../features/settings/ThemeToggle';
+import { libraryToMarkdown } from '../lib/markdown';
+import { downloadText } from '../lib/download';
 import type { VoiceName } from '../types';
 
 const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
@@ -17,6 +19,7 @@ import {
   Volume2,
   Trash2,
   Download,
+  FileText,
   Upload,
   FileJson,
   Check,
@@ -78,6 +81,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const handleExportMarkdown = async () => {
+    const data = await buildExport();
+    const summaryById = new Map(data.summaries.map((s) => [s.bookId, s]));
+    const markdown = libraryToMarkdown(
+      data.books.map((b) => ({ book: b, summary: summaryById.get(b.id) })),
+    );
+    downloadText(`booksum-library-${new Date().toISOString().split('T')[0]}.md`, markdown);
+    toast.success('Library exported as Markdown.');
   };
 
   const handleExport = async () => {
@@ -300,7 +313,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 onClick={handleExport}
                 className="flex items-center gap-2 px-5 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors"
               >
-                <Download size={18} /> Export Data
+                <Download size={18} /> Export JSON
+              </button>
+
+              <button
+                onClick={() => void handleExportMarkdown()}
+                className="flex items-center gap-2 px-5 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+              >
+                <FileText size={18} /> Export Markdown
               </button>
 
               <div className="relative">
