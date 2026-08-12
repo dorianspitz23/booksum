@@ -57,10 +57,19 @@ file, `src/lib/ai/models.ts`.
 Profiles are local and have no passwords — they exist so several people sharing a browser can keep
 separate libraries, not to provide security.
 
+## Features
+
+- **AI summaries** of any book by title, or from an uploaded PDF
+- **Narrated audio** in your choice of voice
+- **Chat** with a book, and **quizzes** that test comprehension
+- **Spaced-repetition review** — quiz questions become cards on an SM-2-style schedule
+- **Goodreads import** from the official CSV export, with no AI cost
+- **Markdown export** of a single book or the whole library
+- **Dark mode**, following your system by default
+- **Local profiles** so several readers can share a browser
+
 ## Status
 
-Phases 1 and 2 of a planned overhaul are complete. The project builds, stores data in IndexedDB,
-asks each user for their own Gemini key, gives every screen a URL, and traps focus in every dialog.
-Still to come: dark mode, full-text search, Markdown export, a command palette, Goodreads import,
-an offline PWA and spaced-repetition review (Phase 3). See `docs/superpowers/` for the design and
+Phases 1–3 of a planned overhaul are complete. Remaining: open-source packaging — LICENSE,
+screenshots, contributing guide and a hosted demo. See `docs/superpowers/` for the design and
 plans.

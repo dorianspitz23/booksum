@@ -32,6 +32,7 @@ beforeEach(async () => {
   await resetDb();
   localStorage.clear();
   window.history.pushState({}, '', '/');
+  document.documentElement.classList.remove('dark');
 });
 
 describe('routing', () => {
@@ -73,6 +74,21 @@ describe('routing', () => {
       expect(screen.getByRole('heading', { level: 1, name: /your progress/i })).toBeInTheDocument(),
     );
     expect(window.location.pathname).toBe('/stats');
+  });
+
+  it('applies a dark profile theme on every route, not just the profile page', async () => {
+    const profile = await profiles.create({ name: 'Dorian', theme: 'dark' });
+    localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
+    render(
+      <ProfileProvider>
+        <App />
+      </ProfileProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
+    );
+    expect(document.documentElement).toHaveClass('dark');
   });
 
   it('redirects an unknown book id back to the library', async () => {
