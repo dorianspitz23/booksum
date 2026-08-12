@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react';
 import { blobs, books as bookRepo, summaries as summaryRepo } from '../../lib/storage/repo';
 import { useProfile } from '../profile/ProfileContext';
+import { coverForIsbn } from '../../lib/goodreads';
+import type { GoodreadsRow } from '../../lib/goodreads';
+import { placeholderCover } from '../../lib/covers';
 import type { Book, LibraryExport, Summary } from '../../types';
 
 export type BookDraft = Omit<Book, 'id' | 'profileId' | 'addedAt' | 'summaryId'>;
@@ -118,6 +121,52 @@ function useLibraryState() {
     [profile, reload],
   );
 
+  /**
+   * Creates one library entry per Goodreads row. Deliberately makes no AI call:
+   * summaries are generated later, per book, on demand.
+   */
+  const importGoodreadsRows = useCallback(
+    async (rows: GoodreadsRow[]): Promise<{ added: number; duplicates: number }> => {
+      if (!profile) return { added: 0, duplicates: 0 };
+
+      const keyOf = (title: string, author: string) =>
+        `${title.trim().toLowerCase()}|${author.trim().toLowerCase()}`;
+
+      const existing = new Set(
+        (await bookRepo.listByProfile(profile.id)).map((b) => keyOf(b.title, b.author)),
+      );
+
+      let added = 0;
+      let duplicates = 0;
+
+      for (const row of rows) {
+        const key = keyOf(row.title, row.author);
+        if (existing.has(key)) {
+          duplicates += 1;
+          continue;
+        }
+        existing.add(key);
+
+        await bookRepo.create({
+          profileId: profile.id,
+          title: row.title,
+          author: row.author,
+          category: 'Other',
+          status: row.status,
+          rating: row.rating,
+          readingTimeMinutes: 0,
+          coverImageUrl: coverForIsbn(row.isbn13) ?? placeholderCover(row.title),
+          hasPdf: false,
+        });
+        added += 1;
+      }
+
+      await reload();
+      return { added, duplicates };
+    },
+    [profile, reload],
+  );
+
   return {
     books,
     isLoading,
@@ -128,6 +177,7 @@ function useLibraryState() {
     saveSummary,
     exportLibrary,
     importLibrary,
+    importGoodreadsRows,
     reload,
   };
 }
