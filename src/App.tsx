@@ -11,8 +11,8 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-parchment">
-        <Loader2 className="animate-spin text-orange-700" size={40} />
+      <div className="min-h-screen flex items-center justify-center bg-parchment dark:bg-night">
+        <Loader2 className="animate-spin text-orange-700 dark:text-orange-400" size={40} />
       </div>
     );
   }

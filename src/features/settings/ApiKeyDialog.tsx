@@ -36,7 +36,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
 
   return (
     <Dialog open title="Connect Gemini" onClose={onClose} size="max-w-lg">
-      <p className="text-sm text-gray-600 leading-relaxed mb-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
         BookSum uses Google&rsquo;s Gemini to write summaries, narrate them, and answer questions
         about your books. Bring your own key &mdash; it is stored in this browser only and is sent
         nowhere except Google.
@@ -46,7 +46,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
         href="https://aistudio.google.com/apikey"
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-700 hover:text-orange-800 mb-6"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-700 dark:text-orange-400 hover:text-orange-800 mb-6"
       >
         Get a free key <ExternalLink size={14} />
       </a>
@@ -59,7 +59,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder="AIza..."
-          className="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm"
+          className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm"
         />
 
         {message && (

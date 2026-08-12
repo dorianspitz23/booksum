@@ -92,17 +92,17 @@ export function AppShell() {
 
   return (
     <ShellContext.Provider value={shellApi}>
-      <div className="min-h-screen bg-parchment text-gray-900 selection:bg-orange-100 selection:text-orange-900 pb-20">
+      <div className="min-h-screen bg-parchment dark:bg-night text-gray-900 dark:text-gray-100 selection:bg-orange-100 dark:selection:bg-orange-950 selection:text-orange-900 pb-20">
         {!isReader && (
           <nav
             aria-label="Main"
-            className="fixed left-0 top-0 bottom-0 w-20 md:w-64 bg-white border-r border-gray-100 hidden sm:flex flex-col z-40 transition-all"
+            className="fixed left-0 top-0 bottom-0 w-20 md:w-64 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 hidden sm:flex flex-col z-40 transition-all"
           >
             <NavLink to="/" className="p-6 md:p-8 flex items-center gap-3 group">
               <span className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white font-serif font-bold italic shadow-lg shadow-orange-100 group-hover:rotate-6 transition-transform">
                 B
               </span>
-              <span className="text-2xl font-serif font-bold text-orange-700 italic hidden md:block tracking-tighter">
+              <span className="text-2xl font-serif font-bold text-orange-700 dark:text-orange-400 italic hidden md:block tracking-tighter">
                 BookSum
               </span>
             </NavLink>
@@ -116,8 +116,8 @@ export function AppShell() {
                   className={({ isActive }) =>
                     `w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
                       isActive
-                        ? 'bg-orange-50 text-orange-700'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`
                   }
                 >
@@ -128,18 +128,22 @@ export function AppShell() {
             </div>
 
             <div className="px-4 pb-4">
-              <div className="p-3 mb-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="p-3 mb-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 text-xs font-bold flex items-center justify-center shrink-0">
                   {profile.name.charAt(0).toUpperCase()}
                 </span>
                 <div className="hidden md:block overflow-hidden">
-                  <p className="text-xs font-bold text-gray-900 truncate">{profile.name}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{profile.bio}</p>
+                  <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                    {profile.name}
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                    {profile.bio}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={signOut}
-                className="w-full flex items-center justify-center gap-2 p-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all text-sm font-semibold"
+                className="w-full flex items-center justify-center gap-2 p-3 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all text-sm font-semibold"
               >
                 <LogOut size={18} />
                 <span className="hidden md:block">Switch profile</span>

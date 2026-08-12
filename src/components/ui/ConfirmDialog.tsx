@@ -42,11 +42,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         onClose={() => settle(false)}
         size="max-w-md"
       >
-        <p className="text-gray-600 leading-relaxed mb-8">{options?.body}</p>
+        <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-8">{options?.body}</p>
         <div className="flex gap-3 justify-end">
           <button
             onClick={() => settle(false)}
-            className="px-5 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
+            className="px-5 py-3 rounded-xl font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
           >
             {options?.cancelLabel ?? 'Cancel'}
           </button>

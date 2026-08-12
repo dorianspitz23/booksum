@@ -32,38 +32,38 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
+        className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"
       >
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-orange-400 to-rose-500" />
 
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
+          className="absolute top-4 right-4 p-2 bg-white dark:bg-gray-900/20 hover:bg-white dark:hover:bg-gray-900/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
         >
           <X size={20} />
         </button>
 
         <div className="relative pt-12 px-8 pb-8 flex flex-col items-center text-center">
-          <div className="w-20 h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center mb-6 rotate-3 border-4 border-orange-50">
+          <div className="w-20 h-20 bg-white dark:bg-gray-900 rounded-2xl shadow-xl flex items-center justify-center mb-6 rotate-3 border-4 border-orange-50">
             <Sun size={40} className="text-orange-500 fill-orange-500" />
           </div>
 
           <h2
             id={titleId}
-            className="text-sm font-bold uppercase tracking-widest text-orange-700 mb-6 bg-orange-50 px-3 py-1 rounded-full border border-orange-100"
+            className="text-sm font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-6 bg-orange-50 dark:bg-orange-950 px-3 py-1 rounded-full border border-orange-100"
           >
             Daily Wisdom
           </h2>
 
-          <blockquote className="text-2xl font-serif font-bold text-gray-900 leading-relaxed mb-8">
+          <blockquote className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 leading-relaxed mb-8">
             {summary?.oneSentenceTakeaway
               ? `"${summary.oneSentenceTakeaway}"`
               : 'This book has no summary yet.'}
           </blockquote>
 
           <div
-            className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl w-full mb-8 border border-gray-100 text-left transition-all hover:bg-white hover:shadow-md hover:border-orange-200 cursor-pointer group"
+            className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl w-full mb-8 border border-gray-100 dark:border-gray-800 text-left transition-all hover:bg-white dark:hover:bg-gray-900 hover:shadow-md hover:border-orange-200 cursor-pointer group"
             onClick={onReadMore}
           >
             <div className="w-12 h-16 flex-shrink-0 shadow-sm rounded-md overflow-hidden relative">
@@ -74,10 +74,10 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 line-clamp-1 group-hover:text-orange-700 transition-colors">
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">
                 {book.title}
               </h3>
-              <p className="text-xs text-gray-500 truncate">by {book.author}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">by {book.author}</p>
             </div>
             <div className="mr-2 text-orange-300 group-hover:text-orange-500 transition-colors">
               <BookOpen size={20} />
@@ -93,7 +93,7 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Close
             </button>

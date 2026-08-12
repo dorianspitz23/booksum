@@ -113,22 +113,24 @@ export function LibraryPage() {
     <div className="max-w-7xl mx-auto space-y-10">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <span className="text-orange-700 font-bold uppercase tracking-widest text-xs mb-2 block">
+          <span className="text-orange-700 dark:text-orange-400 font-bold uppercase tracking-widest text-xs mb-2 block">
             Welcome, {profile.name.split(' ')[0]}
           </span>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Your Library</h1>
+          <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 dark:text-gray-100">
+            Your Library
+          </h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative group">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 group-focus-within:text-orange-500 transition-colors"
               size={20}
             />
             <input
               type="text"
               aria-label="Search your titles"
               placeholder="Search your titles..."
-              className="pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl w-full md:w-80 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900"
+              className="pl-12 pr-6 py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl w-full md:w-80 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900 dark:text-gray-100"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -137,32 +139,32 @@ export function LibraryPage() {
       </header>
 
       <div className="flex flex-col space-y-4">
-        <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit">
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl w-fit">
           <button
             onClick={() => setStatusFilter('All')}
             aria-pressed={statusFilter === 'All'}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'All' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'All' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
           >
             <Layers size={16} /> All
           </button>
           <button
             onClick={() => setStatusFilter('Finished')}
             aria-pressed={statusFilter === 'Finished'}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Finished' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-600 hover:text-emerald-700'}`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Finished' ? 'bg-white dark:bg-gray-900 text-emerald-700 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-700'}`}
           >
             <CheckCircle size={16} /> Finished
           </button>
           <button
             onClick={() => setStatusFilter('Want to Read')}
             aria-pressed={statusFilter === 'Want to Read'}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Want to Read' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-600 hover:text-amber-700'}`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Want to Read' ? 'bg-white dark:bg-gray-900 text-amber-700 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-amber-700'}`}
           >
             <Bookmark size={16} /> Want to Read
           </button>
         </div>
 
         <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
-          <div className="flex items-center gap-2 pr-4 border-r border-gray-200 text-gray-500 flex-shrink-0">
+          <div className="flex items-center gap-2 pr-4 border-r border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 flex-shrink-0">
             <Filter size={18} />
             <span className="text-sm font-bold uppercase tracking-tighter">Topic</span>
           </div>
@@ -174,7 +176,7 @@ export function LibraryPage() {
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border ${
                 activeCategory === cat
                   ? 'bg-gray-900 text-white border-gray-900 shadow-lg'
-                  : 'bg-white text-gray-600 border-gray-100 hover:bg-gray-50 hover:border-gray-200'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
               }`}
             >
               {cat}
@@ -191,11 +193,13 @@ export function LibraryPage() {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
             <Library size={40} className="text-gray-300" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Your library is quiet</h3>
-          <p className="text-gray-500 max-w-sm mb-8">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Your library is quiet
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-8">
             {statusFilter !== 'All'
               ? `You don't have any books marked as "${statusFilter}" that match your filters.`
               : 'Start adding your favorite books and let AI extract the wisdom for you.'}

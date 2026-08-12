@@ -132,7 +132,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="font-bold text-sm truncate leading-tight">{track.title}</h4>
-            <p className="text-xs text-gray-400 truncate">{track.author}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{track.author}</p>
           </div>
         </div>
 
@@ -143,7 +143,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
             <div className="relative">
               <button
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                className="text-xs font-bold text-gray-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10"
+                className="text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-gray-900/10"
                 title="Playback Speed"
               >
                 {playbackRate}x
@@ -176,7 +176,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
 
             <button
               onClick={() => skip(-15)}
-              className="relative flex items-center justify-center text-gray-400 hover:text-white transition-colors active:scale-95 w-12 h-12"
+              className="relative flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-white transition-colors active:scale-95 w-12 h-12"
               aria-label="Rewind 15 seconds"
             >
               <RotateCcw size={22} strokeWidth={1.5} />
@@ -185,7 +185,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
 
             <button
               onClick={togglePlay}
-              className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/20"
+              className="w-12 h-12 bg-white dark:bg-gray-900 text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/20"
             >
               {isPlaying ? (
                 <Pause size={22} fill="currentColor" />
@@ -196,7 +196,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
 
             <button
               onClick={() => skip(15)}
-              className="relative flex items-center justify-center text-gray-400 hover:text-white transition-colors active:scale-95 w-12 h-12"
+              className="relative flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-white transition-colors active:scale-95 w-12 h-12"
               aria-label="Forward 15 seconds"
             >
               <RotateCw size={22} strokeWidth={1.5} />
@@ -204,7 +204,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
             </button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <div className="flex items-center gap-3 text-xs font-medium text-gray-400 dark:text-gray-500">
             <span className="min-w-[40px] text-right">{formatTime(progress)}</span>
             <input
               type="range"
@@ -212,7 +212,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
               max={duration || 100}
               value={progress}
               onChange={handleSeek}
-              className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+              className="flex-1 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white dark:bg-gray-900 hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
             />
             <span className="min-w-[40px]">{formatTime(duration)}</span>
           </div>
@@ -223,7 +223,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
           <div className="flex items-center gap-2">
             <button
               onClick={toggleMute}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors"
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -236,25 +236,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
               step="0.01"
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
-              className="w-20 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+              className="w-20 h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white dark:bg-gray-900 hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
               aria-label="Volume"
             />
           </div>
 
-          <div className="w-px h-6 bg-white/10" />
+          <div className="w-px h-6 bg-white dark:bg-gray-900/10" />
 
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 hover:bg-white dark:hover:bg-gray-900/10 rounded-full transition-colors"
           >
-            <X size={20} className="text-gray-400 hover:text-white" />
+            <X size={20} className="text-gray-400 dark:text-gray-500 hover:text-white" />
           </button>
         </div>
 
         {/* Mobile Close Button (Absolute) */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 sm:hidden p-1 text-gray-500 z-10"
+          className="absolute top-2 right-2 sm:hidden p-1 text-gray-500 dark:text-gray-400 z-10"
         >
           <X size={16} />
         </button>

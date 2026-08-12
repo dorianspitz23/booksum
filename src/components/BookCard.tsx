@@ -42,9 +42,9 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
   return (
     <div
       onClick={() => onClick(book)}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 flex flex-col h-full"
+      className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 dark:border-gray-800 flex flex-col h-full"
     >
-      <div className="relative aspect-[3/4.5] overflow-hidden bg-gray-50">
+      <div className="relative aspect-[3/4.5] overflow-hidden bg-gray-50 dark:bg-gray-800">
         {!imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-200">
             <Loader2 className="animate-spin" size={24} />
@@ -63,7 +63,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
           </span>
         </div>
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <div className="bg-white/95 backdrop-blur shadow-xl px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] text-orange-700 w-fit">
+          <div className="bg-white dark:bg-gray-900/95 backdrop-blur shadow-xl px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] text-orange-700 dark:text-orange-400 w-fit">
             {book.category}
           </div>
           {book.status === 'Want to Read' && book.priority && (
@@ -78,17 +78,19 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
       </div>
 
       <div className="p-6 flex-grow flex flex-col">
-        <h3 className="text-xl font-serif font-bold text-gray-900 line-clamp-2 mb-2 group-hover:text-orange-700 transition-colors leading-tight">
+        <h3 className="text-xl font-serif font-bold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors leading-tight">
           {book.title}
         </h3>
-        <p className="text-sm font-medium text-gray-500 mb-4 tracking-tight">by {book.author}</p>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 tracking-tight">
+          by {book.author}
+        </p>
 
-        <p className="text-sm text-gray-600 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 pl-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 pl-4">
           {book.oneSentenceTakeaway ? `"${book.oneSentenceTakeaway}"` : 'Not summarised yet'}
         </p>
 
-        <div className="mt-auto pt-5 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase tracking-widest">
+        <div className="mt-auto pt-5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest">
             <Clock size={14} className="text-orange-500" />
             <span>{book.readingTimeMinutes} min read</span>
           </div>

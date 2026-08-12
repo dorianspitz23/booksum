@@ -97,16 +97,16 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
 
   return (
     <Dialog open title="Add New Insight" onClose={onClose}>
-      <div className="flex gap-4 mb-8 p-1 bg-gray-100 rounded-2xl">
+      <div className="flex gap-4 mb-8 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
         <button
           onClick={() => setMode('search')}
-          className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold transition-all ${mode === 'search' ? 'bg-white text-orange-700 shadow-sm' : 'text-gray-400'}`}
+          className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold transition-all ${mode === 'search' ? 'bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}
         >
           Search Book
         </button>
         <button
           onClick={() => setMode('upload')}
-          className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold transition-all ${mode === 'upload' ? 'bg-white text-orange-700 shadow-sm' : 'text-gray-400'}`}
+          className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold transition-all ${mode === 'upload' ? 'bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}
         >
           Upload PDF
         </button>
@@ -114,19 +114,21 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Reading Status</label>
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Reading Status
+          </label>
+          <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
             <button
               type="button"
               onClick={() => setStatus('Finished')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${status === 'Finished' ? 'bg-white text-orange-700 shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${status === 'Finished' ? 'bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}
             >
               <BookCheck size={18} /> Finished
             </button>
             <button
               type="button"
               onClick={() => setStatus('Want to Read')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${status === 'Want to Read' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${status === 'Want to Read' ? 'bg-white dark:bg-gray-900 text-amber-600 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}
             >
               <Bookmark size={18} /> Want to Read
             </button>
@@ -136,10 +138,10 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
         <div className="grid grid-cols-2 gap-4">
           {status === 'Finished' ? (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 My Rating (1-5)
               </label>
-              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl">
+              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl">
                 <Star size={16} className="text-amber-400 fill-amber-400" />
                 <input
                   type="number"
@@ -148,17 +150,19 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
                   step="1"
                   value={rating}
                   onChange={(e) => setRating(Number(e.target.value))}
-                  className="bg-transparent outline-none w-full font-bold text-gray-900"
+                  className="bg-transparent outline-none w-full font-bold text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Priority
+              </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-gray-700"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl outline-none font-bold text-gray-700 dark:text-gray-300"
               >
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
@@ -171,17 +175,19 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
         {mode === 'search' ? (
           <>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Book Title *</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Book Title *
+              </label>
               <div className="relative">
                 <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
                   size={18}
                 />
                 <input
                   type="text"
                   required={mode === 'search'}
                   placeholder="e.g. Sapiens, Atomic Habits..."
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all text-gray-900"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white dark:focus:bg-gray-900 outline-none transition-all text-gray-900 dark:text-gray-100"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -189,13 +195,13 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Author (Optional)
               </label>
               <input
                 type="text"
                 placeholder="e.g. Yuval Noah Harari"
-                className="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all text-gray-900"
+                className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white dark:focus:bg-gray-900 outline-none transition-all text-gray-900 dark:text-gray-100"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
               />
@@ -206,8 +212,8 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${
               file
-                ? 'border-orange-500 bg-orange-50'
-                : 'border-gray-200 hover:border-orange-400 hover:bg-gray-50'
+                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
+                : 'border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             <input
@@ -219,17 +225,17 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
             />
             {file ? (
               <>
-                <FileText size={48} className="text-orange-700 mb-4" />
+                <FileText size={48} className="text-orange-700 dark:text-orange-400 mb-4" />
                 <p className="font-bold text-orange-900">{file.name}</p>
-                <p className="text-xs text-orange-700">Click to change file</p>
+                <p className="text-xs text-orange-700 dark:text-orange-400">Click to change file</p>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <FileUp size={32} className="text-gray-400" />
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                  <FileUp size={32} className="text-gray-400 dark:text-gray-500" />
                 </div>
-                <p className="font-bold text-gray-900">Choose a PDF file</p>
-                <p className="text-sm text-gray-500">Maximum size: 10MB</p>
+                <p className="font-bold text-gray-900 dark:text-gray-100">Choose a PDF file</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Maximum size: 10MB</p>
               </>
             )}
           </div>

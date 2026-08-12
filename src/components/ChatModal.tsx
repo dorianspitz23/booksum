@@ -96,31 +96,33 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        className="relative w-full max-w-md h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-700">
+            <div className="w-10 h-10 bg-orange-100 dark:bg-orange-950 rounded-full flex items-center justify-center text-orange-700 dark:text-orange-400">
               <Bot size={20} />
             </div>
             <div>
-              <h3 id={titleId} className="font-bold text-gray-900 leading-tight">
+              <h3 id={titleId} className="font-bold text-gray-900 dark:text-gray-100 leading-tight">
                 Book Assistant
               </h3>
-              <p className="text-xs text-gray-500 truncate max-w-[200px]">{book.title}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                {book.title}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-900"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800/50">
           {messages.map((msg, idx) => (
             <div
               key={idx}
@@ -128,7 +130,9 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
             >
               <div
                 className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                  msg.role === 'user' ? 'bg-gray-200 text-gray-600' : 'bg-orange-600 text-white'
+                  msg.role === 'user'
+                    ? 'bg-gray-200 text-gray-600 dark:text-gray-400'
+                    : 'bg-orange-600 text-white'
                 }`}
               >
                 {msg.role === 'user' ? <User size={14} /> : <Sparkles size={14} />}
@@ -136,7 +140,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
               <div
                 className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-white border border-gray-200 text-gray-800 rounded-tr-none shadow-sm'
+                    ? 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 rounded-tr-none shadow-sm'
                     : 'bg-orange-600 text-white rounded-tl-none shadow-md'
                 }`}
               >
@@ -153,20 +157,20 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t border-gray-100 bg-white">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
           <form onSubmit={handleSend} className="relative flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question..."
-              className="w-full bg-gray-100 text-gray-900 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all placeholder:text-gray-400"
+              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
               autoFocus
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 p-2 bg-white rounded-lg text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-50 transition-colors"
+              className="absolute right-2 p-2 bg-white dark:bg-gray-900 rounded-lg text-orange-700 dark:text-orange-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
             >
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>

@@ -82,18 +82,20 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 min-h-[400px] flex flex-col"
+        className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 min-h-[400px] flex flex-col"
       >
         <h2 id={titleId} className="sr-only">
           Knowledge check for {book.title}
         </h2>
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 animate-pulse">
+            <div className="w-16 h-16 bg-orange-100 dark:bg-orange-950 rounded-full flex items-center justify-center text-orange-700 dark:text-orange-400 animate-pulse">
               <BrainCircuit size={32} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900">Generating Knowledge Check...</h3>
-            <p className="text-gray-500 max-w-xs">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Generating Knowledge Check...
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-xs">
               AI is crafting specific questions to test your understanding of "{book.title}".
             </p>
             <Loader2 className="animate-spin text-orange-500 mt-4" size={24} />
@@ -101,8 +103,13 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
         ) : questions.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <AlertCircle size={48} className="text-red-400 mb-4" />
-            <p className="text-gray-900 font-bold mb-2">Could not generate quiz.</p>
-            <button onClick={onClose} className="text-orange-700 font-bold hover:underline">
+            <p className="text-gray-900 dark:text-gray-100 font-bold mb-2">
+              Could not generate quiz.
+            </p>
+            <button
+              onClick={onClose}
+              className="text-orange-700 dark:text-orange-400 font-bold hover:underline"
+            >
               Close
             </button>
           </div>
@@ -110,7 +117,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-orange-500 to-rose-600 text-white relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
-            <div className="w-24 h-24 bg-white text-orange-700 rounded-full flex items-center justify-center shadow-xl mb-6 animate-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 rounded-full flex items-center justify-center shadow-xl mb-6 animate-in zoom-in duration-500">
               <Trophy size={48} fill="currentColor" />
             </div>
 
@@ -121,7 +128,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
 
             <button
               onClick={onClose}
-              className="px-8 py-3 bg-white text-orange-700 rounded-xl font-bold hover:bg-orange-50 transition-colors shadow-lg"
+              className="px-8 py-3 bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 rounded-xl font-bold hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors shadow-lg"
             >
               Complete
             </button>
@@ -129,15 +136,15 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
         ) : (
           <>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-widest text-orange-700 bg-orange-100 px-2 py-1 rounded-md">
+                <span className="text-xs font-black uppercase tracking-widest text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-950 px-2 py-1 rounded-md">
                   Question {currentQuestionIndex + 1}/{questions.length}
                 </span>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -145,7 +152,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
 
             {/* Question Area */}
             <div className="flex-1 p-6 md:p-8 overflow-y-auto">
-              <h3 className="text-xl font-serif font-bold text-gray-900 mb-6 leading-relaxed">
+              <h3 className="text-xl font-serif font-bold text-gray-900 dark:text-gray-100 mb-6 leading-relaxed">
                 {questions[currentQuestionIndex].question}
               </h3>
 
@@ -154,7 +161,8 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
                   const isCorrect = idx === questions[currentQuestionIndex].correctAnswerIndex;
                   const isSelected = selectedOption === idx;
 
-                  let buttonStyle = 'border-gray-200 hover:bg-gray-50 text-gray-700'; // Default
+                  let buttonStyle =
+                    'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'; // Default
 
                   if (isAnswered) {
                     if (isCorrect) {
@@ -162,10 +170,12 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
                     } else if (isSelected) {
                       buttonStyle = 'bg-red-100 border-red-300 text-red-800';
                     } else {
-                      buttonStyle = 'opacity-50 border-gray-100 text-gray-400';
+                      buttonStyle =
+                        'opacity-50 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500';
                     }
                   } else if (isSelected) {
-                    buttonStyle = 'border-orange-500 bg-orange-50 text-orange-800';
+                    buttonStyle =
+                      'border-orange-500 bg-orange-50 dark:bg-orange-950 text-orange-800';
                   }
 
                   return (
@@ -204,7 +214,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-100 bg-white">
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
               <button
                 onClick={handleNext}
                 disabled={!isAnswered}

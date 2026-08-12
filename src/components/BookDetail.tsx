@@ -34,7 +34,7 @@ const formatInline = (text: string) => {
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={i} className="font-bold text-gray-900">
+        <strong key={i} className="font-bold text-gray-900 dark:text-gray-100">
           {part.slice(2, -2)}
         </strong>
       );
@@ -70,13 +70,16 @@ const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
           const content = headerMatch[2];
           if (level === 1 || level === 2) {
             return (
-              <h3 key={idx} className="text-xl font-bold text-gray-900 mt-8 mb-3">
+              <h3
+                key={idx}
+                className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-8 mb-3"
+              >
                 {formatInline(content)}
               </h3>
             );
           }
           return (
-            <h4 key={idx} className="text-lg font-bold text-gray-900 mt-6 mb-2">
+            <h4 key={idx} className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-6 mb-2">
               {formatInline(content)}
             </h4>
           );
@@ -221,7 +224,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
     <div className="max-w-4xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       <button
         onClick={onBack}
-        className="mb-8 flex items-center gap-2 text-gray-500 hover:text-orange-700 transition-colors group"
+        className="mb-8 flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-orange-700 dark:hover:text-orange-400 transition-colors group"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         {isPreview ? 'Discard Preview' : 'Back to Library'}
@@ -244,9 +247,9 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               )}
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
               {isPreview && onAdd ? (
-                <div className="pb-4 border-b border-gray-100">
+                <div className="pb-4 border-b border-gray-100 dark:border-gray-800">
                   <button
                     onClick={onAdd}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-orange-200 animate-pulse active:scale-95"
@@ -254,7 +257,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                     <PlusCircle size={20} />
                     Add to Library
                   </button>
-                  <p className="text-xs text-gray-400 text-center mt-2 font-medium">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2 font-medium">
                     Save to keep your progress
                   </p>
                 </div>
@@ -262,7 +265,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 <div className="space-y-4">
                   {book.status === 'Finished' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-2 block">
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-2 block">
                         My Rating
                       </span>
                       <div className="flex items-center gap-1">
@@ -278,14 +281,16 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                             />
                           </button>
                         ))}
-                        <span className="ml-2 font-bold text-gray-900">{book.rating}</span>
+                        <span className="ml-2 font-bold text-gray-900 dark:text-gray-100">
+                          {book.rating}
+                        </span>
                       </div>
                     </div>
                   )}
 
                   {book.status === 'Want to Read' && (
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-2 block">
+                      <span className="text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-2 block">
                         Priority
                       </span>
                       <div className="flex gap-2">
@@ -296,7 +301,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${
                               book.priority === p
                                 ? 'bg-orange-600 text-white border-orange-600'
-                                : 'bg-white text-gray-400 border-gray-100 hover:border-orange-200'
+                                : 'bg-white dark:bg-gray-900 text-gray-400 dark:text-gray-500 border-gray-100 dark:border-gray-800 hover:border-orange-200'
                             }`}
                           >
                             {p}
@@ -310,16 +315,18 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-50">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-1 block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-1 block">
                     Category
                   </span>
-                  <p className="font-medium text-gray-900">{book.category}</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{book.category}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 mb-1 block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-1 block">
                     Length
                   </span>
-                  <p className="font-medium text-gray-900">{book.readingTimeMinutes} mins</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {book.readingTimeMinutes} mins
+                  </p>
                 </div>
               </div>
 
@@ -362,7 +369,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                   </button>
                 )}
 
-                <div className="h-px bg-gray-100 my-2" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-2" />
 
                 <button
                   onClick={() => handlePlayAudio('short')}
@@ -393,7 +400,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 {book.hasPdf && (
                   <button
                     onClick={() => void handleOpenPdf()}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-sm active:scale-95"
                   >
                     <FileText size={16} className="text-rose-500" />
                     Open Original PDF
@@ -403,7 +410,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm">
                   <Share2 size={16} /> Share
                 </button>
                 {!isPreview && (
@@ -422,13 +429,13 @@ export const BookDetail: React.FC<BookDetailProps> = ({
         {/* Main Content */}
         <div className="md:col-span-8 space-y-12">
           <header>
-            <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-serif text-gray-900 dark:text-gray-100 mb-4 leading-tight">
               {book.title}
             </h1>
-            <p className="text-xl text-gray-500 font-medium">By {book.author}</p>
+            <p className="text-xl text-gray-500 dark:text-gray-400 font-medium">By {book.author}</p>
           </header>
 
-          <section className="bg-orange-50/50 p-8 rounded-2xl border border-orange-100 relative overflow-hidden">
+          <section className="bg-orange-50 dark:bg-orange-950/50 p-8 rounded-2xl border border-orange-100 relative overflow-hidden">
             <Zap className="absolute top-4 right-4 text-orange-200" size={40} />
             <h2 className="text-lg font-bold text-orange-800 mb-2 flex items-center gap-2">
               The One Sentence Takeaway
@@ -439,25 +446,25 @@ export const BookDetail: React.FC<BookDetailProps> = ({
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <BookOpen size={24} className="text-orange-700" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
+              <BookOpen size={24} className="text-orange-700 dark:text-orange-400" />
               Summary
             </h2>
             <SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <List size={24} className="text-orange-700" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
+              <List size={24} className="text-orange-700 dark:text-orange-400" />
               Key Insights
             </h2>
             <ul className="space-y-4">
               {(summary?.keyInsights ?? []).map((insight, idx) => (
                 <li
                   key={idx}
-                  className="flex gap-4 items-start bg-white p-5 rounded-xl border border-gray-100 shadow-sm"
+                  className="flex gap-4 items-start bg-white dark:bg-gray-900 p-5 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
                 >
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-sm">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 flex items-center justify-center font-bold text-sm">
                     {idx + 1}
                   </span>
                   <p className="text-gray-800 leading-relaxed">{insight}</p>
@@ -467,7 +474,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
               <Zap size={24} className="text-amber-500" />
               Actionable Steps
             </h2>
@@ -485,8 +492,8 @@ export const BookDetail: React.FC<BookDetailProps> = ({
           </section>
 
           {/* Personal Notes Section (New) */}
-          <section className="pt-8 border-t border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+          <section className="pt-8 border-t border-gray-100 dark:border-gray-800">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
               <PenTool size={24} className="text-indigo-500" />
               My Personal Notes
             </h2>
@@ -496,9 +503,9 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 onChange={(e) => setNotes(e.target.value)}
                 onBlur={handleSaveNotes}
                 placeholder="Write down your thoughts, ideas for application, or things you want to remember..."
-                className="w-full h-48 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-lg leading-relaxed text-gray-800 placeholder:text-gray-400"
+                className="w-full h-48 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-lg leading-relaxed text-gray-800 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
-              <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur">
+              <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900/80 px-2 py-1 rounded-md backdrop-blur">
                 Auto-saves when you click away
               </div>
             </div>

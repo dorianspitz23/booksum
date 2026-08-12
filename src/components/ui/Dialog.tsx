@@ -32,16 +32,16 @@ export function Dialog({ open, title, onClose, children, size = 'max-w-xl' }: Di
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative w-full ${size} bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}
+        className={`relative w-full ${size} bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}
       >
         <div className="flex justify-between items-center gap-4 p-6 sm:px-8 sm:pt-8 sm:pb-4">
-          <h2 id={titleId} className="text-2xl font-bold text-gray-900">
+          <h2 id={titleId} className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {title}
           </h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
             <X size={20} />
           </button>

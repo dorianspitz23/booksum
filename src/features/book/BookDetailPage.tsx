@@ -19,7 +19,7 @@ export function BookDetailPage() {
   if (isLoading || !book || !profile) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin text-orange-700" size={32} />
+        <Loader2 className="animate-spin text-orange-700 dark:text-orange-400" size={32} />
       </div>
     );
   }

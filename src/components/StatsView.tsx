@@ -45,16 +45,24 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
   return (
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header>
-        <span className="text-orange-700 font-bold uppercase tracking-widest text-xs mb-2 block">
+        <span className="text-orange-700 dark:text-orange-400 font-bold uppercase tracking-widest text-xs mb-2 block">
           Personal Dashboard
         </span>
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Your Progress</h1>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 dark:text-gray-100">
+          Your Progress
+        </h1>
       </header>
 
       {/* Hero Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          icon={<BookCheck className={filter === 'Finished' ? 'text-white' : 'text-orange-700'} />}
+          icon={
+            <BookCheck
+              className={
+                filter === 'Finished' ? 'text-white' : 'text-orange-700 dark:text-orange-400'
+              }
+            />
+          }
           label="Finished"
           value={stats.finished.length}
           subValue={`out of ${stats.total}`}
@@ -90,9 +98,9 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
       {filter ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-3">
+            <h3 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
               {filter === 'Finished' ? (
-                <BookCheck className="text-orange-700" />
+                <BookCheck className="text-orange-700 dark:text-orange-400" />
               ) : (
                 <Bookmark className="text-amber-500" />
               )}
@@ -100,7 +108,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
             </h3>
             <button
               onClick={() => setFilter(null)}
-              className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-700 transition-colors"
+              className="flex items-center gap-2 text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-orange-700 dark:hover:text-orange-400 transition-colors"
             >
               <ArrowLeft size={16} /> Back to Dashboard
             </button>
@@ -113,18 +121,20 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
           </div>
 
           {filteredBooks.length === 0 && (
-            <div className="bg-white p-12 rounded-3xl border border-dashed border-gray-200 text-center">
-              <p className="text-gray-400 font-medium">No books found in this category.</p>
+            <div className="bg-white dark:bg-gray-900 p-12 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 text-center">
+              <p className="text-gray-400 dark:text-gray-500 font-medium">
+                No books found in this category.
+              </p>
             </div>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Category Breakdown */}
-          <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="text-orange-700" />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <BarChart3 className="text-orange-700 dark:text-orange-400" />
                 Category Breakdown
               </h3>
             </div>
@@ -132,12 +142,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
               {stats.categoryData.map(([cat, count]) => (
                 <div key={cat} className="space-y-2">
                   <div className="flex justify-between text-sm font-bold">
-                    <span className="text-gray-700">{cat}</span>
-                    <span className="text-orange-700">
+                    <span className="text-gray-700 dark:text-gray-300">{cat}</span>
+                    <span className="text-orange-700 dark:text-orange-400">
                       {count} book{count !== 1 ? 's' : ''}
                     </span>
                   </div>
-                  <div className="h-3 w-full bg-gray-50 rounded-full overflow-hidden">
+                  <div className="h-3 w-full bg-gray-50 dark:bg-gray-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-orange-500 rounded-full transition-all duration-1000"
                       style={{ width: `${(count / stats.total) * 100}%` }}
@@ -146,7 +156,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
                 </div>
               ))}
               {stats.categoryData.length === 0 && (
-                <div className="py-12 text-center text-gray-400 font-medium">
+                <div className="py-12 text-center text-gray-400 dark:text-gray-500 font-medium">
                   No category data available yet.
                 </div>
               )}
@@ -197,19 +207,19 @@ const StatCard: React.FC<{
     } ${
       isActive
         ? `border-transparent shadow-lg ${colorClass} text-white`
-        : 'bg-white border-gray-100 shadow-sm text-gray-900'
+        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-sm text-gray-900 dark:text-gray-100'
     }`}
   >
     <div
       className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-        isActive ? 'bg-white/20' : 'bg-gray-50'
+        isActive ? 'bg-white dark:bg-gray-900/20' : 'bg-gray-50 dark:bg-gray-800'
       }`}
     >
       {icon}
     </div>
     <p
       className={`text-sm font-bold uppercase tracking-widest mb-1 transition-colors ${
-        isActive ? 'text-white/70' : 'text-gray-400'
+        isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'
       }`}
     >
       {label}
@@ -218,7 +228,7 @@ const StatCard: React.FC<{
       <h4 className="text-3xl font-bold">{value}</h4>
       <span
         className={`text-xs font-medium transition-colors ${
-          isActive ? 'text-white/60' : 'text-gray-500'
+          isActive ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'
         }`}
       >
         {subValue}

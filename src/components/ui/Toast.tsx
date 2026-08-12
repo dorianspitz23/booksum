@@ -8,7 +8,11 @@ const DISMISS_AFTER_MS = 6000;
 const STYLES: Record<ToastKind, { wrapper: string; icon: typeof AlertCircle }> = {
   error: { wrapper: 'bg-red-50 border-red-100 text-red-700', icon: AlertCircle },
   success: { wrapper: 'bg-emerald-50 border-emerald-100 text-emerald-700', icon: CheckCircle },
-  info: { wrapper: 'bg-white border-gray-100 text-gray-700', icon: Info },
+  info: {
+    wrapper:
+      'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300',
+    icon: Info,
+  },
 };
 
 export function ToastHost() {

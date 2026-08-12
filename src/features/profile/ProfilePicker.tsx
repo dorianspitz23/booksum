@@ -21,21 +21,21 @@ export function ProfilePicker() {
   };
 
   return (
-    <div className="min-h-screen bg-parchment flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-parchment dark:bg-night flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 justify-center mb-10">
           <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center text-white font-serif font-bold italic text-2xl shadow-lg shadow-orange-100">
             B
           </div>
-          <h1 className="text-3xl font-serif font-bold text-orange-700 italic tracking-tighter">
+          <h1 className="text-3xl font-serif font-bold text-orange-700 dark:text-orange-400 italic tracking-tighter">
             BookSum
           </h1>
         </div>
 
-        <h2 className="text-2xl font-serif font-bold text-gray-900 text-center mb-2">
+        <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 text-center mb-2">
           Who&rsquo;s reading?
         </h2>
-        <p className="text-sm text-gray-500 text-center mb-8">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-8">
           Profiles keep libraries separate on this device. No passwords, no accounts &mdash;
           everything stays in this browser.
         </p>
@@ -46,12 +46,14 @@ export function ProfilePicker() {
               <li key={candidate.id} className="flex items-center gap-2">
                 <button
                   onClick={() => void selectProfile(candidate.id)}
-                  className="flex-1 flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-orange-200 hover:shadow-md transition-all text-left"
+                  className="flex-1 flex items-center gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm hover:border-orange-200 hover:shadow-md transition-all text-left"
                 >
-                  <span className="w-10 h-10 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center">
+                  <span className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 font-bold flex items-center justify-center">
                     {candidate.name.charAt(0).toUpperCase()}
                   </span>
-                  <span className="font-semibold text-gray-900">{candidate.name}</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    {candidate.name}
+                  </span>
                   <BookOpen size={18} className="ml-auto text-gray-300" />
                 </button>
                 <button
@@ -69,13 +71,15 @@ export function ProfilePicker() {
         {isCreating ? (
           <form onSubmit={handleCreate} className="space-y-4">
             <label className="block">
-              <span className="block text-sm font-semibold text-gray-700 mb-2">Your name</span>
+              <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Your name
+              </span>
               <input
                 autoFocus
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Dorian"
-                className="w-full px-4 py-4 bg-white border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900"
+                className="w-full px-4 py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900 dark:text-gray-100"
               />
             </label>
             <button
@@ -90,7 +94,7 @@ export function ProfilePicker() {
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="w-full text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 Back to profiles
               </button>
@@ -99,7 +103,7 @@ export function ProfilePicker() {
         ) : (
           <button
             onClick={() => setIsCreating(true)}
-            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:border-orange-400 hover:text-orange-700 transition-all font-semibold"
+            className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-500 dark:text-gray-400 hover:border-orange-400 hover:text-orange-700 dark:hover:text-orange-400 transition-all font-semibold"
           >
             <Plus size={18} /> Add a profile
           </button>

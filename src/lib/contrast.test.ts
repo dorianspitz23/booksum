@@ -37,3 +37,19 @@ describe('brand text colours meet WCAG AA', () => {
     expect(contrastRatio(WHITE, ORANGE_600)).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('dark theme meets WCAG AA', () => {
+  const NIGHT = '#14110f';
+
+  it('passes for body text on the night background', () => {
+    expect(contrastRatio('#f3f4f6', NIGHT)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('passes for the dark-mode accent on the night background', () => {
+    expect(contrastRatio('#fb923c', NIGHT)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('confirms the light-mode accent would have failed in dark', () => {
+    expect(contrastRatio('#c2410c', NIGHT)).toBeLessThan(4.5);
+  });
+});

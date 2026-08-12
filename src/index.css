@@ -1,14 +1,23 @@
 @import 'tailwindcss';
 
+/* Class-driven rather than media-driven so a profile can override the system. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
   --color-parchment: #fcfcf9;
+  --color-night: #14110f;
 }
 
 @layer base {
   body {
     font-family: var(--font-sans);
     background-color: var(--color-parchment);
+  }
+
+  .dark body {
+    background-color: var(--color-night);
+    color: var(--color-gray-100);
   }
 }
