@@ -18,6 +18,23 @@ History: `docs/superpowers/specs/` holds the design; `docs/superpowers/plans/` h
 phase. Commit `670b5fe` is the untouched Google AI Studio original, so any change is a diff
 against it.
 
+### Audits in flight
+
+A read-only **type-safety audit** ran against `01fa100`. Read it before touching types, storage or
+any AI boundary — do not re-derive findings:
+
+- `audit-reports/audit-type-safety/report.md` — entry point, sections 1–7 plus a 12-wave fix plan
+- `audit-reports/audit-type-safety/findings.json` — canonical; 159 findings, each with a
+  `suggestedPatch`, a reachability trace and a verifier note
+- **All 5 criticals are fixed** (see `git log --grep='\[F00\|\[RT-F'`). The 29 highs are open.
+
+Its headline: the repo has zero `any` and zero `ts-ignore`, and `tsc` is clean — the real weakness
+is unvalidated data crossing into typed code (61 of 159 findings) and `any` handed back by typed
+libraries. Enumerating `any` here is a dead end.
+
+Other audits sit unstarted on `audit/*` branches. **`apply/file-decomposition` is actively editing
+`BookDetail.tsx` and will conflict** — check `git worktree list` before large edits.
+
 ## Invariants — do not break these
 
 - **No API key in the bundle.** `vite.config.ts` must contain no `define` for a key. The Gemini
@@ -33,7 +50,12 @@ against it.
 - **No `alert()` or `confirm()`.** Use `toast` and `useConfirm()`. ESLint enforces it.
 - **Goodreads import makes zero AI calls.** Importing a large library must stay free.
 - **Model IDs live only in `src/lib/ai/models.ts`.**
-- **Every commit leaves `typecheck`, `lint`, `format:check` and `test` green.**
+- **Every commit leaves `typecheck`, `lint`, formatting and `test` green.**
+  ⚠️ `npm run format:check` **cannot pass as configured** and never could: git checks files out
+  with CRLF while Prettier 3 defaults to `endOfLine: "lf"`, so it reports every file in the repo
+  (753 in a clean checkout). This is not something you broke — do not "fix" it by reformatting the
+  codebase. Verify with `npx prettier --check --end-of-line auto .` instead. The real fix is one
+  line, `"endOfLine": "auto"` in `.prettierrc`, which nobody has taken a decision on yet.
 
 ## Architecture
 
@@ -59,6 +81,13 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
 - Dark mode is a `.dark` class on `<html>`, applied by `useTheme()` in `AppShell`.
   `src/components/EReader.tsx` is deliberately excluded — it owns its own reader themes.
 - `src/lib/contrast.ts` exists to assert colour choices meet WCAG AA. Use it when changing colours.
+- AI failures reach the user through an `onAiError` prop threaded down from
+  `AppShell.handleAiError`, which is the only thing that opens the key dialog. Shared components in
+  `src/components/` take it as a prop rather than calling `useShell()` — see `AddBookModal` and
+  `ChatModal`. A bare `toast.error(toAiError(e).message)` leaves a keyless user with no way in.
+- A backup file becomes typed data **only** through `parseLibraryExport`
+  (`src/lib/storage/libraryExport.ts`), which rebuilds each record field by field so undeclared
+  keys cannot reach IndexedDB. Never assert parsed JSON to `LibraryExport`.
 
 ## Gotchas learned the hard way
 
@@ -69,3 +98,12 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
 - Hooks that depend on the profile must wait for `useProfile().isLoading` to settle, or they will
   act on a null profile and silently drop the write.
 - Never leave two `aria-modal` dialogs open at once — two focus traps fight each other.
+- The repo stores **LF**, but the working tree is CRLF. Some editing tools write the whole file back
+  with CRLF, which git then records as every line changed. Check `git diff --stat` before
+  committing: a whole-file diff for a small edit means normalise it first, or the change becomes
+  unreviewable and unrebaseable.
+- `vitest run` intermittently fails to start worker threads on this path, reporting fewer test files
+  than exist plus N "errors" — the tests that did run still pass. There are **24 test files**; if
+  the count is short, re-run before believing you caused a regression.
+- jsdom has no `scrollIntoView`; `src/test/setup.ts` stubs it. Without that, any component that
+  scrolls a transcript into view throws on mount and is untestable.
