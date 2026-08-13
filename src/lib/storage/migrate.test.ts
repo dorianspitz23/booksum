@@ -69,7 +69,14 @@ beforeEach(async () => {
 describe('migrateLegacyData', () => {
   it('reports nothing to do when there is no legacy data', async () => {
     const result = await migrateLegacyData();
-    expect(result).toEqual({ migrated: false, profiles: 0, books: 0, summaries: 0, blobs: 0 });
+    expect(result).toEqual({
+      migrated: false,
+      profiles: 0,
+      books: 0,
+      summaries: 0,
+      blobs: 0,
+      failed: 0,
+    });
   });
 
   it('creates one profile per legacy library key', async () => {
@@ -149,5 +156,75 @@ describe('migrateLegacyData', () => {
 
     const [profile] = await profiles.list();
     expect(profile?.name).toBe('Reader');
+  });
+});
+
+/**
+ * The migration runs unguarded on the boot path, and the marker used to be
+ * written only after the whole loop succeeded. One unreadable record therefore
+ * aborted the run, left the marker unwritten, and re-imported everything it had
+ * already written on the next reload.
+ */
+describe('migrateLegacyData with unreadable legacy data', () => {
+  function seedWithOneBadBook() {
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([
+        {
+          id: 'book-bad',
+          title: 'Corrupt Attachment',
+          author: 'Nobody',
+          status: 'Finished',
+          // atob throws InvalidCharacterError on anything outside the alphabet.
+          pdfData: '!!! not base64 !!!',
+        },
+        {
+          id: 'book-good',
+          title: 'Deep Work',
+          author: 'Cal Newport',
+          status: 'Finished',
+        },
+      ]),
+    );
+  }
+
+  it('keeps the book, drops only the attachment it cannot decode', async () => {
+    seedWithOneBadBook();
+
+    const result = await migrateLegacyData();
+
+    expect(result.migrated).toBe(true);
+    expect(result.failed).toBe(1);
+    expect(result.books).toBe(2);
+    expect(result.blobs).toBe(0);
+
+    const [profile] = await profiles.list();
+    const migrated = await books.listByProfile(profile!.id);
+    expect(migrated).toHaveLength(2);
+  });
+
+  it('records hasPdf false when the attachment could not be decoded', async () => {
+    seedWithOneBadBook();
+    await migrateLegacyData();
+
+    const [profile] = await profiles.list();
+    const migrated = await books.listByProfile(profile!.id);
+    const corrupt = migrated.find((b) => b.title === 'Corrupt Attachment');
+
+    // hasPdf used to be copied from the legacy record, leaving a book that
+    // claims a PDF the blob store does not have.
+    expect(corrupt?.hasPdf).toBe(false);
+  });
+
+  it('still writes the marker, so a reload cannot re-import the same data', async () => {
+    seedWithOneBadBook();
+
+    await migrateLegacyData();
+    expect(localStorage.getItem(MIGRATION_MARKER)).not.toBeNull();
+
+    const second = await migrateLegacyData();
+
+    expect(second.migrated).toBe(false);
+    await expect(profiles.list()).resolves.toHaveLength(1);
   });
 });

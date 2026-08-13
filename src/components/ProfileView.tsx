@@ -4,6 +4,7 @@ import { toast } from './ui/toastStore';
 import { useConfirm } from './ui/ConfirmDialog';
 import { ThemeToggle } from '../features/settings/ThemeToggle';
 import { libraryToMarkdown } from '../lib/markdown';
+import { parseLibraryExport } from '../lib/storage/libraryExport';
 import { downloadText } from '../lib/download';
 import type { VoiceName } from '../types';
 
@@ -113,18 +114,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const content = e.target?.result as string;
-        const data = JSON.parse(content) as LibraryExport;
+        const content = typeof e.target?.result === 'string' ? e.target.result : '';
+        // Validated before anything is written: this is a file the user chose,
+        // and everything downstream trusts its static type.
+        const parsed = parseLibraryExport(JSON.parse(content));
 
-        if (!Array.isArray(data.books)) {
-          toast.error('That is not a BookSum backup file.');
+        if (!parsed.ok) {
+          toast.error(parsed.reason);
           setImportStatus('error');
           return;
         }
 
+        const { data, skipped } = parsed;
+        const count = data.books.length;
         const proceed = await confirm({
           title: 'Import this backup?',
-          body: `Found ${data.books.length} book${data.books.length === 1 ? '' : 's'}. They will be merged into your current library; nothing is removed.`,
+          body:
+            `Found ${count} book${count === 1 ? '' : 's'}. They will be merged into your current library; nothing is removed.` +
+            (skipped > 0
+              ? ` ${skipped} unreadable record${skipped === 1 ? '' : 's'} will be skipped.`
+              : ''),
           confirmLabel: 'Import',
         });
         if (!proceed) return;

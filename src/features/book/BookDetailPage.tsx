@@ -12,7 +12,7 @@ export function BookDetailPage() {
   const { book, summary, setSummary, isLoading } = useBookRoute();
   const { updateBook, removeBook, saveSummary } = useLibrary();
   const { profile } = useProfile();
-  const { playAudio } = useShell();
+  const { playAudio, handleAiError } = useShell();
   const confirm = useConfirm();
   const navigate = useNavigate();
 
@@ -50,6 +50,7 @@ export function BookDetailPage() {
       onUpdate={(next: Book) => void updateBook(next)}
       onOpenReader={() => void navigate(`/book/${book.id}/read`)}
       onPlayAudio={playAudio}
+      onAiError={handleAiError}
     />
   );
 }

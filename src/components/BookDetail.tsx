@@ -126,6 +126,8 @@ interface BookDetailProps {
   isPreview?: boolean;
   onAdd?: () => void;
   onPlayAudio: (track: AudioTrack) => void;
+  /** Surfaces an AI failure and opens the key dialog when the key is the problem. */
+  onAiError: (error: unknown) => string;
 }
 
 export const BookDetail: React.FC<BookDetailProps> = ({
@@ -140,6 +142,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   isPreview,
   onAdd,
   onPlayAudio,
+  onAiError,
 }) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
@@ -333,8 +336,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               </div>
 
               <div className="space-y-2">
-                {/* Chat with Book Button (New) */}
-                {!isPreview && (
+                {/* Both prompts read the summary, so neither is offered without one.
+                    A book can legitimately have no summary — that is what keeps
+                    Goodreads import free. */}
+                {!isPreview && summary && (
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setShowChat(true)}
@@ -531,9 +536,18 @@ export const BookDetail: React.FC<BookDetailProps> = ({
         </div>
       </div>
 
-      {showChat && <ChatModal book={book} summary={summary!} onClose={() => setShowChat(false)} />}
+      {showChat && summary && (
+        <ChatModal
+          book={book}
+          summary={summary}
+          onClose={() => setShowChat(false)}
+          onAiError={onAiError}
+        />
+      )}
 
-      {showQuiz && <QuizModal book={book} summary={summary!} onClose={() => setShowQuiz(false)} />}
+      {showQuiz && summary && (
+        <QuizModal book={book} summary={summary} onClose={() => setShowQuiz(false)} />
+      )}
     </div>
   );
 };
