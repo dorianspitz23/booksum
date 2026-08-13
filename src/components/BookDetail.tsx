@@ -126,6 +126,8 @@ interface BookDetailProps {
   isPreview?: boolean;
   onAdd?: () => void;
   onPlayAudio: (track: AudioTrack) => void;
+  /** Surfaces an AI failure and opens the key dialog when the key is the problem. */
+  onAiError: (error: unknown) => string;
 }
 
 export const BookDetail: React.FC<BookDetailProps> = ({
@@ -140,6 +142,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   isPreview,
   onAdd,
   onPlayAudio,
+  onAiError,
 }) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
@@ -534,7 +537,12 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       </div>
 
       {showChat && summary && (
-        <ChatModal book={book} summary={summary} onClose={() => setShowChat(false)} />
+        <ChatModal
+          book={book}
+          summary={summary}
+          onClose={() => setShowChat(false)}
+          onAiError={onAiError}
+        />
       )}
 
       {showQuiz && summary && (

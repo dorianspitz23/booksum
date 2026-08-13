@@ -10,6 +10,8 @@ interface ChatModalProps {
   book: Book;
   summary: Summary;
   onClose: () => void;
+  /** Surfaces an AI failure and opens the key dialog when the key is the problem. */
+  onAiError: (error: unknown) => string;
 }
 
 interface Message {
@@ -17,7 +19,7 @@ interface Message {
   text: string;
 }
 
-export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) => {
+export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, onAiError }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
@@ -26,6 +28,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [startupError, setStartupError] = useState<string | null>(null);
   const chatSession = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -34,8 +37,17 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
   useFocusTrap(panelRef, { active: true, onClose });
 
   useEffect(() => {
-    chatSession.current = createBookChatSession(book, summary);
-  }, [book, summary]);
+    // createBookChatSession is the only synchronous AI entry point, so an
+    // unhandled throw here escapes to the route error boundary and takes the
+    // whole app down. The commonest cause is simply having no key stored.
+    try {
+      chatSession.current = createBookChatSession(book, summary);
+      setStartupError(null);
+    } catch (error) {
+      chatSession.current = null;
+      setStartupError(onAiError(error));
+    }
+  }, [book, summary, onAiError]);
 
   useEffect(() => {
     scrollToBottom();
@@ -158,18 +170,27 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose }) 
 
         {/* Input */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+          {startupError && (
+            <p
+              role="alert"
+              className="mb-3 px-4 py-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm rounded-xl border border-red-100 dark:border-red-900"
+            >
+              {startupError}
+            </p>
+          )}
           <form onSubmit={handleSend} className="relative flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question..."
-              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              placeholder={startupError ? 'Chat unavailable' : 'Ask a question...'}
+              disabled={startupError !== null}
+              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-60"
               autoFocus
             />
             <button
               type="submit"
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || startupError !== null}
               className="absolute right-2 p-2 bg-white dark:bg-gray-900 rounded-lg text-orange-700 dark:text-orange-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
             >
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

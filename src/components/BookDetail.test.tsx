@@ -46,6 +46,7 @@ function renderDetail(summaryProp: Summary | undefined) {
       onUpdate={vi.fn()}
       onOpenReader={vi.fn()}
       onPlayAudio={vi.fn()}
+      onAiError={vi.fn(() => 'ai error')}
     />,
   );
 }
