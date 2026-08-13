@@ -1,0 +1,174 @@
+{
+  "lotId": "L03",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T16:05:00Z",
+  "filesScanned": 2,
+  "findingCount": 15,
+  "findings": [
+    {
+      "id": "L03-F01",
+      "category": "boundary-without-validation",
+      "severity": "Critical",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 58,
+      "title": "JSON.parse(raw) as T types arbitrary localStorage content as LegacyBook[] on the app-boot path",
+      "description": "readJson<T> is a generic assertion factory: it hands JSON.parse output straight to the caller as T with zero runtime checking. localStorage is user-writable external data (DevTools, an extension, a partially-written record from the original app), so T is fiction. The concrete failure: line 99 calls readJson<LegacyBook[]> and line 101 immediately does `for (const legacy of legacyBooks)`. If the stored value is an object, number, or boolean rather than an array, the for-of throws TypeError. If it is a string, the loop iterates characters and silently creates one junk Book per character. Blast radius is small in call count (2 call sites, lines 89 and 99) but total in impact: migrateLegacyData() is awaited unguarded at src/features/profile/ProfileContext.tsx:31, before `setIsLoading(false)` at line 40, so a throw leaves isLoading permanently true and the app never renders past its loading state. Worse, the MIGRATION_MARKER is only written at line 149 AFTER the loop, so the next launch retries and fails identically - the app is bricked permanently with no in-UI recovery. Correct behaviour: readJson should return `unknown` and each caller should narrow with a runtime guard (Array.isArray plus per-field typeof checks, or a schema), and the loop should skip non-conforming rows rather than typing them into existence.",
+      "evidence": "54  function readJson<T>(key: string): T | null {\n55    const raw = localStorage.getItem(key);\n56    if (!raw) return null;\n57    try {\n58      return JSON.parse(raw) as T;\n59    } catch {\n60      return null;\n61    }\n62  }\n...\n99      const legacyBooks = readJson<LegacyBook[]>(`${LIBRARY_KEY_PREFIX}${userId}`) ?? [];\n101     for (const legacy of legacyBooks) {",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F02",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/repo.ts",
+      "line": 8,
+      "title": "profiles.list() types getAll output from the DBSchema declaration and immediately calls a string method on it",
+      "description": "`getAll('profiles')` is typed `Profile[]` purely because src/lib/storage/db.ts:8 declares `profiles: { key: string; value: Profile }`. That declaration is a promise about what is on disk, not a check of it - idb performs no validation. Line 9 then calls `a.createdAt.localeCompare(b.createdAt)` on every row. A record whose createdAt is not a string throws `TypeError: a.createdAt.localeCompare is not a function`. That is not hypothetical: migrate.ts:95 passes `legacyProfile?.joinedAt` (unvalidated JSON, see L03-F01) into profiles.create, where the `??` at repo.ts:24 only guards null/undefined - a numeric joinedAt is persisted verbatim as Profile.createdAt. profiles.list() is on the boot path (ProfileContext.tsx:32, awaited before setIsLoading(false) at line 40), so this throw hangs the app on its loading screen. Blast radius: 26 `profiles.*` call sites across src, and list() is the first storage read the app performs. Correct behaviour: validate rows at the repo boundary (a per-store guard that drops or repairs non-conforming records) rather than asserting the DBSchema shape and sorting on unchecked fields.",
+      "evidence": "7    async list(): Promise<Profile[]> {\n8      const all = await (await getDb()).getAll('profiles');\n9      return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));\n10   },\n11\n12   async get(id: string): Promise<Profile | undefined> {\n13     return (await getDb()).get('profiles', id);\n14   },",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F03",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/repo.ts",
+      "line": 143,
+      "title": "blobs.get trusts record.bytes and record.type verbatim; a non-ArrayBuffer silently produces a corrupt Blob instead of an error",
+      "description": "This is the ArrayBuffer/Blob conversion CLAUDE.md calls out as the boundary that broke the original app, and it performs no runtime check. `record.bytes` is typed ArrayBuffer only because types.ts:78 declares it so; `record.type` is an unconstrained string. The dangerous property of `new Blob([x])` is that it does not throw for a non-BlobPart - it stringifies. If bytes came back as `{}` (exactly what CLAUDE.md documents fake-indexeddb doing to a stored Blob, and what a partially-completed or hand-edited write produces), the result is a 15-byte Blob containing the text `[object Object]` carrying a legitimate `application/pdf` MIME type. src/components/BookDetail.tsx:197-200 then does `URL.createObjectURL(pdf)` and `window.open(url, '_blank')`, so the user gets a blank/broken PDF tab with no error anywhere - silent data loss presented as success. There is no `instanceof ArrayBuffer` check anywhere in src/lib/storage (verified by grep for typeof/Array.isArray/instanceof: zero hits in production storage code). Blast radius: 17 `blobs.*` call sites; blobs.get is the only read path for both PDF and generated audio. Correct behaviour: assert `record.bytes instanceof ArrayBuffer` at the boundary and reject/repair otherwise, so the failure is loud.",
+      "evidence": "142    async get(bookId: string, kind: BlobKind): Promise<Blob | undefined> {\n143      const record = await (await getDb()).get('blobs', blobKey(bookId, kind));\n144      return record ? new Blob([record.bytes], { type: record.type }) : undefined;\n145    },\n\n// consumer, src/components/BookDetail.tsx:197-200\n197      const pdf = await blobs.get(book.id, 'pdf');\n198      if (!pdf) return;\n199      const url = URL.createObjectURL(pdf);\n200      window.open(url, '_blank');",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F04",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/repo.ts",
+      "line": 52,
+      "title": "books.create and summaries.upsert persist caller objects with no validation, and the backup-import path feeds them a user-picked file",
+      "description": "The repo is the mandated chokepoint for all writes (CLAUDE.md layering rule), but the write side performs zero runtime validation - it trusts the static parameter type and calls put(). That static type is a lie on the library-import path: src/components/ProfileView.tsx:117 does `JSON.parse(content) as LibraryExport` on a user-selected .json file, checks only `Array.isArray(data.books)` at line 119, and hands the whole payload to src/features/library/useLibrary.tsx:110-116, which loops `bookRepo.create({ ...book, profileId })` and `summaryRepo.upsert(summary)` per element. Element shapes are never inspected. Two concrete failures: (a) a summaries element lacking `id` makes `put('summaries', ...)` reject with a DOMException DataError (keyPath 'id' yields no value, db.ts:30) mid-loop, after some books have already been written - a partial, non-atomic import; (b) a books element with a missing or wrong-typed field is persisted and thereafter claims to be a `Book` to every reader, corrupting the user's only copy of the library (local-first, no server backup). Note `payload.summaries ?? []` also only guards nullish - a non-array summaries field throws on for-of. Blast radius: 22 `books.*` and 6 `summaries.*` call sites all consume records this path can poison. Correct behaviour: validate at the repo's write boundary (the single place every writer must pass through) rather than trusting an assertion made three modules away.",
+      "evidence": "51    async create(\n52      input: Omit<Book, 'id' | 'addedAt'> & Partial<Pick<Book, 'id' | 'addedAt'>>,\n53    ): Promise<Book> {\n54      const book: Book = {\n55        ...input,\n56        id: input.id ?? newId(),\n57        addedAt: input.addedAt ?? new Date().toISOString(),\n58      };\n59      await (await getDb()).put('books', book);\n\n// caller, src/features/library/useLibrary.tsx:110-116 (payload is `JSON.parse(file) as LibraryExport`)\n110      for (const book of payload.books ?? []) {\n112        await bookRepo.create({ ...book, profileId: profile.id });\n115      for (const summary of payload.summaries ?? []) {\n116        await summaryRepo.upsert(summary);",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F05",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/repo.ts",
+      "line": 44,
+      "title": "books read path returns DBSchema-declared Book[] with no runtime guard; numeric fields are consumed in arithmetic downstream",
+      "description": "`getAllFromIndex('books', 'by-profile', profileId)` and `get('books', id)` are typed from db.ts:9, not verified. Every book in the app enters through these two lines, so any drift between the stored row and the current `Book` interface is invisible until a consumer misbehaves. Concrete failure: `Book.readingTimeMinutes` is declared `number` and src/components/StatsView.tsx:17 does `finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0)`. If any row holds a string there (reachable via the legacy migration, migrate.ts:115, or the unvalidated backup import, L03-F04), `+` becomes string concatenation and the stats page renders a nonsense total like `045300` minutes with no error; if it holds undefined the total is NaN. Same class of exposure for `rating` (StatsView.tsx:19 divides by finished.length) and `addedAt` (LibraryPage.tsx:61 `new Date(b.addedAt).getTime()` yields NaN and the sort silently degrades). Blast radius: 22 `books.*` call sites; listByProfile is the source for every list view, stats view, export and search. Correct behaviour: a single validating read helper at this boundary, so the DBSchema declaration is checked once instead of trusted 22 times.",
+      "evidence": "43    async listByProfile(profileId: string): Promise<Book[]> {\n44      return (await getDb()).getAllFromIndex('books', 'by-profile', profileId);\n45    },\n46\n47    async get(id: string): Promise<Book | undefined> {\n48      return (await getDb()).get('books', id);\n49    },\n\n// consumer, src/components/StatsView.tsx:17\n17      const totalTime = finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0);",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F06",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 105,
+      "title": "Migration sets summaryId without the denormalised oneSentenceTakeaway, so every migrated book shows 'Not summarised yet'",
+      "description": "This is a real bug the type system should have caught. CLAUDE.md states oneSentenceTakeaway is deliberately denormalised onto Book so list views render without loading every summary. The normal creation path honours that (src/features/library/LibraryPage.tsx:92 spreads `{ ...book, oneSentenceTakeaway: summary.oneSentenceTakeaway }`), but the migration at lines 105-119 sets `summaryId` and then writes a full Summary at line 122-132 with `oneSentenceTakeaway: legacy.oneSentenceTakeaway ?? ''` while never backfilling the Book copy. Result: src/components/BookCard.tsx:89 renders `book.oneSentenceTakeaway ? ... : 'Not summarised yet'`, so every book imported from the legacy app displays 'Not summarised yet' in the library grid despite having a complete migrated summary. It compiles because types.ts declares `summaryId?: string` and `oneSentenceTakeaway?: string` as two independent optionals, so the impossible state 'summarised but no takeaway' is representable. A discriminated union - a summarised variant requiring both fields, an unsummarised variant permitting neither - would have made this a compile error, both here and at repo.ts:51-53 where the create input type inherits the same weakness. Blast radius: the bug hits every migrated book on the primary library screen; the type weakness covers all 22 books.* call sites.",
+      "evidence": "105      const book = await books.create({\n114          coverImageUrl: legacy.coverImageUrl ?? '',\n115          readingTimeMinutes: legacy.readingTimeMinutes ?? 5,\n117          summaryId,            // <- set, but oneSentenceTakeaway never denormalised\n118          hasPdf: Boolean(legacy.pdfData),\n119        });\n122      await summaries.upsert({\n125          oneSentenceTakeaway: legacy.oneSentenceTakeaway ?? '',\n\n// consumer, src/components/BookCard.tsx:89\n89        {book.oneSentenceTakeaway ? `\"${book.oneSentenceTakeaway}\"` : 'Not summarised yet'}",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F07",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 94,
+      "title": "LegacyProfile declares current-app union types for unvalidated JSON, and those values are persisted as a typed Profile",
+      "description": "The LegacyProfile interface at lines 38-44 annotates `favoriteVoice?: VoiceName` - the CURRENT app's five-member union - for data that is arbitrary JSON from localStorage. Nothing checks it. The value flows through profiles.create (repo.ts:22, where `??` only substitutes on null/undefined, never on a wrong type or an unknown string) and is persisted as `Profile.favoriteVoice: VoiceName`. From there it is read by src/features/book/BookDetailPage.tsx:43 and ReaderPage.tsx:26 and passed as the voice name to the Gemini TTS request, which will reject an unknown voice at request time - an AI failure with no diagnosable cause. src/components/ProfileView.tsx:281 also compares it against the known voice list, so the profile editor renders with no option selected. The same pattern applies to `monthlyGoal` (declared number, divided at ProfileView.tsx:53) and to `joinedAt` -> `createdAt`, which is the injection source for the boot-path crash described in L03-F02. Blast radius: one Profile per legacy user, but the profile is a singleton read by 26 profiles.* call sites and gates the entire app shell. Correct behaviour: narrow legacy fields with an explicit membership check against the union before persisting, and type the legacy shape with `string` (or unknown) rather than borrowing the current unions.",
+      "evidence": "38   interface LegacyProfile {\n41     joinedAt?: string;\n43     favoriteVoice?: VoiceName;      // <- current-app union asserted over raw JSON\n44   }\n...\n89       const legacyProfile = readJson<LegacyProfile>(`booksum_profile_${userId}`);\n90       const profile = await profiles.create({\n93         monthlyGoal: legacyProfile?.monthlyGoal,\n94         favoriteVoice: legacyProfile?.favoriteVoice,\n95         createdAt: legacyProfile?.joinedAt,\n96       });",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F08",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 110,
+      "title": "Legacy book fields are defaulted with ?? which guards nullish only, never type, then persisted as a typed Book",
+      "description": "Lines 106-118 use `??` as if it were validation. `??` substitutes only for null/undefined: any other value - a string where a number is declared, an unknown status string, an object - passes through untouched and is written by books.create as a `Book`. `legacy.status ?? 'Want to Read'` therefore persists `Book.status: BookStatus` holding e.g. 'Reading' or 'Currently Reading'; StatsView.tsx:15-16 buckets books by `b.status === 'Finished'` / `=== 'Want to Read'`, so such a book vanishes from both stat buckets and from the status filter while still counting in the library total. `legacy.rating ?? 0` and `legacy.readingTimeMinutes ?? 5` feed the arithmetic at StatsView.tsx:17-19 (see L03-F05) - a string there turns the reading-time total into concatenated digits. `legacy.priority` is passed with no default at all and is declared `Priority`. Blast radius: every migrated book, consumed by all 22 books.* call sites. Correct behaviour: a membership check for the union fields and a `typeof === 'number'` check for the numeric ones, falling back to the default when the check fails rather than only when the value is nullish.",
+      "evidence": "106        profileId: profile.id,\n110        status: legacy.status ?? 'Want to Read',\n111        priority: legacy.priority,\n112        rating: legacy.rating ?? 0,\n115        readingTimeMinutes: legacy.readingTimeMinutes ?? 5,\n\n// declaration asserting current unions over raw JSON, migrate.ts:30-33\n30     priority?: Priority;\n33     status?: BookStatus;",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F09",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 31,
+      "title": "profiles.update and books.update write whatever the caller hands them, persisting NaN as a typed number",
+      "description": "Both update methods are a straight pass-through to put() with no validation - the record's correctness rests entirely on the caller's static type. That is not sufficient because a value can satisfy `number` and still be garbage: src/components/ProfileView.tsx:239 sets `monthlyGoal: parseInt(e.target.value)`, and parseInt('') is NaN, which is a `number` as far as the compiler is concerned. Clearing the monthly-goal field and saving persists `Profile.monthlyGoal = NaN` through repo.ts:31. ProfileView.tsx:53 then computes `Math.min(100, (finishedCount / NaN) * 100)` = NaN and renders a NaN-width progress bar. The corruption also outlives the session: structured clone preserves NaN in IndexedDB, and JSON.stringify in the backup export turns it into null, so a subsequent import writes `monthlyGoal: null` under a `number` declaration. Blast radius: 26 profiles.* and 22 books.* call sites read records these two methods can poison. Correct behaviour: the repo's write boundary should reject non-finite numbers and empty required strings rather than trusting the declared type.",
+      "evidence": "30    async update(profile: Profile): Promise<Profile> {\n31      await (await getDb()).put('profiles', profile);\n32      return profile;\n33    },\n\n// caller, src/components/ProfileView.tsx:239 - parseInt('') is NaN and is a valid `number`\n239        setEditedProfile({ ...editedProfile, monthlyGoal: parseInt(e.target.value) })\n// consumer, src/components/ProfileView.tsx:53\n53      const progressPercent = Math.min(100, (finishedCount / profile.monthlyGoal) * 100);",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F10",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 127,
+      "title": "keyInsights/actionableSteps defaulted with ?? [] are declared string[] but a non-array legacy value survives",
+      "description": "`legacy.keyInsights ?? []` only replaces null/undefined. A legacy record holding a string, an object, or a comma-joined value is written straight into `Summary.keyInsights: string[]`. Consumers call array methods on it with no guard: src/lib/markdown.ts:24-25 does `.length > 0` then `.map(...)` (a string passes the length check and then throws `TypeError: ... .map is not a function`, breaking the export-to-markdown feature), and src/lib/ai/prompts.ts:36, 49, 67 and 82 call `.join(...)` on both fields when building the summarise/deep-dive/TTS prompts, which throws before the AI request is made. `detailedSummary: legacy.detailedSummary` at line 129 is passed with no check at all. Blast radius: every migrated summary; 6 summaries.* call sites plus the markdown export and four prompt builders. Correct behaviour: `Array.isArray(x) ? x.filter(i => typeof i === 'string') : []` at the migration boundary, so the declared string[] is true by construction.",
+      "evidence": "122      await summaries.upsert({\n125          oneSentenceTakeaway: legacy.oneSentenceTakeaway ?? '',\n126          summary: legacy.summary ?? '',\n127          keyInsights: legacy.keyInsights ?? [],\n128          actionableSteps: legacy.actionableSteps ?? [],\n129          detailedSummary: legacy.detailedSummary,\n\n// consumer, src/lib/markdown.ts:24-25\n24       if (summary.keyInsights.length > 0) {\n25         lines.push('## Key Insights', '', ...summary.keyInsights.map((i) => `- ${i}`), '');",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F11",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 113,
+      "title": "summaries.getByBook returns an unverified index hit typed Summary, whose array fields are consumed without guards",
+      "description": "`getFromIndex('summaries', 'by-book', bookId)` is typed `Summary | undefined` from db.ts:10. The undefined half is honest (callers do check it - repo.ts:69-70 and BookDetail both guard), but the Summary half is a declaration, not a check. Whatever is on disk is handed to consumers that immediately call array and string methods on its fields: src/lib/markdown.ts:22-28 and src/lib/ai/prompts.ts:36-82. Records written by summaries.upsert (repo.ts:116, itself unvalidated - see L03-F04) or by the migration (L03-F10) can violate the declared shape, and the mismatch surfaces as a TypeError inside markdown export or prompt construction rather than at the read. Blast radius: 6 summaries.* call sites, feeding the book detail view, the markdown export, the quiz generator and all AI prompt builders. Correct behaviour: validate at this boundary so the failure is attributable to the bad record, not to the consumer three modules away.",
+      "evidence": "111  export const summaries = {\n112    async getByBook(bookId: string): Promise<Summary | undefined> {\n113      return (await getDb()).getFromIndex('summaries', 'by-book', bookId);\n114    },\n115\n116    async upsert(summary: Summary): Promise<Summary> {\n117      await (await getDb()).put('summaries', summary);\n118      return summary;\n119    },",
+      "confidence": "medium"
+    },
+    {
+      "id": "L03-F12",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 79,
+      "title": "reviewCards read path loads every row unvalidated and sorts on dueAt with a string method",
+      "description": "listByProfile and listByBook call `getAll('reviewCards')` - fetching every card of every profile - and immediately access `card.profileId` / `card.bookId` on rows typed only by db.ts:12-16. listDue then does `card.dueAt <= cutoff` and `a.dueAt.localeCompare(b.dueAt)` at line 89: a non-string dueAt makes the comparison at line 88 silently false (the card never becomes due, so it disappears from the review queue with no error) and, if it survives the filter, makes localeCompare throw. Note the cross-profile read also means one profile's corrupt card can break another profile's review session. Blast radius: 10 reviewCards.* call sites; the review queue is the whole of the Phase 3 feature. Correct behaviour: validate dueAt as an ISO string at the boundary, and prefer the existing 'by-profile-due' index over an unvalidated full-table scan.",
+      "evidence": "78    async listByProfile(profileId: string): Promise<ReviewCard[]> {\n79      const all = await (await getDb()).getAll('reviewCards');\n80      return all.filter((card) => card.profileId === profileId);\n81    },\n84    async listDue(profileId: string, now: Date = new Date()): Promise<ReviewCard[]> {\n85      const cutoff = now.toISOString();\n86      const owned = await reviewCards.listByProfile(profileId);\n87      return owned\n88        .filter((card) => card.dueAt <= cutoff)\n89        .sort((a, b) => a.dueAt.localeCompare(b.dueAt));",
+      "confidence": "medium"
+    },
+    {
+      "id": "L03-F13",
+      "category": "branded-type-opportunity",
+      "severity": "Medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 126,
+      "title": "Every identifier in the persistence API is a bare string, including two adjacent methods that take different id kinds",
+      "description": "profileId, bookId, summaryId and blobKey are all `string`, so the compiler cannot tell them apart anywhere in the repo's public surface. The sharpest foot-gun is inside `summaries`: getByBook(bookId) at line 112 and remove(id) at line 121 are seven lines apart and take different kinds of id with identical types. books.remove at 68-73 gets it right (`summaries.getByBook(id)` then `summaries.remove(summary.id)`), but `summaries.remove(id)` with the book id compiles cleanly and silently deletes nothing - an orphaned summary that later collides with a regenerated one. Same exposure for blobKey(bookId, kind) at line 126 (a summaryId compiles and produces a key that will never match), reviewCards.removeByBook(bookId) vs the card ids deleted at line 107, and books.create's input where profileId and the optional id are both string. Related: StoredBlob.key is documented as `${bookId}:${kind}` (types.ts:68) but declared `string`, where a template-literal type would enforce the format blobKey produces. Blast radius: every exported repo method except blobs.put takes at least one bare-string id - 75+ call sites across src pass ids positionally. Correct behaviour: branded id types (BookId, ProfileId, SummaryId) minted at creation, which is a moderate but mechanical retrofit since all ids originate from newId() at line 4.",
+      "evidence": "112    async getByBook(bookId: string): Promise<Summary | undefined> {\n113      return (await getDb()).getFromIndex('summaries', 'by-book', bookId);\n114    },\n121    async remove(id: string): Promise<void> {        // <- summary id, not book id\n122      await (await getDb()).delete('summaries', id);\n123    },\n126  const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}`;\n\n// types.ts:68-69 documents the format the type does not encode\n68     /** `${bookId}:${kind}` */\n69     key: string;",
+      "confidence": "high"
+    },
+    {
+      "id": "L03-F14",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 138,
+      "title": "The stored MIME type is an unconstrained string, uncoupled from BlobKind, and is replayed into a same-origin blob: URL",
+      "description": "blobs.put writes `type: blob.type` verbatim at line 138 and blobs.get replays it into the reconstructed Blob at line 144. The repo already knows the BlobKind ('pdf' | 'audio-short' | 'audio-long'), so the MIME type is derivable and checkable, yet StoredBlob.type is declared as an open `string` with no relationship to kind - a 'pdf' record can legitimately carry any MIME string as far as the types are concerned. The write source is a user-picked File (src/features/library/useLibrary.tsx:51, from the AddBookModal.tsx:232 input whose `accept=\".pdf\"` is a dialog hint, not enforcement), so blob.type is whatever the browser derived from the chosen file. On read, src/components/BookDetail.tsx:199-200 does `URL.createObjectURL(pdf)` then `window.open(url, '_blank')`; a blob: URL inherits the creating document's origin, so a stored `text/html` type means script executing in the app's origin with access to the Gemini API key that CLAUDE.md keeps in localStorage. Blast radius: 17 blobs.* call sites; the type string is written in exactly one place and read in exactly one place, so the fix is contained. Correct behaviour: derive or allow-list the MIME per BlobKind at the repo boundary instead of round-tripping an unconstrained string.",
+      "evidence": "129    async put(bookId: string, kind: BlobKind, blob: Blob): Promise<void> {\n130      const bytes = await blob.arrayBuffer();\n133      ).put('blobs', {\n136        kind,\n137        bytes,\n138        type: blob.type,        // <- unconstrained, unchecked against `kind`\n139      });\n144      return record ? new Blob([record.bytes], { type: record.type }) : undefined;",
+      "confidence": "medium"
+    },
+    {
+      "id": "L03-F15",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 136,
+      "title": "base64ToBytes is handed a value only declared to be a string, on the unguarded boot path",
+      "description": "`legacy.pdfData` and `legacy.audioData` are declared `string?` by the LegacyBook interface but originate from the unvalidated JSON.parse of L03-F01. The truthiness guards at lines 135 and 141 filter nullish/empty but not type or content. src/lib/base64.ts:6 then calls `atob(base64)`, which throws `InvalidCharacterError` for any string that is not valid base64 - including a legacy value that was truncated by a localStorage quota failure, which is precisely how large base64 PDFs failed in the original app (CLAUDE.md: 'No binary data in records... This is what broke the original app'). Because migrateLegacyData() is awaited unguarded at ProfileContext.tsx:31 and the MIGRATION_MARKER is only written at line 149, one bad pdfData string permanently blocks app boot - the same brick as L03-F01. Blast radius: one throw aborts the entire migration for every profile, and the partial writes already made are not rolled back. Correct behaviour: check `typeof x === 'string'` plus a base64 shape test (or wrap the decode per-record) so a single unreadable attachment is skipped rather than fatal.",
+      "evidence": "135        if (legacy.pdfData) {\n136          const bytes = base64ToBytes(legacy.pdfData);\n137          await blobs.put(book.id, 'pdf', new Blob([bytes], { type: 'application/pdf' }));\n141        if (legacy.audioData) {\n142          const bytes = base64ToBytes(legacy.audioData);\n\n// src/lib/base64.ts:5-6 - throws InvalidCharacterError on non-base64 input\n5    export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {\n6      const binary = atob(base64);",
+      "confidence": "high"
+    }
+  ]
+}

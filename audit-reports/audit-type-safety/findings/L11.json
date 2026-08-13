@@ -1,0 +1,145 @@
+{
+  "lotId": "L11",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T15:01:24Z",
+  "filesScanned": 3,
+  "findingCount": 10,
+  "findings": [
+    {
+      "id": "L11-F01",
+      "category": "non-null-assertion",
+      "severity": "Critical",
+      "file": "src/components/BookDetail.tsx",
+      "line": 534,
+      "title": "`summary!` on an optional prop crashes the app for every unsummarised book (2 sites: 534, 536)",
+      "description": "CLUSTER of 2 non-null assertions, both on the same optional prop. `BookDetailProps.summary` is declared `Summary | undefined` (line 119) because a book can legitimately exist unsummarised (that is the whole point of the free Goodreads import). `ChatModalProps.summary` and `QuizModalProps.summary` are both declared non-optional `Summary`, so the two render sites at 534/536 use `!` to force the mismatch through the compiler. Nothing gates the buttons that set `showChat`/`showQuiz`: lines 337-353 render them for every non-preview book regardless of whether a summary exists, and `BookDetailPage.tsx:19` only guards `isLoading || !book || !profile` - never `!summary`. FAILURE (chat, line 534): open any Goodreads-imported book -> click Chat -> `ChatModal` mounts -> `useEffect` at ChatModal.tsx:35 calls `createBookChatSession(book, undefined)` -> `chat.ts:14` calls `chatSystemInstruction(book, undefined)` -> `prompts.ts:61` evaluates `${summary.oneSentenceTakeaway}` -> TypeError. That effect has NO try/catch, so the throw escapes the render tree into the error boundary and takes the whole app down to the crash screen. FAILURE (quiz, line 536): `generateBookQuiz(book, undefined)` -> `prompts.ts:48` `${summary.summary}` -> TypeError, but this one is inside `loadQuiz`'s try/catch, so it degrades to a misleading `toAiError` toast that blames the AI service for what is actually a missing-summary state, leaving an empty quiz modal open. BLAST RADIUS: every book in the library that has no Summary record - i.e. the entire result of a Goodreads CSV import, the app's headline free feature. A user who imports 500 books and taps Chat on any of them loses the app. FIX SHAPE: remove both `!` and gate the two buttons on `summary` (or model Book+Summary as a discriminated union, see L11-F02) so the compiler proves the children's requirement instead of being told to trust it.",
+      "evidence": "119:  summary: Summary | undefined;\n...\n337:                {!isPreview && (\n340:                      onClick={() => setShowChat(true)}\n347:                      onClick={() => setShowQuiz(true)}\n...\n534:      {showChat && <ChatModal book={book} summary={summary!} onClose={() => setShowChat(false)} />}\n535:\n536:      {showQuiz && <QuizModal book={book} summary={summary!} onClose={() => setShowQuiz(false)} />}",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F04",
+      "category": "boundary-without-validation",
+      "severity": "Critical",
+      "file": "src/components/ProfileView.tsx",
+      "line": 117,
+      "title": "Backup file JSON asserted straight to `LibraryExport` and written to IndexedDB with no validation",
+      "description": "`JSON.parse(content) as LibraryExport` takes an arbitrary user-chosen file off disk and asserts it into the app's most privileged type. The ONLY runtime check is `Array.isArray(data.books)` on line 119. Never checked: `data.version` (declared as the literal `2`, so a v1 or foreign file is silently claimed to be v2), `data.summaries`, and the shape of every element inside both arrays. The asserted value goes straight to persistence - `onImportLibrary(data)` (line 132) is `useLibrary.tsx:102`, which does `bookRepo.create({ ...book, profileId })` for each element (line 111) and `summaryRepo.upsert(summary)` for each summary (line 115). `src/lib/storage` performs ZERO runtime validation, so whatever shape got through is now a DURABLE record: it survives reload forever and nothing re-validates on read. CONCRETE FAILURE: import a file `{\"books\":[{\"id\":\"x\"}],\"summaries\":[{}]}`. The `Array.isArray` check passes. Book `x` is persisted with no `title`, `author`, `category`, `status`, `rating`, `coverImageUrl`, `readingTimeMinutes` or `hasPdf` - every one of which `types.ts` declares required. Then `summaryRepo.upsert({})` hits the `summaries` store, whose `keyPath` is `'id'` (db.ts:31); the record has no `id`, so IndexedDB throws `DataError` and the import promise rejects AFTER the books were already written. The user sees only the generic 'Could not read that backup file.' toast while the library is left half-imported and corrupt. Downstream, `BookCard` renders `undefined` fields, `Math.round(book.rating)` yields `NaN`, and `StatsView` buckets by an `undefined` category. BLAST RADIUS: every consumer of the `books` and `summaries` stores for the lifetime of the profile; the only recovery is the Danger Zone 'Reset All'. FIX SHAPE: parse to `unknown`, validate with a schema or hand-written guards (check `version === 2` and every required field of `Book`/`Summary`) before the first write, and make the import transactional so a bad element aborts rather than half-applies.",
+      "evidence": "116:        const content = e.target?.result as string;\n117:        const data = JSON.parse(content) as LibraryExport;\n118:\n119:        if (!Array.isArray(data.books)) {\n120:          toast.error('That is not a BookSum backup file.');\n121:          setImportStatus('error');\n122:          return;\n123:        }\n...\n132:        const added = await onImportLibrary(data);",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F02",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/components/BookDetail.tsx",
+      "line": 337,
+      "title": "Four independent encodings of 'is this book summarised?' leave three dead buttons and one empty section",
+      "description": "'Summarised' is expressed four separate ways that the type system does not tie together: `Book.summaryId?`, `Book.readingTimeMinutes` (required `number`, 0 when absent), `Book.oneSentenceTakeaway?`, and the separate `summary: Summary | undefined` prop. Because none of them narrows any of the others, `BookDetail` handles the unsummarised case ad hoc in five different places, and gets it wrong in all of them. (1) Lines 337-353: the Chat and Quiz buttons are gated only on `!isPreview`, never on `summary` - this is what makes L11-F01 reachable. (2) Lines 155-158: `handlePlayAudio` sets the spinner true, then `if (!summary) return` - the 'Quick Listen' button flashes a spinner and silently does nothing, with no message to the user. (3) Lines 181-183: `handleMasterclassClick` does the same - 'Read Full Summary' is a dead no-op on an unsummarised book. (4) Line 452: the 'The One Sentence Takeaway' heading and its styled card always render; when there is no summary the quote body is the empty string, so the user gets a large empty orange panel. (5) Line 330: `{book.readingTimeMinutes} mins` renders '0 mins' for every Goodreads-imported book, presented as fact next to the category. BLAST RADIUS: the entire BookDetail route for any unsummarised book, which after a Goodreads import is the whole library. FIX SHAPE: model the book as a tagged union - `{ summarised: false }` vs `{ summarised: true; summaryId: string; readingTimeMinutes: number; oneSentenceTakeaway: string; summary: Summary }` - so the three fields travel together and the compiler forces one explicit branch instead of five silent early returns. Requires touching the repo and every list view, so this is a design change, not a local fix.",
+      "evidence": "155:  const handlePlayAudio = async (type: 'short' | 'long') => {\n156:    try {\n157:      setIsGeneratingAudio(true);\n158:      if (!summary) return;\n...\n181:    setIsGeneratingDeepDive(true);\n182:    try {\n183:      if (!summary) return;\n...\n330:                    {book.readingTimeMinutes} mins\n...\n337:                {!isPreview && (\n452:              {summary ? `\"${summary.oneSentenceTakeaway}\"` : ''}",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F06",
+      "category": "branded-type-opportunity",
+      "severity": "High",
+      "file": "src/components/ProfileView.tsx",
+      "line": 46,
+      "title": "Stale edit-draft is typed identically to the live Profile, so saving silently reverts the theme",
+      "description": "Object-level branding case. `editedProfile` is seeded from the `profile` prop ONCE at mount (line 46, `useState(profile)`) and is never resynced - there is no `useEffect` on `profile`. Because the draft and the live record are both plain `Profile`, `onUpdate(editedProfile)` on line 73 typechecks perfectly even though the draft is a stale snapshot, and `onUpdate` is a WHOLE-RECORD write (`ProfilePage.tsx` wires it to `updateProfile`, which is `profileRepo.update(next)` - every field is overwritten). CONCRETE FAILURE, entirely within this one screen: `<ThemeToggle />` is rendered on line 371; clicking it calls `useTheme().setTheme`, which at `useTheme.ts:36` does `await updateProfile({ ...profile, theme: next })` - persisting the new theme and pushing a new `profile` prop into `ProfileView`. `editedProfile` still holds the OLD theme. The user then clicks 'Edit Profile', changes the bio, clicks 'Save Profile' -> `handleSave()` writes the stale snapshot -> the theme silently reverts to whatever it was when the page mounted. Same clobber applies to `favoriteVoice` and `monthlyGoal` if anything else writes the profile while the view is open. This is durable data loss, not a render glitch - the reverted value is what lands in IndexedDB. BLAST RADIUS: the profile record; every consumer of `profile.theme` (the whole app's dark mode). FIX SHAPE: either make the update API a patch (`(patch: Partial<Profile>) => void`, merged against the live record at the repo) so a stale draft cannot carry unrelated fields, or brand the draft as a distinct nominal type so the compiler forces an explicit merge with the current profile at the save site. VERIFIED NEGATIVE for the classic `as Profile` trap: the edit form uses correct spreads (`{ ...editedProfile, monthlyGoal: ... }` on 239, `bio` on 261, `favoriteVoice` on 279) and no cast - the persisted record does conform to `Profile`. The defect is staleness, not shape.",
+      "evidence": "45:  const [isEditing, setIsEditing] = useState(false);\n46:  const [editedProfile, setEditedProfile] = useState(profile);\n...\n72:  const handleSave = () => {\n73:    onUpdate(editedProfile);\n74:    setIsEditing(false);\n75:  };\n...\n371:          <ThemeToggle />",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F07",
+      "category": "tsconfig-strictness-gap",
+      "severity": "High",
+      "file": "src/components/EReader.tsx",
+      "line": 395,
+      "title": "`pages[currentPage]` is typed `string` but can be `undefined`, crashing the reader on a whitespace-only deep dive",
+      "description": "`noUncheckedIndexedAccess` is off, so `pages[currentPage]` (line 395) is typed `string` and satisfies `RenderFormattedContent`'s `content: string` prop (line 53) even when the index is out of range. The declared contract - `pages` is a non-empty `string[]` and `currentPage` is always in range - is enforced by nothing. PRODUCER CHAIN for an empty `pages`: `generateDetailedSummary` returns `text || 'Failed to generate detailed summary.'` (summarize.ts:97) - it guards the empty string but NOT a whitespace-only stream. A model response of `'\\n\\n  '` is truthy, so it is stored as `detailedSummary`; EReader's guard on line 183 (`!summary?.detailedSummary`) passes it through; lines 185-188 then `.split(/(?=## )/g).map(trim).filter(Boolean)` reduce it to `[]`. Now `pages.length === 0`, `pages[0]` is `undefined`, and `content.split('\\n')` on line 58 throws `TypeError: Cannot read properties of undefined (reading 'split')` - the reader route dies into the error boundary. The same empty-`pages` state also makes line 457 compute `((0 + 1) / 0) * 100 = Infinity`, emitting `style={{ width: 'Infinity%' }}`, and line 461 renders the literal text 'Infinity% Complete'. SECOND TRIGGER, same root: `currentPage` is never clamped against `pages.length`, so any shrink of the memo while the reader is mounted leaves the index dangling. BLAST RADIUS: the /book/:id/read route; the failure is durable because the bad `detailedSummary` is persisted, so re-opening the reader crashes again until the summary is regenerated. FIX SHAPE: enable `noUncheckedIndexedAccess` (this file and the two others in the lot would need ~7 sites touched, see L11-F08), and make the non-emptiness real - have the memo fall back to the placeholder page when `sections` is empty, and clamp `currentPage` into range.",
+      "evidence": "182:  const pages = useMemo(() => {\n183:    if (!summary?.detailedSummary) return ['No content available.'];\n185:    const sections = summary.detailedSummary\n186:      .split(/(?=## )/g)\n187:      .map((s) => s.trim())\n188:      .filter(Boolean);\n189:    return sections;\n...\n394:            <RenderFormattedContent\n395:              content={pages[currentPage]}",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F03",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/components/BookDetail.tsx",
+      "line": 452,
+      "title": "BookDetail reads the Summary's takeaway while BookCard reads the denormalised copy, and they visibly disagree",
+      "description": "The same fact is stored twice with different types and no invariant tying them: `Summary.oneSentenceTakeaway` is required `string` (types.ts:57) and `Book.oneSentenceTakeaway` is optional `string` (types.ts:48). BookDetail line 452 renders the Summary copy; `BookCard.tsx:89` renders the Book copy with a falsy fallback (`book.oneSentenceTakeaway ? ... : 'Not summarised yet'`). Nothing keeps them in sync: `book.oneSentenceTakeaway` is written ONLY at creation time (`AddBookModal.tsx:72`, `LibraryPage.tsx:92`), and `saveSummary` (useLibrary.tsx:78-88) syncs only `book.summaryId` back onto the book - never the takeaway. WHAT THE USER SEES: a book whose stored `oneSentenceTakeaway` is `''` (migrate.ts:125 writes exactly that for legacy records, and any imported backup can carry it) has a real Summary with `summaryId` set, yet its BookCard says 'Not summarised yet' in the library while opening it shows the genuine takeaway quoted in the orange panel - the library and the detail view contradict each other about the same book. The optional-vs-required typing is what permits it: the compiler cannot express 'if `summaryId` is set then `oneSentenceTakeaway` is a non-empty string'. FIX SHAPE: fold the denormalised fields into the tagged union proposed in L11-F02 so they can only be absent together, and have `saveSummary` write the takeaway back onto the Book whenever the Summary changes. Note the denormalisation itself is deliberate (CLAUDE.md) and should be kept - only the sync and the typing need fixing.",
+      "evidence": "451:            <p className=\"text-xl font-serif text-orange-900 italic leading-relaxed\">\n452:              {summary ? `\"${summary.oneSentenceTakeaway}\"` : ''}\n453:            </p>\n\n-- src/components/BookCard.tsx:89 (other side of the disagreement):\n89:          {book.oneSentenceTakeaway ? `\"${book.oneSentenceTakeaway}\"` : 'Not summarised yet'}\n\n-- src/features/library/useLibrary.tsx:82-83 (syncs summaryId only):\n82:      if (book && book.summaryId !== summary.id) {\n83:        await bookRepo.update({ ...book, summaryId: summary.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F05",
+      "category": "type-assertion-as-T",
+      "severity": "Medium",
+      "file": "src/components/ProfileView.tsx",
+      "line": 116,
+      "title": "`e.target?.result as string` erases three real possibilities from FileReader's result",
+      "description": "`ProgressEvent.target` is `EventTarget | null` and `FileReader.result` is `string | ArrayBuffer | null`, so the expression's honest type is `string | ArrayBuffer | null | undefined`. The `as string` tells the compiler all four cases are one. On the happy path `readAsText` does produce a string, but on an aborted or failed read `result` is `null`, and `JSON.parse(null)` coerces to the string `'null'` and returns `null` - so `data` is `null`, line 119's `data.books` throws `TypeError: Cannot read properties of null`, and the user gets the generic 'Could not read that backup file.' message with no indication the read itself failed. The assertion is currently masked by the surrounding catch rather than being correct, and it is the same cast that feeds the unvalidated write in L11-F04. FIX SHAPE: narrow instead of assert - `const result = e.target?.result; if (typeof result !== 'string') { toast.error(...); return; }` - which costs two lines and removes both the lie and the misleading error message.",
+      "evidence": "113:    const reader = new FileReader();\n114:    reader.onload = async (e) => {\n115:      try {\n116:        const content = e.target?.result as string;\n117:        const data = JSON.parse(content) as LibraryExport;\n...\n142:    reader.readAsText(file);",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F08",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "src/components/BookDetail.tsx",
+      "line": 71,
+      "title": "Unchecked-indexed-access cluster: 7 sites across the lot typed `string` where the runtime can yield `undefined`",
+      "description": "CLUSTER, reported once rather than seven times because the cause is a single tsconfig flag. With `noUncheckedIndexedAccess` off, every array/regex index in these three files is typed as if it always hits. Sites: BookDetail.tsx:71 `headerMatch[1].length` and 72 `headerMatch[2]`; EReader.tsx:71 `(trimmed.match(/^#+/) || [''])[0].length`, 130 `const [num, ...rest] = trimmed.split('.')`, 141 `trimmed.charAt(0)`; ProfileView.tsx:80 `.map((n) => n[0])`. Every one of these is currently SAFE by construction - the regex groups are non-optional and guarded by a preceding `startsWith` test, `split` always returns at least one element, and `Array.prototype.join` stringifies `undefined` to `''` so `getInitials('')` yields `''` rather than throwing. They are listed as the migration cost of turning the flag on, not as live bugs. The one site in this lot that is a live bug is EReader.tsx:395 (L11-F07), which the same flag would have caught at the keystroke. FIX SHAPE: enable `noUncheckedIndexedAccess`, fix EReader.tsx:395 properly, and satisfy these six with non-null-safe narrowing (`?? ''`, destructuring defaults) rather than `!`. Effort is small in this lot but the flag is repo-wide, so cost must be measured across all of `src` before enabling.",
+      "evidence": "69:        const headerMatch = trimmed.match(/^(#{1,6})\\s+(.*)/);\n70:        if (headerMatch) {\n71:          const level = headerMatch[1].length;\n72:          const content = headerMatch[2];\n\n-- src/components/EReader.tsx:70-71:\n70:        if (trimmed.startsWith('#')) {\n71:          const level = (trimmed.match(/^#+/) || [''])[0].length;\n\n-- src/components/ProfileView.tsx:79-80:\n79:      .split(' ')\n80:      .map((n) => n[0])",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F09",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/components/BookDetail.tsx",
+      "line": 199,
+      "title": "Blob MIME type is a bare `string` carried from storage into `window.open` with no check",
+      "description": "`StoredBlob.type` is declared `string` (types.ts:79) and is whatever `blob.type` happened to be at upload (repo.ts:138). `blobs.get` reconstructs `new Blob([record.bytes], { type: record.type })` (repo.ts:144) - so the returned `Blob` carries an unvalidated MIME string that the type system says nothing about. BookDetail line 197-200 asks for the `'pdf'` blob and hands the resulting object URL to `window.open`. If the stored `type` is `''` (which happens for any `File` the browser could not sniff) or anything other than `application/pdf`, the browser does not render the PDF in a tab - it downloads it or opens a blank tab, and the 'Open Original PDF' button appears broken with no error. The `BlobKind` discriminator (`'pdf' | 'audio-short' | 'audio-long'`) is a proper literal union and IS correctly used at the call site, but it is not connected to the MIME string, so the two can disagree freely. VERIFIED NEGATIVE on the null path: `blobs.get` honestly returns `Blob | undefined` and line 198 handles it with an early return - no cast, no `!`. FIX SHAPE: type the MIME as a small literal union (or brand it) keyed off `BlobKind`, and set it from the kind rather than trusting the uploaded file's sniffed type. Separately worth noting (not a type finding): the object URLs created on lines 160 and 199 are never revoked, so each audio generation and each PDF open leaks a blob for the lifetime of the document.",
+      "evidence": "195:  const handleOpenPdf = async () => {\n196:    if (!book.hasPdf) return;\n197:    const pdf = await blobs.get(book.id, 'pdf');\n198:    if (!pdf) return;\n199:    const url = URL.createObjectURL(pdf);\n200:    window.open(url, '_blank');\n\n-- src/lib/storage/repo.ts:144 (producer, unvalidated MIME):\n144:    return record ? new Blob([record.bytes], { type: record.type }) : undefined;",
+      "confidence": "high"
+    },
+    {
+      "id": "L11-F10",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/components/ProfileView.tsx",
+      "line": 53,
+      "title": "`monthlyGoal: number` permits 0 and NaN, producing `strokeDasharray=\"NaN, 100\"`",
+      "description": "`Profile.monthlyGoal` is a bare `number` (types.ts:21) where the domain is 'a positive integer'. Line 53 divides by it unguarded: `Math.min(100, (finishedCount / profile.monthlyGoal) * 100)`. A `monthlyGoal` of 0 makes the expression `Infinity` when any book is finished and `NaN` when none are, and line 209 then emits `strokeDasharray={`${NaN}, 100`}` - an invalid SVG attribute that the browser rejects with a console error and a mis-rendered progress ring. The write side is equally unbranded: line 239 stores `parseInt(e.target.value)`, whose TypeScript type is `number` but whose runtime range includes `NaN`. Reachability is low today - `profiles.create` defaults to 4 (repo.ts:21) and the range input is `min=\"1\"` - but nothing prevents a 0 or a NaN arriving from the unvalidated backup import (L11-F04) or a migrated legacy record, and once written it is durable. FIX SHAPE: brand it as a positive integer validated at the repo boundary, or at minimum guard the division with a sensible floor at the read site.",
+      "evidence": "52:    const finishedCount = books.filter((b) => b.status === 'Finished').length;\n53:    const progressPercent = Math.min(100, (finishedCount / profile.monthlyGoal) * 100);\n...\n209:                strokeDasharray={`${stats.progressPercent}, 100`}\n...\n238:                onChange={(e) =>\n239:                  setEditedProfile({ ...editedProfile, monthlyGoal: parseInt(e.target.value) })",
+      "confidence": "high"
+    }
+  ],
+  "fileDensity": [
+    {
+      "file": "src/components/ProfileView.tsx",
+      "lines": 439,
+      "typeAssertions": 2,
+      "nonNullAssertions": 0,
+      "weakExports": 0,
+      "weightedScore": 34.2
+    },
+    {
+      "file": "src/components/BookDetail.tsx",
+      "lines": 539,
+      "typeAssertions": 1,
+      "nonNullAssertions": 2,
+      "weakExports": 0,
+      "weightedScore": 29.7
+    },
+    {
+      "file": "src/components/EReader.tsx",
+      "lines": 477,
+      "typeAssertions": 1,
+      "nonNullAssertions": 0,
+      "weakExports": 0,
+      "weightedScore": 8.4
+    }
+  ]
+}

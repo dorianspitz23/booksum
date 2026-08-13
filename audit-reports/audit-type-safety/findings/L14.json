@@ -1,0 +1,163 @@
+{
+  "lotId": "L14",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T00:00:00.000Z",
+  "filesScanned": 8,
+  "findingCount": 14,
+  "findings": [
+    {
+      "id": "L14-F01",
+      "category": "non-null-assertion",
+      "severity": "Critical",
+      "file": "src/app/routing.test.tsx",
+      "line": 47,
+      "title": "Routing test drives an unsummarised book to its detail page and stops one click short of the summary! crash",
+      "description": "routing.test.tsx is the ONLY test in the repo that mounts the real BookDetail through the router (App.tsx:32-36 -> AppRoutes -> BookDetailPage.tsx:40 -> BookDetail). Its fixture book (lines 12-22) is created with NO summaryId, so useBookRoute.ts:21 resolves summary to undefined and BookDetail receives summary={undefined}. BookDetailProps declares `summary: Summary | undefined` (BookDetail.tsx:119), but the Chat and Quiz buttons are gated ONLY on `!isPreview` (BookDetail.tsx:337) -- isPreview is not passed by BookDetailPage, so it is undefined/falsy and both buttons always render. BookDetail.tsx:534/536 then pass `summary!` into ChatModal/QuizModal, which both declare `summary: Summary` as REQUIRED (ChatModal.tsx:11). The non-null assertion is a lie for every Goodreads-imported (unsummarised) book. ChatModal.tsx:36-38 calls createBookChatSession(book, summary) inside a useEffect with no try/catch; chat.ts:15 forwards it to prompts.ts:61 which dereferences `summary.oneSentenceTakeaway` -> TypeError, rethrown as an AiError from inside a useEffect, which React escalates to the route ErrorBoundary and blanks the app. The test navigates to exactly that screen (line 51) and then asserts ONLY `window.location.pathname` (line 53) -- it never asserts the detail page rendered and never clicks Chat or Quiz. UNTESTED PRODUCTION BEHAVIOUR: the entire unsummarised-book detail surface, i.e. the default state of every book a user imports from Goodreads.",
+      "evidence": "12   const book = await books.create({\n13     profileId: profile.id,\n14     title: 'Atomic Habits',\n...  (no summaryId, no oneSentenceTakeaway -> summary resolves to undefined)\n47   it('navigates to a book and puts its id in the URL', async () => {\n48     const { book } = await seedAndRender();\n49     await waitFor(() => expect(screen.getByText('Atomic Habits')).toBeInTheDocument());\n50\n51     await userEvent.click(screen.getByText('Atomic Habits'));\n52\n53     await waitFor(() => expect(window.location.pathname).toBe(`/book/${book.id}`));",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F02",
+      "category": "unknown-misuse",
+      "severity": "High",
+      "file": "src/app/routing.test.tsx",
+      "line": 94,
+      "title": "No test navigates to an unmatched URL, so useRouteError()'s unnarrowed unknown silently turns every 404 into a generic error",
+      "description": "The suite's only negative-path test covers `/book/does-not-exist` (line 95) -- a URL that DOES match the `book/:id` route and is redirected by useBookRoute.ts:17-19. No test ever visits a URL with no matching route. routes.tsx:12-26 declares no catch-all `path: '*'`, so react-router throws its own 404 object. ErrorBoundary.tsx:5-6 receives it from `useRouteError()`, whose declared return type is `unknown`, and narrows with a single `error instanceof Error` check. react-router 8's ErrorResponseImpl does NOT extend Error, so that branch never taken and every unmatched URL renders the generic fallback string 'An unexpected error occurred.' under the heading 'Something went wrong' instead of a not-found page. This is the permanent-`unknown` pattern: an unknown crossing a boundary, narrowed once, with the residual arm silently swallowed (`isRouteErrorResponse` is the library-provided tag check that is not used). UNTESTED PRODUCTION BEHAVIOUR: every typo'd or stale URL a user or a search engine hits.",
+      "evidence": "94   it('redirects an unknown book id back to the library', async () => {\n95     window.history.pushState({}, '', '/book/does-not-exist');\n96     await seedAndRender();\n97     await waitFor(() => expect(window.location.pathname).toBe('/'));\n98   });\n--- src/app/ErrorBoundary.tsx ---\n5   const error = useRouteError();\n6   const message = error instanceof Error ? error.message : 'An unexpected error occurred.';",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F03",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/features/library/useLibrary.test.tsx",
+      "line": 84,
+      "title": "saveSummary is called by zero tests and the one summary test never asserts the denormalised Book fields",
+      "description": "Two gaps in one test. (a) `saveSummary` -- the function BookDetailPage.tsx:46 actually calls when an AI summary is generated -- is invoked by NO test in this file; every summary path here goes through `addBook(draft, { summary })` instead. (b) The one summary test asserts `summary?.oneSentenceTakeaway` read back from the summaries store (line 101) and `record.summaryId` (line 102), but never asserts the Book's own denormalised `oneSentenceTakeaway` or `readingTimeMinutes`. The `draft()` fixture (lines 30-39) hard-codes `readingTimeMinutes: 12` and omits `oneSentenceTakeaway` entirely -- legal only because types.ts:48 declares it optional -- so the persisted Book sits in the exact state the types.ts:41-48 doc comment says cannot exist: a book carrying a summaryId with no takeaway. Because the fixture pre-seeds a non-zero readingTimeMinutes, a 0 would never show either. Book is an untagged bag: `summaryId?`, `oneSentenceTakeaway?` and `readingTimeMinutes` are independent fields, so the compiler cannot require the denormalised pair when summaryId is present. useLibrary.tsx:82-83 writes only `{ ...book, summaryId: summary.id }` and never the pair, and BookCard.tsx:89/95 renders 'Not summarised yet' and '0 min read' for precisely that state. A discriminated Book (unsummarised | summarised with required takeaway + readingTime) would make the omission a compile error. UNTESTED PRODUCTION BEHAVIOUR: the entire generate-summary-then-return-to-library flow.",
+      "evidence": "30 const draft = (title = 'Atomic Habits') => ({\n...\n36   readingTimeMinutes: 12,        // fixture pre-seeds this, so a 0 can never surface\n...  (no oneSentenceTakeaway key at all)\n84   it('writes an attached summary and reads it back', async () => {\n...\n100     const summary = await api.getSummary(created.id);\n101     expect(summary?.oneSentenceTakeaway).toBe('Small changes compound.');\n102     expect((await bookRepo.get(created.id))?.summaryId).toBe(summary?.id);\n--- useLibrary.tsx:82-83 (never covered) ---\n82       if (book && book.summaryId !== summary.id) {\n83         await bookRepo.update({ ...book, summaryId: summary.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F04",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/features/library/useLibrary.test.tsx",
+      "line": 11,
+      "title": "The isLoading flag is only ever waited through, never asserted, so the false empty state on cold load is invisible",
+      "description": "`LibraryApi = ReturnType<typeof useLibraryState>` (useLibrary.tsx:185) is an untagged bag: `books: Book[]` and `isLoading: boolean` are independent fields, so `const { books } = useLibrary()` compiles cleanly while books is still the initial `[]` (useLibrary.tsx:19-20). Both test Probes (useLibrary.test.tsx:11-14 and goodreadsImport.test.tsx:17-20) render `api.isLoading ? 'loading' : books.length`, then `renderLibrary()` (line 26 here, line 32 there) waits past the loading window with `waitFor(...toHaveTextContent('0'))` and every subsequent assertion is against settled state. No test asserts isLoading === true at any point, and no test mounts a real consumer during the loading window. Of the seven production useLibrary() call sites, only useBookRoute.ts:10 reads isLoading -- LibraryPage.tsx:18, StatsPage.tsx:6, ProfilePage.tsx:9 and AppShell.tsx:27 destructure `{ books }` alone. LibraryPage.tsx:194-206 therefore renders the 'Your library is quiet' empty state on every cold load until IndexedDB resolves. A discriminated union ({ status: 'loading' } | { status: 'ready'; books: Book[] }) would turn each of those four call sites into a compile error. UNTESTED PRODUCTION BEHAVIOUR: what any consumer renders before the first IndexedDB read completes.",
+      "evidence": "11 function Probe() {\n12   api = useLibrary();\n13   return <p data-testid=\"count\">{api.isLoading ? 'loading' : String(api.books.length)}</p>;\n14 }\n...\n26   await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('0'));\n--- src/features/library/LibraryPage.tsx:18 (consumer that ignores isLoading) ---\n18   const { books, addBook, getSummary } = useLibrary();\n--- src/features/library/LibraryPage.tsx:200 ---\n200            Your library is quiet",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F05",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/features/review/reviewQueue.test.tsx",
+      "line": 144,
+      "title": "The suite's only options: [] card is built to be cascade-deleted, never mounted in the queue",
+      "description": "`ReviewCard.options: string[]` (types.ts:88) permits the empty array, and newCard() (srs.ts:22-36) copies it straight through with no non-empty check -- nothing at the type level distinguishes an answerable card from an unanswerable one. The shared `seedCard` helper (lines 17-27) always builds `options: ['a','b','c','d']`, so every card that actually reaches the queue in this suite is well-formed. The ONE card in the file with `options: []` is constructed at lines 144-153 solely so the following two lines can assert it was cascade-deleted with its book -- it is never mounted, never surfaced as `current`, never graded. That fixture is the exact shape that deadlocks a session: ReviewPage.tsx:93 maps `current.options` to the answer buttons, ReviewPage.tsx:75 derives `isAnswered` from `selected !== null`, and ReviewPage.tsx:125-145 renders the grade buttons only when isAnswered. With zero options no button exists, `selected` stays null, grade() is unreachable, useReviewQueue.ts:38-39 never advances the queue, and repo.listDue returns the same card at the head after every reload -- permanently blocking every card behind it. UNTESTED PRODUCTION BEHAVIOUR: any quiz whose generated question came back with no options (the AI response is not shape-validated).",
+      "evidence": "17 async function seedCard(profile: Profile, question: string, dueAt?: string) {\n18   const card = newCard({\n21     options: ['a', 'b', 'c', 'd'],     // every queue test uses a well-formed card\n...\n144     await reviewCards.upsert(\n145       newCard({\n148         question: 'Goes away',\n149         options: [],                   // the one empty-options card, only ever deleted\n...\n155     await bookRepo.remove(book.id);\n157     await expect(reviewCards.listByProfile(profile.id)).resolves.toHaveLength(0);",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F06",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/features/library/goodreadsImport.test.tsx",
+      "line": 9,
+      "title": "The only CSV fixture is a canonical Goodreads header, so the parser's silent-coercion path for foreign CSVs is untested",
+      "description": "The suite's single CSV literal (lines 9-13) carries a perfect Goodreads header, so parseGoodreadsCsv is only ever exercised on input it was designed for. The parser resolves columns via `header.indexOf(name)` (goodreads.ts:82-90) and `cell(index)` returns '' when index === -1 (goodreads.ts:96), so a foreign CSV that merely has a `title` column parses as a clean success: `author` silently becomes 'Unknown' (goodreads.ts:109), `toStatus('')` returns 'Want to Read' for every row (goodreads.ts:74-76), rating collapses to 0 (line 111), isbn13 to undefined, and `skipped` stays 0. The declared return type `GoodreadsRow[]` with `status: BookStatus` claims validated domain data that the parser never validated -- the type is fiction for any non-Goodreads file. GoodreadsImport.tsx:85-90 then reports 'N books found / 0 finished, N to read' with no warning, and useLibrary.tsx:150-160 lands all N. No test in this file (or in lib/goodreads.test.ts's sibling scope) feeds a CSV with a Title column but no Author/Exclusive Shelf column. UNTESTED PRODUCTION BEHAVIOUR: a Calibre/StoryGraph/LibraryThing export dumping thousands of books authored 'Unknown', all marked 'Want to Read', behind a clean-looking preview.",
+      "evidence": " 9 const CSV = [\n10   'Book Id,Title,Author,My Rating,Exclusive Shelf,ISBN13,Date Read',\n11   '1,Atomic Habits,James Clear,5,read,=\"9780735211292\",2026/02/01',\n12   '2,Deep Work,Cal Newport,0,to-read,=\"\",',\n13 ].join('\\n');\n--- src/lib/goodreads.ts:96,109 ---\n96     const cell = (index: number) => (index >= 0 ? (cells[index] ?? '').trim() : '');\n109       author: cell(authorAt) || 'Unknown',",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F07",
+      "category": "untyped-public-function",
+      "severity": "Medium",
+      "file": "src/features/review/reviewQueue.test.tsx",
+      "line": 10,
+      "title": "The probe binds to an inferred hook contract in which current: queue[0] is typed ReviewCard, not ReviewCard | undefined",
+      "description": "`let api: ReturnType<typeof useReviewQueue>` inherits whatever the hook infers, and useReviewQueue (useReviewQueue.ts:8) declares no return type. Its `current: queue[0]` (useReviewQueue.ts:46) therefore infers as `ReviewCard`, not `ReviewCard | undefined`, because noUncheckedIndexedAccess is off -- the hook's public contract states that a card always exists, which is false the moment the queue empties (which is the normal end of every session, and the state asserted at lines 65 and 91). The test itself proves the type is wrong: lines 56, 77 and 128 all write `api.current?.question` with an optional chain the compiler considers unnecessary. A consumer that trusts the declared type and writes `current.question` compiles and crashes on the empty queue; ReviewPage.tsx:52 happens to guard with `if (!current)` but nothing in the type system requires that and no test would catch a consumer that omits it. The same untyped-return pattern applies to useLibraryState (useLibrary.tsx:17, re-exported as LibraryApi at line 185) and useTheme (useTheme.ts:14). Fix shape: annotate the hook's return with an explicit interface declaring `current: ReviewCard | undefined`.",
+      "evidence": "10 let api: ReturnType<typeof useReviewQueue>;\n...\n56     expect(api.current?.question).toBe('What is a habit stack?');   // ?. on a type that says non-optional\n...\n128     await waitFor(() => expect(api.current?.question).toBe('Second'));\n--- src/features/review/useReviewQueue.ts:44-48 (no return type annotation) ---\n44   return {\n45     queue,\n46     current: queue[0],        // inferred ReviewCard, actually ReviewCard | undefined\n47     remaining: queue.length,",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F08",
+      "category": "non-null-assertion",
+      "severity": "Medium",
+      "file": "src/features/profile/ProfileContext.test.tsx",
+      "line": 16,
+      "title": "selectProfile is wired behind a non-null assertion that would throw, and no test ever clicks it",
+      "description": "The probe wires `selectProfile(allProfiles[0]!.id)` behind a non-null assertion. That assertion is false in two of the file's own tests -- 'starts with no active profile' (lines 36-39) and 'ignores a stale persisted id' (lines 74-78) both leave allProfiles empty -- so the button would throw a TypeError if clicked. No test clicks it, which means selectProfile (ProfileContext.tsx:49-54) is exercised by zero tests, including its `if (!found) return` branch: selecting a profile that was deleted in another tab is a silent no-op with no UI feedback and no toast. Worse, `updateProfile` and `deleteProfile` -- 2 of the 8 members of ProfileContextValue (ProfileContext.tsx:9-18) -- are not even destructured by the probe (line 9), so deleteProfile's localStorage.removeItem side effect buried inside a setProfile state updater (ProfileContext.tsx:73-77), which React StrictMode double-invokes, is entirely untested. UNTESTED PRODUCTION BEHAVIOUR: profile switching, profile renaming/goal editing, and profile deletion including its cascade through repo.ts:36-38.",
+      "evidence": " 9   const { profile, allProfiles, isLoading, createProfile, selectProfile, signOut } = useProfile();\n...  (updateProfile and deleteProfile are never destructured)\n16       <button onClick={() => void selectProfile(allProfiles[0]!.id)}>select first</button>\n--- src/features/profile/ProfileContext.tsx:49-53 (zero coverage) ---\n49   const selectProfile = useCallback(async (id: string) => {\n50     const found = await profileRepo.get(id);\n51     if (!found) return;      // silent no-op, never exercised",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F09",
+      "category": "unknown-misuse",
+      "severity": "Medium",
+      "file": "src/features/settings/useTheme.test.tsx",
+      "line": 26,
+      "title": "vi.stubGlobal erases the matchMedia type, and the hand-built stub never fires a change event",
+      "description": "mockPrefersDark installs a hand-built matchMedia through vi.stubGlobal, whose value parameter is typed `unknown` -- TypeScript performs NO check that the stub satisfies `(query: string) => MediaQueryList`. The stub's `addEventListener: vi.fn()` records calls and never invokes the handler, so useTheme.ts:22-24 -- `const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches)` and the removeEventListener cleanup -- is dead code from this suite's point of view. Both 'system' tests (lines 61-71) set the preference BEFORE mount and assert the initial resolution from useState(systemPrefersDark) (useTheme.ts:17); nothing ever flips the preference while mounted. Compounding it, useTheme.ts:23-24 uses an optional call (`query.addEventListener?.(...)`), so if the stub -- or a real browser -- ever lacks that method the hook silently stops subscribing and every test still passes green. UNTESTED PRODUCTION BEHAVIOUR: a user on `theme: 'system'` who switches their OS between light and dark with the app open; the app should re-theme live and there is no test that it does.",
+      "evidence": "26 function mockPrefersDark(matches: boolean) {\n27   vi.stubGlobal(\n28     'matchMedia',\n29     vi.fn().mockImplementation((query: string) => ({\n30       matches,\n32       addEventListener: vi.fn(),      // never invokes the handler\n33       removeEventListener: vi.fn(),\n--- src/features/settings/useTheme.ts:22-24 (never reached) ---\n22     const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);\n23     query.addEventListener?.('change', onChange);",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F10",
+      "category": "non-null-assertion",
+      "severity": "Medium",
+      "file": "src/features/library/goodreadsImport.test.tsx",
+      "line": 55,
+      "title": "Optional chain over Array.find's Book | undefined makes the summaryId assertion vacuous",
+      "description": "`imported.find(...)` (line 53) returns `Book | undefined`, and the test then narrows with `?.` rather than proving the book exists. Line 55, `expect(atomic?.summaryId).toBeUndefined()`, PASSES when `atomic` itself is undefined -- i.e. if the Atomic Habits row were never imported at all, the assertion that it has no summary would still be green. This is the mirror-image of a non-null assertion: instead of lying that a value exists, the optional chain silently converts a type-level `| undefined` into a passing test. The only reason the suite still catches a missing book is the incidental `toHaveLength(2)` at line 51 and the fact that lines 56 and 60 use matchers that throw on undefined. Fix shape: `expect(atomic).toBeDefined()` first, then assert on a narrowed value, so the 'row not imported' failure mode reports as a failure rather than as a pass. Same optional-chain-over-index pattern in reviewQueue.test.tsx:93-96 and 110-111, where `const [stored] = ...` is then mixed inconsistently as `stored?.id` and `stored!.dueAt` on adjacent lines.",
+      "evidence": "53     const atomic = imported.find((b) => b.title === 'Atomic Habits');\n54     expect(atomic).toMatchObject({ status: 'Finished', rating: 5, readingTimeMinutes: 0 });\n55     expect(atomic?.summaryId).toBeUndefined();   // passes when atomic is undefined\n56     expect(atomic?.coverImageUrl).toContain('9780735211292');\n--- src/features/review/reviewQueue.test.tsx:93-96 (same pattern, mixed ?. and !) ---\n93     const [stored] = await reviewCards.listByProfile(profile.id);\n94     expect(stored?.id).toBe(seeded.id);\n95     expect(Date.parse(stored!.dueAt)).toBeGreaterThan(Date.now());",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F11",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/features/library/goodreadsImport.test.tsx",
+      "line": 99,
+      "title": "The 200-book scale test hand-builds rows and bypasses parseGoodreadsCsv, the only validation in the feature",
+      "description": "The 'imports a large library without any AI cost' test constructs 200 objects `{ title, author, status: 'Want to Read' as const, rating: 0 }` and passes them straight to api.importGoodreadsRows. They satisfy GoodreadsRow structurally only because isbn13 and dateRead are optional (goodreads.ts:8-9), so the fixture never crosses the parser -- the single place in the feature where junk could be rejected. The result is that the parser -> importer seam is only ever exercised with the 2 well-formed rows of the CSV literal, while the only scale coverage runs on pre-sanitised data. Two consequences go untested: (a) the ISBN branch, since all 200 rows omit isbn13 so `coverForIsbn(undefined)` (goodreads.ts:121-122) returns undefined and every book falls to `placeholderCover(title)` -- the openlibrary cover URL path is covered by exactly one row; (b) the dedupe key `title.trim().toLowerCase()|author.trim().toLowerCase()` (useLibrary.tsx:132-133), which is trivially satisfied by 200 distinct titles all authored 'Someone' -- no test covers rows whose titles differ only by case, whitespace or a trailing series suffix, which is the realistic duplicate shape in a real export. importGoodreadsRows also declares no validation of its own on the GoodreadsRow[] it accepts.",
+      "evidence": " 99   it('imports a large library without any AI cost', async () => {\n101     const many = Array.from({ length: 200 }, (_, i) => ({\n102       title: `Book ${i}`,\n103       author: 'Someone',\n104       status: 'Want to Read' as const,\n105       rating: 0,\n106     }));                       // structurally a GoodreadsRow; parseGoodreadsCsv never runs\n110       result = await api.importGoodreadsRows(many);\n113     expect(result.added).toBe(200);",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F12",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/components/ui/Dialog.test.tsx",
+      "line": 11,
+      "title": "DialogProps.size is a raw string interpolated into className, and no test ever passes a non-default value",
+      "description": "DialogProps declares `size?: string` (Dialog.tsx:11-12) for what is really a closed set of Tailwind max-width classes, and Dialog.tsx:35 interpolates it directly into the panel's className. Every render in this suite (lines 11, 64, 88) omits `size`, so the only value ever exercised is the 'max-w-xl' default. Two production callers pass real values that no test covers: ApiKeyDialog.tsx:38 (`size=\"max-w-lg\"`) and ConfirmDialog.tsx:43 (`size=\"max-w-md\"`). Because the parameter is a bare string, a typo ('max-w-x1'), a class Tailwind will purge, or an unrelated utility class all compile and silently render a full-width panel with no visual regression signal. Fix shape: narrow to a union of the permitted classes (or a semantic 'sm' | 'md' | 'lg' mapped internally), which turns every typo into a compile error and makes the closed set self-documenting.",
+      "evidence": " 7 function Harness({ onClose = vi.fn() }: { onClose?: () => void }) {\n11       <Dialog open title=\"Add a book\" onClose={onClose}>      // size never passed\n--- src/components/ui/Dialog.tsx:11-15,35 ---\n11   /** Tailwind max-width class for the panel. */\n12   size?: string;\n15 export function Dialog({ open, title, onClose, children, size = 'max-w-xl' }: DialogProps) {\n35         className={`relative w-full ${size} bg-white ...`}\n--- untested callers: ApiKeyDialog.tsx:38 size=\"max-w-lg\", ConfirmDialog.tsx:43 size=\"max-w-md\" ---",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F13",
+      "category": "generic-opportunity",
+      "severity": "Low",
+      "file": "src/features/settings/useTheme.test.tsx",
+      "line": 15,
+      "title": "The theme union is re-declared inline instead of importing ThemeChoice",
+      "description": "renderWithTheme's parameter re-states the literal union `'system' | 'light' | 'dark'` rather than importing ThemeChoice (useTheme.ts:5), which is itself `Profile['theme']` (types.ts:23). Three copies of the same union now exist. If a fourth theme is added to Profile, this helper keeps compiling (the narrower literal union is still assignable to what profiles.create accepts, repo.ts:16), the new value is silently untested, and nothing flags the divergence. The same duplication pattern would apply to any future test helper that re-types a domain union. Fix shape: `import type { ThemeChoice } from './useTheme'` and annotate the parameter with it, so adding a theme forces the helper (and any exhaustive switch on it) to be revisited.",
+      "evidence": "15 async function renderWithTheme(theme: 'system' | 'light' | 'dark') {\n16   const profile = await profiles.create({ name: 'Dorian', theme });\n--- src/features/settings/useTheme.ts:5 ---\n 5 export type ThemeChoice = Profile['theme'];\n--- src/types.ts:23 ---\n23   theme: 'system' | 'light' | 'dark';",
+      "confidence": "high"
+    },
+    {
+      "id": "L14-F14",
+      "category": "non-null-assertion",
+      "severity": "Low",
+      "file": "src/components/ui/toastStore.test.ts",
+      "line": 25,
+      "title": "Redundant non-null assertions on array indices mark a tsconfig gap the tests would then mask",
+      "description": "`const [a, b] = getToasts(); expect(a!.id).not.toBe(b!.id)` (lines 24-25) and `dismissToast(getToasts()[0]!.id)` (line 30) apply `!` to values the compiler already types as non-optional: noUncheckedIndexedAccess is off, so `getToasts()[0]` and a destructured element both infer as ToastMessage. The assertions are therefore no-ops that the type system does not need -- they signal the authors expected the flag to be on. The finding is forward-looking: these `!`s are pre-installed suppressions. If noUncheckedIndexedAccess is ever enabled (a change that would correctly surface the real lying-index type at useReviewQueue.ts:46, see L14-F07), this file and the same pattern at reviewQueue.test.tsx:95/112 will keep compiling silently instead of flagging that the tests assume a non-empty array. Fix shape: drop the redundant `!` now, or assert length first, so that enabling the flag produces an honest signal. Separately, the suite covers only the 'error' and 'success' arms of ToastKind; the 'info' arm is safe only because Toast.tsx:8 uses `Record<ToastKind, ...>`, which the compiler checks exhaustively.",
+      "evidence": "21   it('gives each toast a distinct id', () => {\n22     toast.success('one');\n23     toast.success('two');\n24     const [a, b] = getToasts();\n25     expect(a!.id).not.toBe(b!.id);      // ! is redundant under the current tsconfig\n...\n30     dismissToast(getToasts()[0]!.id);",
+      "confidence": "high"
+    }
+  ]
+}

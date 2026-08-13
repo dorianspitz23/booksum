@@ -1,0 +1,379 @@
+{
+  "auditType": "type-safety",
+  "createdAt": "2026-08-13T07:59:11.193Z",
+  "sourceFindings": "findings.json",
+  "sourceReport": "report.md",
+  "maxWaves": 15,
+  "sessionFindingsCeiling": 18,
+  "largestWaveFiles": 17,
+  "largestWaveFindings": 18,
+  "totals": {
+    "findings": 159,
+    "files": 68,
+    "waves": 12,
+    "sessions": 12,
+    "unscoped": 0
+  },
+  "waves": [
+    {
+      "wave": 1,
+      "id": "W1",
+      "severity": "critical",
+      "files": [
+        "src/components/BookDetail.tsx",
+        "src/components/ProfileView.tsx",
+        "src/components/ChatModal.tsx",
+        "src/lib/ai/chat.ts"
+      ],
+      "findingIds": [
+        "F002",
+        "F012",
+        "F059",
+        "F117",
+        "F118",
+        "F004",
+        "F014",
+        "F060",
+        "F120",
+        "F003",
+        "RT-F204",
+        "RT-F001",
+        "F076"
+      ],
+      "findingCount": 13,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/components/BookDetail.tsx`, `src/components/ProfileView.tsx`, `src/components/ChatModal.tsx`, `src/lib/ai/chat.ts`\n  - F002 (critical) src/components/BookDetail.tsx:534 — `summary!` on an optional prop crashes the app for every unsummarised book (2 sites: 534, 536)\n  - F012 (high) src/components/BookDetail.tsx:337 — Four independent encodings of 'is this book summarised?' leave three dead buttons and one empty section\n  - F059 (medium) src/components/BookDetail.tsx:452 — BookDetail reads the Summary's takeaway while BookCard reads the denormalised copy, and they visibly disagree\n  - F117 (low) src/components/BookDetail.tsx:71 — Unchecked-indexed-access cluster: 7 sites across the lot typed `string` where the runtime can yield `undefined`\n  - F118 (low) src/components/BookDetail.tsx:199 — Blob MIME type is a bare `string` carried from storage into `window.open` with no check\n  - F004 (critical) src/components/ProfileView.tsx:117 — Backup file JSON asserted straight to `LibraryExport` and written to IndexedDB with no validation\n  - F014 (high) src/components/ProfileView.tsx:46 — Stale edit-draft is typed identically to the live Profile, so saving silently reverts the theme\n  - F060 (low) src/components/ProfileView.tsx:116 — `e.target?.result as string` erases three real possibilities from FileReader's result\n  - F120 (low) src/components/ProfileView.tsx:53 — `monthlyGoal: number` permits 0 and NaN, producing `strokeDasharray=\"NaN, 100\"`\n  - F003 (critical) src/components/ChatModal.tsx:11 — ChatModal declares `summary: Summary` as required, forcing its only caller to pass `summary!` on a value that is genuinely `Summary | undefined`\n  - RT-F204 (medium) src/components/ChatModal.tsx:73 — Chat Message has no error variant, so a failure is rendered as if the assistant said it — and if the stream already emitted one chunk, the error is dropped entirely\n  - RT-F001 (critical) src/lib/ai/chat.ts:11 — createBookChatSession is typed as total but throws MissingKeyError; its only consumer calls it bare inside useEffect, so the no-key path replaces the whole app with the error boundary\n  - F076 (medium) src/lib/ai/chat.ts:35 — sendMessageStream returns `Promise<string>` that is silently empty on a blocked completion, leaving a permanently blank chat bubble\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 2,
+      "id": "W2",
+      "severity": "critical",
+      "files": [
+        "src/lib/storage/migrate.ts"
+      ],
+      "findingIds": [
+        "RT-F002",
+        "F007",
+        "F043",
+        "F044",
+        "F042",
+        "F096",
+        "F097",
+        "RT-F305"
+      ],
+      "findingCount": 8,
+      "spawnPrompt": "Apply these type-safety audit findings, located in this file: `src/lib/storage/migrate.ts`\n  - RT-F002 (critical) src/lib/storage/migrate.ts:80 — migrateLegacyData declares Promise<MigrationResult> but rejects on malformed legacy data; ProfileContext awaits it with no catch, so the app hangs on the loading spinner forever and re-duplicates data on every retry\n  - F007 (high) src/lib/storage/migrate.ts:58 — JSON.parse(raw) as T types arbitrary localStorage content as LegacyBook[] on the app-boot path\n  - F043 (high) src/lib/storage/migrate.ts:105 — Migration sets summaryId without the denormalised oneSentenceTakeaway, so every migrated book shows 'Not summarised yet'\n  - F044 (high) src/lib/storage/migrate.ts:110 — Legacy book fields are defaulted with ?? which guards nullish only, never type, then persisted as a typed Book\n  - F042 (medium) src/lib/storage/migrate.ts:94 — LegacyProfile declares current-app union types for unvalidated JSON, and those values are persisted as a typed Profile\n  - F096 (medium) src/lib/storage/migrate.ts:127 — keyInsights/actionableSteps defaulted with ?? [] are declared string[] but a non-array legacy value survives\n  - F097 (medium) src/lib/storage/migrate.ts:136 — base64ToBytes is handed a value only declared to be a string, on the unguarded boot path\n  - RT-F305 (medium) src/lib/storage/migrate.ts:54 — `readJson<T>` is a generic assertion factory: one `as T` that manufactures a fully-trusted type for every caller and hides from any `as`-grep\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - This file are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 3,
+      "id": "W3",
+      "severity": "high",
+      "files": [
+        "eslint.config.js",
+        "src/types.ts",
+        "src/app/AppShell.tsx",
+        "src/components/QuizModal.tsx",
+        "src/components/BookCard.tsx"
+      ],
+      "findingIds": [
+        "F008",
+        "F053",
+        "F050",
+        "F051",
+        "F052",
+        "F107",
+        "F103",
+        "F106",
+        "F108",
+        "F104",
+        "F105",
+        "F143",
+        "F009",
+        "F115",
+        "F015",
+        "F016",
+        "F017",
+        "F011"
+      ],
+      "findingCount": 18,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `eslint.config.js`, `src/types.ts`, `src/app/AppShell.tsx`, `src/components/QuizModal.tsx`, `src/components/BookCard.tsx`\n  - F008 (high) eslint.config.js:9 — ESLint runs only the non-type-aware typescript-eslint tier — every type-checked rule is inert\n  - F053 (medium) eslint.config.js:17 — no-non-null-assertion is not enabled — 12 unguarded `!` assertions, and nothing stops more being added\n  - F050 (high) src/types.ts:47 — Three independent Book fields encode the single fact \"is this book summarised\", and they disagree on how to spell \"no\"\n  - F051 (high) src/types.ts:98 — LibraryExport declares a fully-formed backup shape but is only ever produced by an unchecked cast of a user-supplied file\n  - F052 (high) src/types.ts:105 — QuizQuestion declares every field required but is populated by an unchecked cast of an LLM response\n  - F107 (high) src/types.ts:88 — ReviewCard.correctAnswerIndex has no type-level relation to options, and out-of-range LLM values are persisted permanently\n  - F103 (medium) src/types.ts:24 — ISO-8601 timestamps are bare strings whose format is load-bearing for sorting, and one is piped in unvalidated from localStorage\n  - F106 (medium) src/types.ts:51 — Book.hasPdf is a denormalised copy of blob-store existence that the caller must state twice, unchecked\n  - F108 (medium) src/types.ts:99 — LibraryExport.version is a literal tag that no consumer ever narrows on, so older backups import as v2\n  - F104 (low) src/types.ts:29 — Book/Summary/Profile/ReviewCard ids are all bare string, and one adjacent-line call site would silently swallow a swap\n  - F105 (low) src/types.ts:33 — Book.category is an unconstrained string fed by the LLM, while the Category enum declared right above it is dead code\n  - F143 (low) src/types.ts:105 — The quiz-question shape is declared three separate times across types.ts and srs.ts\n  - F009 (high) src/app/AppShell.tsx:49 — AiErrorKind narrowing is non-exhaustive and unguarded, so a referrer-blocked key never reaches the key dialog\n  - F115 (low) src/app/AppShell.tsx:70 — Indexed access is typed Book but is Book | undefined at runtime; the author's own guard is dead code per the types\n  - F015 (high) src/components/QuizModal.tsx:23 — QuizModal repeats the same required-`summary` lie; the `!` at the call site turns a missing summary into a bogus \"AI error\" toast\n  - F016 (high) src/components/QuizModal.tsx:52 — Unvalidated model JSON is persisted straight into IndexedDB as `ReviewCard`s, permanently poisoning the spaced-repetition queue\n  - F017 (medium) src/components/QuizModal.tsx:183 — `correctAnswerIndex` is used as an index into `options` with no bounds relationship in the type; an out-of-range index silently makes the quiz unwinnable\n  - F011 (high) src/components/BookCard.tsx:89 — \"Is this book summarised?\" is encoded three independent ways on `Book`; BookCard renders two of them and visibly contradicts itself\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 4,
+      "id": "W4",
+      "severity": "high",
+      "files": [
+        "src/features/library/useLibrary.tsx",
+        "src/features/library/GoodreadsImport.tsx",
+        "src/features/profile/ProfileContext.tsx",
+        "src/features/review/ReviewPage.tsx",
+        "src/lib/srs.ts",
+        "src/lib/base64.ts"
+      ],
+      "findingIds": [
+        "F022",
+        "F023",
+        "F069",
+        "RT-F201",
+        "F131",
+        "F019",
+        "F066",
+        "RT-F102",
+        "F071",
+        "F024",
+        "F072",
+        "F040",
+        "F092",
+        "F093",
+        "F037",
+        "F136"
+      ],
+      "findingCount": 16,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/features/library/useLibrary.tsx`, `src/features/library/GoodreadsImport.tsx`, `src/features/profile/ProfileContext.tsx`, `src/features/review/ReviewPage.tsx`, `src/lib/srs.ts`, `src/lib/base64.ts`\n  - F022 (high) src/features/library/useLibrary.tsx:102 — importLibrary declares `payload: LibraryExport` for an unvalidated user JSON file and persists each element unchecked\n  - F023 (medium) src/features/library/useLibrary.tsx:170 — useLibrary returns an untagged `{ books, isLoading }` bag, so `Book[]` cannot distinguish 'empty' from 'not loaded yet'\n  - F069 (medium) src/features/library/useLibrary.tsx:185 — The feature's entire public contract is inferred: `LibraryApi = ReturnType<typeof useLibraryState>`\n  - RT-F201 (medium) src/features/library/useLibrary.tsx:48 — addBook is the one site that mints a summary id and a book id together, and swapping them type-checks and leaves no runtime trace\n  - F131 (low) src/features/library/useLibrary.tsx:128 — The 'no active profile' precondition is unrepresentable in the mutators' return types, and is reported to the user as success\n  - F019 (high) src/features/library/GoodreadsImport.tsx:24 — CSV file boundary trusts any user-picked bytes: no MIME, size, or header-shape gate before persisting rows\n  - F066 (low) src/features/library/GoodreadsImport.tsx:15 — Import workflow held as three independent states, letting a failed pick import the previous file's rows\n  - RT-F102 (high) src/features/profile/ProfileContext.tsx:31 — The boot path treats the erased localStorage->IndexedDB migration as infallible; one throw wedges the app forever\n  - F071 (medium) src/features/profile/ProfileContext.tsx:10 — ProfileContextValue models loading and profile as independent fields, so the type permits acting on a null profile mid-load\n  - F024 (high) src/features/review/ReviewPage.tsx:93 — A persisted ReviewCard with an empty options array permanently deadlocks the review session\n  - F072 (high) src/features/review/ReviewPage.tsx:76 — correctAnswerIndex is never bounds-checked against options.length, so a card can be silently impossible to answer correctly\n  - F040 (high) src/lib/srs.ts:18 — correctAnswerIndex is a bare number taken straight from unvalidated LLM JSON and persisted forever\n  - F092 (low) src/lib/srs.ts:33 — dueAt is a bare string whose fixed-width-UTC-ISO invariant is unenforced, and two consumers compare it in incompatible ways\n  - F093 (low) src/lib/srs.ts:42 — scheduleCard declares a total return of ReviewCard but throws RangeError once ease/interval go non-finite; ease has a floor and no ceiling\n  - F037 (high) src/lib/base64.ts:5 — base64ToBytes declares a total (string) => Uint8Array but atob throws on any non-base64 input, and it is fed unvalidated localStorage JSON\n  - F136 (low) src/lib/base64.ts:17 — Redundant `bytes[i] as number` pre-suppresses exactly the check noUncheckedIndexedAccess would add\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 5,
+      "id": "W5",
+      "severity": "high",
+      "files": [
+        "src/lib/ai/schemas.ts",
+        "src/lib/ai/summarize.ts",
+        "src/lib/ai/errors.ts",
+        "src/lib/ai/quiz.ts",
+        "src/lib/ai/recommend.ts"
+      ],
+      "findingIds": [
+        "F031",
+        "F032",
+        "F079",
+        "F080",
+        "F034",
+        "F035",
+        "F033",
+        "RT-F010",
+        "F029",
+        "F028",
+        "RT-F308",
+        "F005",
+        "F030"
+      ],
+      "findingCount": 13,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/lib/ai/schemas.ts`, `src/lib/ai/summarize.ts`, `src/lib/ai/errors.ts`, `src/lib/ai/quiz.ts`, `src/lib/ai/recommend.ts`\n  - F031 (high) src/lib/ai/schemas.ts:3 — The Gemini responseSchema objects are the only shape enforcement and receive zero compile-time checking\n  - F032 (medium) src/lib/ai/schemas.ts:69 — QUIZ_SCHEMA leaves correctAnswerIndex as NUMBER and options unbounded, so the only enforcement layer permits ungradeable quizzes\n  - F079 (medium) src/lib/ai/schemas.ts:8 — `category` is an unconstrained STRING in the schema, a plain `string` in TS, and the allowed list exists only in prompt prose\n  - F080 (medium) src/lib/ai/schemas.ts:18 — `rating` and `readingTimeMinutes` carry their ranges only in description text and are persisted unvalidated\n  - F034 (high) src/lib/ai/summarize.ts:52 — `response.text || '{}'` erases a blocked or truncated completion, fabricating a complete-looking Book that gets persisted\n  - F035 (high) src/lib/ai/summarize.ts:99 — generateDetailedSummary returns a failure sentinel typed as `string`, which callers persist as a real summary\n  - F033 (medium) src/lib/ai/summarize.ts:36 — `?? []` / `|| 'fallback'` in toGenerated guard only nullish values, so a wrong-typed field is persisted and crashes every later read\n  - RT-F010 (medium) src/lib/ai/summarize.ts:22 — toGenerated promises a fully-formed Book and Summary but its `??` and `||` defaults only guard null/undefined, so a wrong-typed model field is persisted as a real summary\n  - F029 (high) src/lib/ai/errors.ts:53 — AiErrorKind is discriminated by substring-searching the SDK's opaque JSON error body, so key-restriction 403s are reported as content-safety blocks and rate limits as exhausted quota\n  - F028 (medium) src/lib/ai/errors.ts:40 — statusOf asserts an `unknown` caught value into an object and dereferences it, so toAiError throws a TypeError instead of returning an AiError for null/undefined\n  - RT-F308 (low) src/lib/ai/errors.ts:15 — `AiError.cause` is a permanent `unknown` with zero readers — captured at every failure, never narrowed, never surfaced\n  - F005 (high) src/lib/ai/quiz.ts:16 — Quiz JSON is cast to QuizQuestion[] with no runtime guard, then persisted to IndexedDB as ReviewCards\n  - F030 (high) src/lib/ai/recommend.ts:30 — Recommendations cast to a required-field type with no guard; a missing title throws inside the cover fallback and loses all six results\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 6,
+      "id": "W6",
+      "severity": "high",
+      "files": [
+        "src/lib/storage/repo.ts",
+        "src/lib/storage/db.ts"
+      ],
+      "findingIds": [
+        "F048",
+        "F046",
+        "F047",
+        "F049",
+        "F113",
+        "F114",
+        "RT-F107",
+        "F099",
+        "F100",
+        "F112",
+        "RT-F005",
+        "F094",
+        "F095"
+      ],
+      "findingCount": 13,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/lib/storage/repo.ts`, `src/lib/storage/db.ts`\n  - F048 (high) src/lib/storage/repo.ts:52 — books.create and summaries.upsert persist caller objects with no validation, and the backup-import path feeds them a user-picked file\n  - F046 (medium) src/lib/storage/repo.ts:8 — profiles.list() types getAll output from the DBSchema declaration and immediately calls a string method on it\n  - F047 (medium) src/lib/storage/repo.ts:44 — books read path returns DBSchema-declared Book[] with no runtime guard; numeric fields are consumed in arithmetic downstream\n  - F049 (medium) src/lib/storage/repo.ts:143 — blobs.get trusts record.bytes and record.type verbatim; a non-ArrayBuffer silently produces a corrupt Blob instead of an error\n  - F113 (medium) src/lib/storage/repo.ts:113 — summaries.getByBook returns an unverified index hit typed Summary, whose array fields are consumed without guards\n  - F114 (medium) src/lib/storage/repo.ts:138 — The stored MIME type is an unconstrained string, uncoupled from BlobKind, and is replayed into a same-origin blob: URL\n  - RT-F107 (medium) src/lib/storage/repo.ts:4 — crypto.randomUUID() is typed as always available but is secure-context-only; every id in the app depends on it\n  - F099 (low) src/lib/storage/repo.ts:31 — profiles.update and books.update write whatever the caller hands them, persisting NaN as a typed number\n  - F100 (low) src/lib/storage/repo.ts:126 — Every identifier in the persistence API is a bare string, including two adjacent methods that take different id kinds\n  - F112 (low) src/lib/storage/repo.ts:79 — reviewCards read path loads every row unvalidated and sorts on dueAt with a string method\n  - RT-F005 (high) src/lib/storage/db.ts:23 — getDb memoizes the promise before it settles and never clears it on rejection, so one transient IndexedDB open failure permanently poisons every Promise<T> in the repo for the rest of the session\n  - F094 (low) src/lib/storage/db.ts:9 — DBSchema value types promise every read row is a valid domain object, but IndexedDB validates nothing on the way out\n  - F095 (low) src/lib/storage/db.ts:11 — blobs store key is a composite `${bookId}:${kind}` but is declared plain string, identical to the by-book index key\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 7,
+      "id": "W7",
+      "severity": "medium",
+      "files": [
+        "tsconfig.json",
+        "src/app/routes.tsx",
+        "src/app/routing.test.tsx",
+        "src/app/ErrorBoundary.tsx",
+        "src/app/ShellContext.ts",
+        "src/components/AddBookModal.tsx"
+      ],
+      "findingIds": [
+        "F109",
+        "F110",
+        "F111",
+        "F144",
+        "F145",
+        "F146",
+        "F147",
+        "F055",
+        "F116",
+        "F001",
+        "F010",
+        "F054",
+        "F056",
+        "RT-F203",
+        "F057",
+        "F058",
+        "RT-F108"
+      ],
+      "findingCount": 17,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `tsconfig.json`, `src/app/routes.tsx`, `src/app/routing.test.tsx`, `src/app/ErrorBoundary.tsx`, `src/app/ShellContext.ts`, `src/components/AddBookModal.tsx`\n  - F109 (medium) tsconfig.json:8 — noUncheckedIndexedAccess is off — 10 real unchecked-index sites, several on rendered UI paths\n  - F110 (medium) tsconfig.json:8 — exactOptionalPropertyTypes is off — 9 sites write explicit `undefined` into `?:` fields persisted to IndexedDB\n  - F111 (medium) tsconfig.json:8 — noPropertyAccessFromIndexSignature is off, masking a lying `Record<string, string>` on the Google Books boundary\n  - F144 (low) tsconfig.json:8 — noImplicitOverride is off — one unmarked override in the AI error class hierarchy\n  - F145 (low) tsconfig.json:11 — Four zero-cost strictness flags are unset — they add 0 errors today but nothing locks the property in\n  - F146 (low) tsconfig.json:15 — skipLibCheck: true masks an unresolved module in the @google/genai type surface (legitimate, but undocumented)\n  - F147 (low) tsconfig.json:17 — Vitest and jest-dom globals are in the type scope of production source, not just tests\n  - F055 (medium) src/app/routes.tsx:12 — routeTable is exported with no RouteObject[] annotation, which disables excess-property checking on the whole route tree\n  - F116 (low) src/app/routes.tsx:19 — Route paths and param names are bare strings with no compile-time link to their navigation consumers\n  - F001 (medium) src/app/routing.test.tsx:47 — Routing test drives an unsummarised book to its detail page and stops one click short of the summary! crash\n  - F010 (medium) src/app/routing.test.tsx:94 — No test navigates to an unmatched URL, so useRouteError()'s unnarrowed unknown silently turns every 404 into a generic error\n  - F054 (medium) src/app/ErrorBoundary.tsx:6 — useRouteError() is unknown but is narrowed only by `instanceof Error`, so every 404 renders a generic message\n  - F056 (medium) src/app/ShellContext.ts:9 — handleAiError is typed total over `unknown` but throws on a null or undefined throwable\n  - RT-F203 (medium) src/components/AddBookModal.tsx:74 — AddBookModal gates `priority` on status but not `rating`, so every Want-to-Read book is persisted with a phantom rating of 4 that the export and the status toggle both treat as real\n  - F057 (low) src/components/AddBookModal.tsx:42 — `reader.result as string` asserts away `ArrayBuffer | null` at the PDF file boundary, then indexes the split result without a bounds check\n  - F058 (low) src/components/AddBookModal.tsx:91 — A file is accepted as \"a PDF\" on the strength of the browser-reported `File.type` alone, and the advertised 10MB limit is never enforced\n  - RT-F108 (low) src/components/AddBookModal.tsx:174 — A DOM select's string value is asserted into the Priority union that gets persisted and exported\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 8,
+      "id": "W8",
+      "severity": "medium",
+      "files": [
+        "src/components/AudioPlayer.tsx",
+        "src/components/EReader.tsx",
+        "src/components/StatsView.tsx",
+        "src/components/ui/useFocusTrap.ts",
+        "src/features/book/useBookRoute.ts",
+        "src/features/library/LibraryPage.tsx",
+        "src/features/library/goodreadsImport.test.tsx"
+      ],
+      "findingIds": [
+        "RT-F012",
+        "F148",
+        "RT-F306",
+        "F013",
+        "RT-F006",
+        "F061",
+        "F121",
+        "F063",
+        "F126",
+        "RT-F307",
+        "RT-F202",
+        "F067",
+        "F068",
+        "F128",
+        "F129",
+        "F018",
+        "F064"
+      ],
+      "findingCount": 17,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/components/AudioPlayer.tsx`, `src/components/EReader.tsx`, `src/components/StatsView.tsx`, `src/components/ui/useFocusTrap.ts`, `src/features/book/useBookRoute.ts`, `src/features/library/LibraryPage.tsx`, `src/features/library/goodreadsImport.test.tsx`\n  - RT-F012 (medium) src/components/AudioPlayer.tsx:50 — togglePlay ignores the Promise returned by play() — the same call is caught 21 lines above — and flips isPlaying unconditionally, so the UI shows Pause while nothing is playing\n  - F148 (low) src/components/AudioPlayer.tsx:64 — `HTMLMediaElement.duration` enters state as a plain `number` that can be `NaN` or `Infinity`, and is then both formatted and truthiness-tested\n  - RT-F306 (low) src/components/AudioPlayer.tsx:29 — `Promise.prototype.catch` contextually types its callback parameter as `any` — a second proven `noImplicitAny` escape hatch, from lib.es5\n  - F013 (medium) src/components/EReader.tsx:395 — `pages[currentPage]` is typed `string` but can be `undefined`, crashing the reader on a whitespace-only deep dive\n  - RT-F006 (medium) src/components/EReader.tsx:182 — pages is inferred string[] but .filter(Boolean) can yield an empty array, so pages[currentPage] is undefined while typed string and crashes RenderFormattedContent\n  - F061 (medium) src/components/StatsView.tsx:20 — `Book.rating: number` conflates \"unrated\" with \"rated 0\", so the average-rating stat is silently wrong for imported libraries\n  - F121 (low) src/components/StatsView.tsx:23 — `Record<string, number>` claims total key coverage; only a `|| 0` coercion saves the read of a key that does not exist yet\n  - F063 (medium) src/components/ui/useFocusTrap.ts:18 — `querySelectorAll<HTMLElement>` is an unchecked assertion over a runtime selector string in the app's shared focus trap\n  - F126 (low) src/components/ui/useFocusTrap.ts:25 — `document.activeElement as HTMLElement | null` asserts a `.focus()` method onto a base `Element`\n  - RT-F307 (low) src/components/ui/useFocusTrap.ts:47 — Index-site assertions that are no-ops today and would pre-suppress `noUncheckedIndexedAccess` tomorrow\n  - RT-F202 (medium) src/features/book/useBookRoute.ts:13 — useBookRoute returns a book and a summary as independent values, and every direct book-to-book navigation commits a render where the summary belongs to the previous book\n  - F067 (medium) src/features/library/LibraryPage.tsx:35 — localStorage recommendation cache is cast to a concrete shape and rendered without validation\n  - F068 (medium) src/features/library/LibraryPage.tsx:188 — LibraryPage renders the zero-books empty state during the initial load because it never reads `isLoading`\n  - F128 (low) src/features/library/LibraryPage.tsx:22 — The 'All' sentinel shares a value space with real, AI-generated category strings\n  - F129 (low) src/features/library/LibraryPage.tsx:56 — Priority score map typed `Record<string, number>` instead of `Record<Priority, number>`\n  - F018 (medium) src/features/library/goodreadsImport.test.tsx:9 — The only CSV fixture is a canonical Goodreads header, so the parser's silent-coercion path for foreign CSVs is untested\n  - F064 (low) src/features/library/goodreadsImport.test.tsx:55 — Optional chain over Array.find's Book | undefined makes the summaryId assertion vacuous\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 9,
+      "id": "W9",
+      "severity": "medium",
+      "files": [
+        "src/features/library/useLibrary.test.tsx",
+        "src/features/profile/ProfileContext.test.tsx",
+        "src/features/review/reviewQueue.test.tsx",
+        "src/features/review/useReviewQueue.ts",
+        "src/lib/goodreads.ts",
+        "src/lib/base64.test.ts",
+        "src/lib/ai/errors.test.ts",
+        "src/lib/ai/apiKey.test.ts",
+        "src/lib/ai/tts.ts"
+      ],
+      "findingIds": [
+        "F020",
+        "F021",
+        "F070",
+        "F025",
+        "F073",
+        "F074",
+        "F089",
+        "F090",
+        "RT-F008",
+        "F139",
+        "F140",
+        "F141",
+        "F036",
+        "F027",
+        "F077",
+        "F026",
+        "F081"
+      ],
+      "findingCount": 17,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/features/library/useLibrary.test.tsx`, `src/features/profile/ProfileContext.test.tsx`, `src/features/review/reviewQueue.test.tsx`, `src/features/review/useReviewQueue.ts`, `src/lib/goodreads.ts`, `src/lib/base64.test.ts`, `src/lib/ai/errors.test.ts`, `src/lib/ai/apiKey.test.ts`, `src/lib/ai/tts.ts`\n  - F020 (medium) src/features/library/useLibrary.test.tsx:11 — The isLoading flag is only ever waited through, never asserted, so the false empty state on cold load is invisible\n  - F021 (medium) src/features/library/useLibrary.test.tsx:84 — saveSummary is called by zero tests and the one summary test never asserts the denormalised Book fields\n  - F070 (medium) src/features/profile/ProfileContext.test.tsx:16 — selectProfile is wired behind a non-null assertion that would throw, and no test ever clicks it\n  - F025 (medium) src/features/review/reviewQueue.test.tsx:144 — The suite's only options: [] card is built to be cascade-deleted, never mounted in the queue\n  - F073 (low) src/features/review/reviewQueue.test.tsx:10 — The probe binds to an inferred hook contract in which current: queue[0] is typed ReviewCard, not ReviewCard | undefined\n  - F074 (medium) src/features/review/useReviewQueue.ts:46 — useReviewQueue has no return annotation, so `current` is inferred as a definite ReviewCard while the runtime returns undefined\n  - F089 (medium) src/lib/goodreads.ts:96 — Every CSV indexed access is typed as a definite value; the runtime guards are invisible to the compiler\n  - F090 (medium) src/lib/goodreads.ts:104 — CSV `My Rating` coerced with parseInt and stored unvalidated as an unbounded `number`\n  - RT-F008 (medium) src/lib/goodreads.ts:109 — parseGoodreadsCsv returns 'Unknown' and 0 as not-found sentinels typed as real author and rating values, and StatsView averages the 0s into the user's rating, silently deflating it\n  - F139 (low) src/lib/goodreads.ts:83 — `columnOf` returns a bare `number` hiding a `-1` not-found sentinel that no type can narrow\n  - F140 (low) src/lib/goodreads.ts:113 — `dateRead` is parsed and typed as `string` with no format contract, then silently discarded\n  - F141 (low) src/lib/goodreads.ts:121 — `isbn13` is an unvalidated bare `string` interpolated unencoded into a persisted cover URL\n  - F036 (medium) src/lib/base64.test.ts:4 — base64 suite has two happy-path tests only; base64ToBytes is total in its type but throws on the one input path it serves\n  - F027 (medium) src/lib/ai/errors.test.ts:4 — apiError fixture defaults its message to 'boom', so the 403 -> invalid-key assertion proves nothing\n  - F077 (medium) src/lib/ai/errors.test.ts:4 — No fixture passes a non-object to toAiError(error: unknown), which throws on null/undefined via an unguarded as-cast\n  - F026 (medium) src/lib/ai/apiKey.test.ts:1 — src/lib/ai ships 11 modules and 2 test files; every JSON.parse-as-T boundary is in the untested nine\n  - F081 (medium) src/lib/ai/tts.ts:27 — The audio part's mimeType is discarded and the PCM format is hardcoded, so a format change produces silently corrupt WAV\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 10,
+      "id": "W10",
+      "severity": "medium",
+      "files": [
+        "src/lib/covers/openLibrary.ts",
+        "src/lib/covers/googleBooks.ts",
+        "src/lib/storage/migrate.test.ts",
+        "src/lib/storage/repo.test.ts"
+      ],
+      "findingIds": [
+        "F086",
+        "F137",
+        "F085",
+        "F006",
+        "F041",
+        "F045",
+        "F098"
+      ],
+      "findingCount": 7,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/lib/covers/openLibrary.ts`, `src/lib/covers/googleBooks.ts`, `src/lib/storage/migrate.test.ts`, `src/lib/storage/repo.test.ts`\n  - F086 (medium) src/lib/covers/openLibrary.ts:6 — OpenLibrary search response asserted to `{ docs?: { cover_i?: number }[] }` without validation\n  - F137 (low) src/lib/covers/openLibrary.ts:8 — Truthy check on a numeric cover id conflates absent with zero\n  - F085 (medium) src/lib/covers/googleBooks.ts:12 — Google Books HTTP response asserted into a shape with zero runtime validation\n  - F006 (medium) src/lib/storage/migrate.test.ts:8 — Migration fixtures are always well-formed, so a throwing migration that permanently hangs boot is green\n  - F041 (medium) src/lib/storage/migrate.test.ts:96 — Migration test asserts summaryId but never the denormalised oneSentenceTakeaway it must move with\n  - F045 (medium) src/lib/storage/repo.test.ts:13 — The only books.create fixture cannot produce a fat record, so the 'no binary data in records' invariant is unguarded\n  - F098 (low) src/lib/storage/repo.test.ts:66 — The cascade test omits reviewCards, and the whole reviewCards store surface is untested\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 11,
+      "id": "W11",
+      "severity": "low",
+      "files": [
+        "src/components/DailyWisdomModal.tsx",
+        "src/components/ui/ConfirmDialog.tsx",
+        "src/components/ui/Dialog.tsx",
+        "src/components/ui/toastStore.test.ts",
+        "src/features/library/RecommendationCarousel.tsx",
+        "src/features/settings/useTheme.test.tsx",
+        "src/features/settings/useTheme.ts",
+        "src/features/stats/StatsPage.tsx",
+        "src/lib/contrast.ts",
+        "src/lib/download.test.ts",
+        "src/lib/download.ts",
+        "src/lib/goodreads.test.ts",
+        "src/lib/markdown.test.ts",
+        "src/lib/srs.test.ts",
+        "src/lib/ai/prompts.ts",
+        "src/lib/audio/wav.ts",
+        "src/lib/covers/index.test.ts"
+      ],
+      "findingIds": [
+        "F119",
+        "F062",
+        "F123",
+        "F124",
+        "F130",
+        "F075",
+        "F132",
+        "F133",
+        "F134",
+        "F083",
+        "F087",
+        "F138",
+        "F088",
+        "F039",
+        "F091",
+        "F078",
+        "F082",
+        "F038"
+      ],
+      "findingCount": 18,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/components/DailyWisdomModal.tsx`, `src/components/ui/ConfirmDialog.tsx`, `src/components/ui/Dialog.tsx`, `src/components/ui/toastStore.test.ts`, `src/features/library/RecommendationCarousel.tsx`, `src/features/settings/useTheme.test.tsx`, `src/features/settings/useTheme.ts`, `src/features/stats/StatsPage.tsx`, `src/lib/contrast.ts`, `src/lib/download.test.ts`, `src/lib/download.ts`, `src/lib/goodreads.test.ts`, `src/lib/markdown.test.ts`, `src/lib/srs.test.ts`, `src/lib/ai/prompts.ts`, `src/lib/audio/wav.ts`, `src/lib/covers/index.test.ts`\n  - F119 (low) src/components/DailyWisdomModal.tsx:71 — `coverImageUrl: string` doubles as a \"no cover\" sentinel that only BookCard knows about; DailyWisdomModal renders it raw\n  - F062 (low) src/components/ui/ConfirmDialog.tsx:19 — Pending-confirm state is split across a nullable state field and a nullable ref that the types never tie together, so `Promise<boolean>` can hang forever\n  - F123 (low) src/components/ui/Dialog.tsx:12 — `Dialog`'s `size` prop is a bare `string` where only a handful of Tailwind max-width classes are valid\n  - F124 (low) src/components/ui/toastStore.test.ts:25 — Redundant non-null assertions on array indices mark a tsconfig gap the tests would then mask\n  - F130 (low) src/features/library/RecommendationCarousel.tsx:12 — A recommendation title doubles as its identity for both the React key and the in-flight marker\n  - F075 (low) src/features/settings/useTheme.test.tsx:26 — vi.stubGlobal erases the matchMedia type, and the hand-built stub never fires a change event\n  - F132 (low) src/features/settings/useTheme.test.tsx:15 — The theme union is re-declared inline instead of importing ThemeChoice\n  - F133 (low) src/features/settings/useTheme.ts:16 — An unvalidated Profile.theme from IndexedDB is annotated into a three-literal union it may not belong to\n  - F134 (low) src/features/stats/StatsPage.tsx:6 — StatsPage destructures books without isLoading, so an unloaded library is typed identically to an empty one\n  - F083 (low) src/lib/contrast.ts:8 — relativeLuminance accepts any string and returns NaN or a plausible wrong number, defeating the project's own WCAG guardrail\n  - F087 (low) src/lib/download.test.ts:1 — download.test.ts covers only slugify; downloadText has no return annotation and cannot run under the current harness\n  - F138 (low) src/lib/download.ts:2 — downloadText takes three adjacent bare-string positional params, so swapping filename and contents compiles cleanly\n  - F088 (low) src/lib/goodreads.test.ts:95 — coverForIsbn is tested with one perfect ISBN and undefined, so unvalidated ISBN text becomes Book.coverImageUrl\n  - F039 (low) src/lib/markdown.test.ts:20 — Summary fixture always supplies real arrays, so the one consumer that would crash on an AI-shaped Summary is never exercised\n  - F091 (low) src/lib/srs.test.ts:97 — dueAt is a bare string compared numerically by isDue and lexically by repo.listDue, and nothing cross-checks them\n  - F078 (low) src/lib/ai/prompts.ts:39 — User-controlled book titles are interpolated raw into the prompt that defines the requested output shape\n  - F082 (low) src/lib/audio/wav.ts:12 — pcmToWavBlob stamps a hardcoded 24kHz/mono/16-bit header on unvalidated Gemini bytes while discarding the mimeType the API actually returns\n  - F038 (low) src/lib/covers/index.test.ts:5 — mockFetch types every API fixture as unknown, so no fixture is checked against the as-asserted response shapes\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    },
+    {
+      "wave": 12,
+      "id": "W12",
+      "severity": "low",
+      "files": [
+        "src/test/setup.ts",
+        "src/test/smoke.test.tsx"
+      ],
+      "findingIds": [
+        "F101",
+        "F102"
+      ],
+      "findingCount": 2,
+      "spawnPrompt": "Apply these type-safety audit findings, located in these files: `src/test/setup.ts`, `src/test/smoke.test.tsx`\n  - F101 (low) src/test/setup.ts:11 — setup.ts provides no typed fetch stub, so four hand-rolled stubs diverge from typeof fetch and one leaks across tests\n  - F102 (low) src/test/smoke.test.tsx:58 — The 'no Gemini call on boot' invariant is asserted by a for-loop that runs zero times when nothing is captured\n\nHow to run this wave (default — autonomous):\n  - Run this as an autonomous `/dev-pipeline --auto` pass in your own git worktree off\n    master. Drive it all the way to a ready-to-merge tag without stopping for check-ins —\n    autonomous is the default for a spawned fix-wave. Only run the gated, interactive\n    pipeline instead if the user explicitly asked to review each step.\n\nRules:\n  - These files are your PRIMARY scope — every finding below lives here. Fix each finding at\n    its ROOT CAUSE. If the real fix lives in ANOTHER file (a shared helper, type, index, or\n    test), edit that file too — do not leave a finding half-fixed, and do not paper over the\n    symptom at the cited site just to stay in scope.\n  - NOTE every file you touch OUTSIDE the list above in your final summary (path + one line\n    why), so the merge step can reconcile edits that cross wave boundaries. Keep out-of-scope\n    edits to what the fix genuinely needs — do not refactor beyond the finding.\n  - One commit per finding.\n  - After each commit, run this repo's typecheck and the tests covering the file you changed.\n  - If a finding no longer applies (code moved, already fixed), skip it and say why.\n  - Full description + evidence for each id live in findings.json."
+    }
+  ],
+  "unscoped": []
+}
