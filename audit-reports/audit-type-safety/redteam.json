@@ -1,0 +1,1203 @@
+{
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T17:16:48.777Z",
+  "classCount": 4,
+  "totalFindings": 35,
+  "novelFindingCount": 18,
+  "overlappingFindingCount": 17,
+  "byClass": {
+    "lying-types": 12,
+    "boundary-erasure": 9,
+    "union-and-brand-near-misses": 6,
+    "assertion-clusters-and-external-any": 8
+  },
+  "bySeverity": {
+    "critical": 4,
+    "high": 5,
+    "medium": 21,
+    "low": 5
+  },
+  "classesNotRun": {
+    "jsdoc-rot": "N/A - repo is 100% TypeScript, no JS-only modules",
+    "python-except-swallowing": "N/A - no Python in repo",
+    "mypy-pyright-ignore-lists": "N/A - no Python in repo",
+    "generated-types-out-of-sync": "N/A - no codegen step; nearest analogue (hand-written Gemini responseSchema) covered by F031/RT04"
+  },
+  "boundaryInventory": [
+    {
+      "channel": "JSON.parse",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 58,
+      "what": "Arbitrary legacy localStorage text -> `JSON.parse(raw) as T`, generic readJson<T> used for LegacyProfile and LegacyBook[] on the first-boot path",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F007"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/components/ProfileView.tsx",
+      "line": 117,
+      "what": "User-picked backup file text -> `as LibraryExport`, then merged into IndexedDB",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "F004"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 35,
+      "what": "localStorage recommendation cache -> `as { at: number; items: Recommendation[] }`, rendered by RecommendationCarousel",
+      "validated": "partial",
+      "covered": "no",
+      "coveredBy": "RT-F105"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/lib/ai/quiz.ts",
+      "line": 16,
+      "what": "Gemini quiz JSON -> `as { questions?: QuizQuestion[] }`, persisted as ReviewCards",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F005"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/lib/ai/recommend.ts",
+      "line": 30,
+      "what": "Gemini recommendations JSON -> `as { recommendations?: Omit<Recommendation,'coverUrl'>[] }`",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F030"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/lib/ai/summarize.ts",
+      "line": 52,
+      "what": "Gemini book JSON -> `as RawBookResponse` (search path)",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F034"
+    },
+    {
+      "channel": "JSON.parse",
+      "file": "src/lib/ai/summarize.ts",
+      "line": 73,
+      "what": "Gemini book JSON -> `as RawBookResponse` (PDF-upload path); identical twin of :52",
+      "validated": "none",
+      "covered": "partial",
+      "coveredBy": "F034 anchors line 52; the PDF-upload twin at 73 may or may not be one of the other 44"
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 55,
+      "what": "localStorage.getItem(key) raw read feeding readJson<T>",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F007"
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 67,
+      "what": "localStorage.key(i) enumeration to find `booksum_library_*` keys; `key?.startsWith(...)` guards the null",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 81,
+      "what": "MIGRATION_MARKER presence check; truthiness only, value never parsed",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/app/AppShell.tsx",
+      "line": 62,
+      "what": "Daily-wisdom last-seen date string; only ever `===` compared against new Date().toDateString()",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 32,
+      "what": "Raw recommendation-cache string before JSON.parse",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F105"
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/features/profile/ProfileContext.tsx",
+      "line": 37,
+      "what": "Active profile id; validated by construction (`list.find(p => p.id === storedId)`) and the stale key is removed. Correct pattern.",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "localStorage",
+      "file": "src/lib/ai/apiKey.ts",
+      "line": 10,
+      "what": "Gemini API key -> `new GoogleGenAI({ apiKey })`; trimmed and emptiness-checked, but never shape- or format-checked",
+      "validated": "partial",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/db.ts",
+      "line": 7,
+      "what": "THE ROOT DECLARATION. `BookSumDB extends DBSchema` declares every store's value as Profile/Book/Summary/StoredBlob/ReviewCard, which is what makes all ten idb reads in repo.ts type-safe-looking",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F101"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 8,
+      "what": "profiles.list() -> getAll('profiles') typed Profile[]; then `.sort((a,b) => a.createdAt.localeCompare(b.createdAt))` calls a string method on it",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 13,
+      "what": "profiles.get(id) -> Profile | undefined",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 44,
+      "what": "books.listByProfile -> getAllFromIndex('books','by-profile') typed Book[]; the primary feed for every list view",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 48,
+      "what": "books.get(id) -> Book | undefined",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 79,
+      "what": "reviewCards.listByProfile -> getAll('reviewCards') typed ReviewCard[]; feeds the SRS scheduler and the review UI",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster / F040"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 88,
+      "what": "listDue compares `card.dueAt <= cutoff` as a string; a non-ISO dueAt silently sorts wrong rather than erroring",
+      "validated": "none",
+      "covered": "partial",
+      "coveredBy": "repo.ts cluster covers the read; the ISO-string assumption specifically may not be"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 113,
+      "what": "summaries.getByBook -> getFromIndex('summaries','by-book') typed Summary | undefined",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 143,
+      "what": "blobs.get -> `new Blob([record.bytes], { type: record.type })`. Both fields unvalidated; a non-ArrayBuffer `bytes` yields a silent '[object Object]' blob (verified: size 15), and `type` flows into a script-capable sink",
+      "validated": "none",
+      "covered": "partial",
+      "coveredBy": "RT-F109 (the sink); the read itself is in the repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/lib/storage/repo.ts",
+      "line": 149,
+      "what": "blobs.removeByBook -> getAllKeysFromIndex('blobs','by-book') typed string[]",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "repo.ts cluster"
+    },
+    {
+      "channel": "indexeddb",
+      "file": "src/features/profile/ProfileContext.tsx",
+      "line": 31,
+      "what": "Boot path: awaits migrateLegacyData() (the localStorage->IndexedDB bridge) with no guard, then flips isLoading. Any throw from the erased boundary wedges the app permanently",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F102"
+    },
+    {
+      "channel": "fetch",
+      "file": "src/lib/covers/googleBooks.ts",
+      "line": 12,
+      "what": "Google Books API JSON -> `as { items?: { volumeInfo?: { imageLinks?: Record<string,string> } }[] }`, then `url.replace(...)` on the value. res.ok IS checked first",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "covers/* cluster"
+    },
+    {
+      "channel": "fetch",
+      "file": "src/lib/covers/openLibrary.ts",
+      "line": 6,
+      "what": "OpenLibrary API JSON -> `as { docs?: { cover_i?: number }[] }`, interpolated into a URL. res.ok IS checked first",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "covers/* cluster"
+    },
+    {
+      "channel": "file",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 90,
+      "what": "`e.target.files?.[0]`; MIME is checked (`=== 'application/pdf'`) but size is not, despite the UI promising a 10MB cap",
+      "validated": "partial",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "file",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 42,
+      "what": "`(reader.result as string).split(',')[1]` resolved into a `Promise<string>` and sent as Gemini inlineData.data",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F104"
+    },
+    {
+      "channel": "file",
+      "file": "src/components/ProfileView.tsx",
+      "line": 110,
+      "what": "`event.target.files?.[0]` for the backup-restore input; only null-checked",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "F004"
+    },
+    {
+      "channel": "file",
+      "file": "src/components/ProfileView.tsx",
+      "line": 116,
+      "what": "`e.target?.result as string` from FileReader.readAsText",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F004"
+    },
+    {
+      "channel": "file",
+      "file": "src/features/library/GoodreadsImport.tsx",
+      "line": 24,
+      "what": "`await file.text()` -> parseGoodreadsCsv. The parser is genuinely total: every cell access is `(cells[i] ?? '').trim()`, missing columns resolve to -1 and yield '', rating falls back to 0 on non-finite. Best-defended boundary in the app.",
+      "validated": "full",
+      "covered": "yes",
+      "coveredBy": "F019"
+    },
+    {
+      "channel": "file",
+      "file": "src/components/BookDetail.tsx",
+      "line": 199,
+      "what": "IndexedDB blob -> URL.createObjectURL -> window.open. The blob's MIME type is an unvalidated string read back out of IndexedDB",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F109"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/summarize.ts",
+      "line": 52,
+      "what": "`response.text || '{}'` — a blocked or truncated completion becomes a silent empty object rather than an error",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "F034"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/summarize.ts",
+      "line": 95,
+      "what": "`chunk.text ?? ''` over generateContentStream for the deep-dive summary",
+      "validated": "partial",
+      "covered": "partial",
+      "coveredBy": "summarize.ts cluster"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/chat.ts",
+      "line": 32,
+      "what": "`chunk.text ?? ''` over chat.sendMessageStream; concatenated into the rendered transcript",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "chat.ts cluster"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/tts.ts",
+      "line": 27,
+      "what": "`response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data` -> base64ToBytes -> atob. Presence is checked, base64 validity is not (atob throws DOMException on bad input, verified)",
+      "validated": "partial",
+      "covered": "yes",
+      "coveredBy": "tts.ts cluster / F037"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/errors.ts",
+      "line": 40,
+      "what": "`(error as { status?: unknown }).status` — an unguarded property read on `unknown` inside the app's universal error normaliser",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F106"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/errors.ts",
+      "line": 53,
+      "what": "AiErrorKind discriminated by substring-searching the SDK's opaque error message",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F029"
+    },
+    {
+      "channel": "gemini",
+      "file": "src/lib/ai/schemas.ts",
+      "line": 3,
+      "what": "responseSchema objects are plain untyped literals — nothing ties GENERIC_BOOK_SCHEMA's `required` list to RawBookResponse's optional fields",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F031"
+    },
+    {
+      "channel": "route-param",
+      "file": "src/features/book/useBookRoute.ts",
+      "line": 8,
+      "what": "`useParams<{ id: string }>()`. react-router 8.3.0 types this as Readonly<Partial<...>>, so `id` is `string | undefined`; it is only ever `===` compared and an unknown id redirects home. Honest boundary.",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "route-param",
+      "file": "src/app/AppShell.tsx",
+      "line": 45,
+      "what": "`location.pathname.endsWith('/read')` drives the full-bleed reader chrome; string-only, no parsing",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "route-param",
+      "file": "src/app/ErrorBoundary.tsx",
+      "line": 5,
+      "what": "`useRouteError()` returns `unknown` and is narrowed with `instanceof Error`. The one boundary in the repo handled the right way — use it as the fix exemplar.",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/lib/storage/repo.ts",
+      "line": 4,
+      "what": "`crypto.randomUUID()` is typed as unconditionally present but is a secure-context-only API; 5 call sites (repo.ts:4, srs.ts:24, migrate.ts:102, useLibrary.tsx:44, toastStore.ts:19)",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F107"
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/features/settings/useTheme.ts",
+      "line": 11,
+      "what": "`matchMedia` guarded by `typeof matchMedia === 'function'` and the change listener by `addEventListener?.`. Correctly defensive.",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/components/ui/useFocusTrap.ts",
+      "line": 25,
+      "what": "`document.activeElement as HTMLElement | null` widens Element to HTMLElement to reach `.focus()`. Benign in practice (SVGElement also has focus()) but it is an unguarded assertion over a DOM API",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/components/AudioPlayer.tsx",
+      "line": 64,
+      "what": "`audioRef.current.duration` typed `number` but can be NaN/Infinity; would render as 'NaN:NaN'. Not reachable for the well-formed WAVs pcmToWavBlob produces (byte length is written correctly at wav.ts:29)",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 174,
+      "what": "`e.target.value as Priority` — DOM select value asserted into a domain union that is persisted to IndexedDB and to export files",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F108"
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/components/ProfileView.tsx",
+      "line": 239,
+      "what": "`parseInt(e.target.value)` from a range input into `monthlyGoal: number`; NaN unreachable because range inputs always yield a numeric string",
+      "validated": "partial",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 162,
+      "what": "`Number(e.target.value)` into `rating`; min/max are HTML attributes only, so a manually typed 99 is accepted and stored",
+      "validated": "partial",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "browser-api",
+      "file": "src/main.tsx",
+      "line": 7,
+      "what": "`document.getElementById('root')` null-checked with an explicit throw before createRoot. Correct.",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "env",
+      "file": "tsconfig.json",
+      "line": 17,
+      "what": "`types: [\"vite/client\", ...]` pulls in `interface ImportMetaEnv extends Record<string, any>`, so every future `import.meta.env.X` is `any` with no compiler complaint. Zero current usages — this is a latent hole, empirically proven",
+      "validated": "none",
+      "covered": "no",
+      "coveredBy": "RT-F103"
+    },
+    {
+      "channel": "env",
+      "file": "vite.config.ts",
+      "line": 5,
+      "what": "VERIFIED NEGATIVE: no `define` block, no build-time env injection, .env.example intentionally lists nothing. There is no live env boundary to erase today",
+      "validated": "full",
+      "covered": "no",
+      "coveredBy": null
+    },
+    {
+      "channel": "other",
+      "file": "src/lib/base64.ts",
+      "line": 5,
+      "what": "base64ToBytes declares a total `(string) => Uint8Array` but atob throws DOMException on non-base64 (verified). Fed from unvalidated localStorage (migrate.ts:136,142) and from Gemini inlineData (tts.ts:30)",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F037"
+    },
+    {
+      "channel": "other",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 109,
+      "what": "`for (const book of payload.books ?? [])` then `bookRepo.create({...book, profileId})` — the write side that lets unvalidated backup JSON reach the IndexedDB stores db.ts declares as sound",
+      "validated": "none",
+      "covered": "yes",
+      "coveredBy": "F022"
+    },
+    {
+      "channel": "other",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 101,
+      "what": "`for (const legacy of legacyBooks)` — the consumption point where the readJson<LegacyBook[]> fiction becomes a TypeError if the stored value is not an array (verified: 'not iterable')",
+      "validated": "none",
+      "covered": "partial",
+      "coveredBy": "F007 covers the cast at :58; the consumption and its boot-path blast radius is RT-F102"
+    }
+  ],
+  "verifiedNegatives": [
+    "src/lib/srs.ts — the SRS scheduler is clean and is the codebase doing this right. `scheduleCard(card: ReviewCard, grade: Grade, now: Date)` and `newCard(input: NewCardInput, now: Date)` have no two adjacent same-typed parameters; `Grade` is the literal union `1 | 2 | 3 | 4`, and both lookup tables are declared `Record<Grade, number>` (srs.ts:10-11) so a typo'd key is a compile error. `NewCardInput` is a named-field object rather than a positional list. There is no `(a: number, b: number)` anywhere in the scheduler. No finding.",
+    "Units and ambiguous numerics — no site exists where two units meet. `readingTimeMinutes` is only ever summed with itself (StatsView.tsx:17) and divided by 60 to produce hours (StatsView.tsx:173). `AudioPlayer` keeps `progress` and `duration` in seconds and never touches a Book field; `volume` (0-1) and `playbackRate` never mix with them. `ProfileView.progressPercent` and the StatsView category bar are both 0-100 and are both consumed as CSS percentages. There is no `pages` count, no 0-1 vs 0-100 collision, and no seconds-vs-minutes collision. No finding.",
+    "`Book.finishedAt?: string` (types.ts:40) is declared and then never written or read anywhere in src/ — grep returns exactly one hit, the declaration itself. `GoodreadsRow.dateRead` is parsed (goodreads.ts:113) and then dropped by `importGoodreadsRows`. So `status === 'Finished'` never implies `finishedAt`, which looks like a discriminated-union near-miss — but under `strict` any future reader is forced to handle `string | undefined`, and there is no consumer today that can be misled. Reported as dead weight, not as a defect.",
+    "Async-status flags — no reachable `isLoading === true && error !== null` combination. `ApiKeyDialog` (`'idle' | 'testing' | 'error'`, ApiKeyDialog.tsx:16) and `ProfileView` (`importStatus`, ProfileView.tsx:48) already model status as a literal union. `BookDetail`'s `isGeneratingAudio` / `isGeneratingDeepDive`, `EReader`'s `isGeneratingAudio`, `AddBookModal`'s `isLoading` and `GoodreadsImport`'s `isImporting` all reset in a `finally`, including on the early-`return` paths. No finding.",
+    "QuizModal's `isAnswered: boolean` + `selectedOption: number | null` (QuizModal.tsx:37-38) are two encodings of one fact, and the type permits `isAnswered === true && selectedOption === null` — but that combination is not constructible: `handleOptionClick` sets both and `handleNext` clears both, and there is no third writer. ReviewPage derives the same fact correctly (`const isAnswered = selected !== null`, ReviewPage.tsx:75). Redundant, not defective. No finding.",
+    "Cover-lookup signatures `fetchCover(title: string, author: string)` (covers/index.ts:12), `fetchGoogleBooksCover(title, author)` and `fetchOpenLibraryCover(title, author)` are textbook two-adjacent-same-typed-params, but there are only two call sites in the whole repo (summarize.ts:53, recommend.ts:37), both are correct, and a swap degrades one cover lookup to a placeholder rather than corrupting anything. This is exactly the pattern-match the spec warns against recommending brands for. Not reported.",
+    "`blobs.put(bookId: string, kind: BlobKind, blob: Blob)` and `blobs.get(bookId, kind)` (repo.ts:129,142) cannot be transposed — `BlobKind` is a literal union, so the second argument is not assignable to the first. `blobKey()` is the single source of the composite key. Clean.",
+    "Enum-ish strings that are bare `string` — swept and mostly clean. `BookStatus`, `Priority`, `VoiceName`, `BlobKind`, `AiErrorKind`, `ToastKind`, `ThemeChoice`/`ResolvedTheme`, EReader's `Theme`/`FontSize`, and `GoodreadsRow.status` are all proper literal unions with exhaustive lookup records where they are dispatched on. The two genuine gaps are `Book.category: string` (types.ts:33, with the `Category` enum at types.ts:6 exported and never imported anywhere) and the `Record<string, number>` priority table — the latter is reported as RT-F205; the former has no consumer that breaks, because both LibraryPage's filter chips and StatsView's breakdown are built dynamically from `new Set(books.map(b => b.category))`, so an unexpected category self-heals into a new chip rather than failing a comparison.",
+    "NO type-assertion cluster exists. AST-accurate census over all 86 source files / 8418 lines: 18 `as T` casts (2.1 per kloc), ZERO `as unknown as T` double casts, 14 non-null assertions of which only 4 are in production code (the other 10 are in tests), plus 5 benign `let x!: T` definite-assignment declarations. The densest file is src/lib/ai/errors.ts with a single cast. No file anywhere in the repo justifies the spec's 'the source type is wrong, re-type the source' recommendation on density grounds. This is an honestly clean result, not an absence of searching.",
+    "Library isolation HOLDS and is worth publishing as an intentional, correct pattern. `idb` is imported in exactly one file (src/lib/storage/db.ts:1) and `@google/genai` in exactly four (src/lib/ai/client.ts:1, chat.ts:1, schemas.ts:1, tts.ts:1) — all inside src/lib. All 20 AI imports from src/components/**, src/features/** and src/app/** resolve to src/lib/ai/*, and all storage access goes through src/lib/storage/repo.ts. The CLAUDE.md layering invariant is satisfied by grep. One caveat, not a finding: src/lib/ai/chat.ts:4 re-exports the SDK's `Chat` class type, so src/components/ChatModal.tsx:29 holds `useRef<Chat | null>` — a value typed with the vendor's full 3-method API (sendMessage, sendMessageStream, getHistory) rather than an opaque handle. Nothing currently calls those methods directly, and the import still routes through the shim, so the invariant is intact; but the shim's public face is wider than its two exported functions need it to be. Narrowing `Chat` to an opaque session handle would close it.",
+    "The `idb` any-trap is avoided. `openDB<BookSumDB>(...)` at src/lib/storage/db.ts:23 is fully parameterised against a complete `DBSchema` (db.ts:7-17), so every get/getAll/put/getAllFromIndex in repo.ts returns a real domain type. Unparameterised `idb` defaults its schema to `unknown` and hands back `any` from every read — this repo never touches that path.",
+    "`unknown` narrowing is correct at 6 of the 8 `unknown` annotation sites. src/app/ErrorBoundary.tsx:5-6 narrows react-router's `useRouteError(): unknown` with `error instanceof Error` before use — the exemplar. src/app/AppShell.tsx:47 and src/components/AddBookModal.tsx:23 both hand `unknown` straight to `toAiError`, which narrows with `instanceof AiError` / `instanceof Error` / `instanceof SyntaxError` / `instanceof TypeError`. src/lib/covers/index.test.ts:5's `(url: string) => unknown` is consumed only by `JSON.stringify` and a `=== null` compare, both of which accept `unknown` legitimately. The only defective `unknown` sites are src/lib/ai/errors.ts (statusOf, already filed elsewhere; `cause`, filed here as RT-F308) and src/app/ShellContext.ts:9 (already filed).",
+    "@testing-library/dom and lucide-react were checked for exported `any` and are clean. Every `any` in @testing-library/dom/types/query-helpers.d.ts is a generic CONSTRAINT position (`Arguments extends any[]`), never a value type; the query functions return `HTMLElement`, so `screen.getByX(...)` never degrades a caller. node_modules/lucide-react/dist/lucide-react.d.ts contains no `any` at all.",
+    "`Response.json(): Promise<any>` (lib.dom) is a real library-sourced `any`, but it never escapes: both call sites (src/lib/covers/googleBooks.ts:12 and src/lib/covers/openLibrary.ts:6) assert a shape on the same expression, so no `any`-typed binding is created. Whether the asserted shape is validated is a boundary finding owned by another class and is deliberately not re-reported here.",
+    "Zero type suppressions in src/**, verified independently of the given baseline: grep for `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` and any `eslint-disable` comment across all 86 source files returns nothing. There is no suppression backlog to audit.",
+    "src/lib/goodreads.ts is the counter-example that proves RT-F307 is a style inconsistency rather than a house rule. Every index access in the CSV parser is defended with a coalesce — `(table[0] ?? [])` at line 82 and `(cells[index] ?? '')` at line 96 — never with `!`. src/app/AppShell.tsx:70-71 does the same with an explicit `if (!randomBook) return;` guard. The correct pattern is already established in the codebase; only useFocusTrap.ts and base64.ts depart from it.",
+    "react-router's `useLocation()` returns `Location<any>`, so `location.state` is `any` at src/app/AppShell.tsx:32 — but the repo never reads `.state` (zero hits repo-wide), and never passes `state` to `navigate()`. The hole is real and library-sourced but currently unreachable, so it is recorded here rather than filed as a finding.",
+    "`AsyncGenerator<GenerateContentResponse, any, any>` at src/lib/ai/summarize.ts:88 and src/lib/ai/chat.ts:29 carries `any` in its TReturn and TNext parameters (an @google/genai signature choice). Both sites only `for await` the yielded values, which are correctly typed `GenerateContentResponse`; neither calls `.next(x)` or reads the generator's return value, so the `any` is never realised."
+  ],
+  "assertionCensus": [
+    {
+      "file": "src/lib/ai/errors.ts",
+      "lines": 65,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 4
+    },
+    {
+      "file": "src/lib/storage/migrate.test.ts",
+      "lines": 154,
+      "asCasts": 1,
+      "nonNullAssertions": 4,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/components/ui/useFocusTrap.ts",
+      "lines": 64,
+      "asCasts": 1,
+      "nonNullAssertions": 2,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/components/AddBookModal.tsx",
+      "lines": 286,
+      "asCasts": 2,
+      "nonNullAssertions": 0,
+      "unknownDecls": 1
+    },
+    {
+      "file": "src/components/BookDetail.tsx",
+      "lines": 540,
+      "asCasts": 1,
+      "nonNullAssertions": 2,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/components/ui/toastStore.test.ts",
+      "lines": 42,
+      "asCasts": 0,
+      "nonNullAssertions": 3,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/ai/summarize.ts",
+      "lines": 104,
+      "asCasts": 2,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/components/ProfileView.tsx",
+      "lines": 440,
+      "asCasts": 2,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/features/review/reviewQueue.test.tsx",
+      "lines": 160,
+      "asCasts": 0,
+      "nonNullAssertions": 2,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/covers/googleBooks.ts",
+      "lines": 30,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/covers/openLibrary.ts",
+      "lines": 10,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/base64.ts",
+      "lines": 21,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/storage/migrate.ts",
+      "lines": 152,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/ai/recommend.ts",
+      "lines": 44,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/features/library/LibraryPage.tsx",
+      "lines": 231,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/ai/quiz.ts",
+      "lines": 22,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/components/EReader.tsx",
+      "lines": 478,
+      "asCasts": 1,
+      "nonNullAssertions": 0,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/app/ShellContext.ts",
+      "lines": 19,
+      "asCasts": 0,
+      "nonNullAssertions": 0,
+      "unknownDecls": 1
+    },
+    {
+      "file": "src/app/AppShell.tsx",
+      "lines": 223,
+      "asCasts": 0,
+      "nonNullAssertions": 0,
+      "unknownDecls": 1
+    },
+    {
+      "file": "src/features/profile/ProfileContext.test.tsx",
+      "lines": 99,
+      "asCasts": 0,
+      "nonNullAssertions": 1,
+      "unknownDecls": 0
+    },
+    {
+      "file": "src/lib/covers/index.test.ts",
+      "lines": 88,
+      "asCasts": 0,
+      "nonNullAssertions": 0,
+      "unknownDecls": 1
+    },
+    {
+      "file": "TOTAL (86 files)",
+      "lines": 8418,
+      "asCasts": 18,
+      "nonNullAssertions": 14,
+      "unknownDecls": 8
+    }
+  ],
+  "findings": [
+    {
+      "id": "RT-F302",
+      "category": "non-null-assertion",
+      "severity": "critical",
+      "file": "src/components/BookDetail.tsx",
+      "line": 534,
+      "title": "`summary!` lies for every unsummarised book — Chat and Quiz crash on any Goodreads-imported title",
+      "description": "`BookDetailProps.summary` is honestly typed `Summary | undefined` (line 119), and the component correctly optional-chains it everywhere it renders text (lines 452, 461, 470, 490) and guards it in both async handlers (`if (!summary) return;` at 158 and 183). Then lines 534 and 536 assert it away with `!` to satisfy `ChatModalProps.summary: Summary` and `QuizModalProps.summary: Summary`. The invariant that would make those assertions true does not exist: the Chat and Quiz buttons at lines 340 and 347 are gated only on `!isPreview`, never on `summary`. BookDetailPage.tsx:40-53 never passes `isPreview`, so on the real route both buttons always render. A book with no summary is a first-class state in this app — useLibrary.tsx:150-160 (`importGoodreadsRows`) deliberately creates books with no `summaryId` and no summary record so that Goodreads import stays free, and useBookRoute.ts:12 additionally starts every book at `summary === undefined` until an async IndexedDB read resolves. Clicking Chat then runs ChatModal.tsx:37 -> createBookChatSession(book, undefined) -> chatSystemInstruction(book, undefined) -> prompts.ts:61 `${summary.oneSentenceTakeaway}` -> TypeError, thrown from inside a useEffect with no try/catch, which unmounts the whole route into the react-router errorElement. Clicking Quiz runs QuizModal.tsx:43 -> generateBookQuiz -> quizPrompt -> prompts.ts:48 `${summary.summary}` -> the same TypeError, but there it is swallowed by quiz.ts:18's `catch { throw toAiError(error) }` and normalised to kind 'unknown', so the user is told 'Something went wrong talking to Gemini. Try again.' for what is actually a null dereference in our own code. The two `!` are the only reason the compiler does not already reject this.",
+      "evidence": "119:  summary: Summary | undefined;\n...\n340:                      onClick={() => setShowChat(true)}\n347:                      onClick={() => setShowQuiz(true)}\n...\n534:      {showChat && <ChatModal book={book} summary={summary!} onClose={() => setShowChat(false)} />}\n535:\n536:      {showQuiz && <QuizModal book={book} summary={summary!} onClose={() => setShowQuiz(false)} />}\n\n-- src/lib/ai/prompts.ts (the dereference) --\n61:      ${summary.oneSentenceTakeaway}",
+      "confidence": "high",
+      "suggestedPatch": "Delete both `!` and let the compiler enforce the invariant, by narrowing at the render site instead of asserting: change lines 534/536 to `{showChat && summary && <ChatModal ... summary={summary} ... />}` and `{showQuiz && summary && <QuizModal ... summary={summary} ... />}`. That alone stops the crash. Pair it with the UX half so the buttons cannot lie either: at lines 339-348 add `disabled={!summary}` (plus a `title`/`aria-label` explaining 'Generate a summary first') to both buttons, or render the pair only when `summary` is present. No signature change is needed anywhere else — ChatModalProps and QuizModalProps stay `summary: Summary`, which is the correct contract; the fix is to stop lying to it.",
+      "redteamClass": "assertion-clusters-and-external-any",
+      "overlapsExisting": "F002"
+    },
+    {
+      "id": "RT-F003",
+      "category": "boundary-without-validation",
+      "severity": "critical",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 103,
+      "title": "importLibrary declares payload: LibraryExport for a hand-editable JSON file that is never validated; a single `{}` entry persists a Book with title undefined and crashes the library route permanently",
+      "description": "`importLibrary(payload: LibraryExport)` declares that `payload.books` is `Book[]` and `payload.summaries` is `Summary[]`, both required and fully populated. The runtime value is `JSON.parse(fileContents) as LibraryExport` (ProfileView.tsx:117, itself fed by `e.target?.result as string`) — an arbitrary user-supplied file. The author knew the type lies: lines 109 and 114 write `payload.books ?? []` and `payload.summaries ?? []`, defensive code that is provably dead under the declared type. The only real guard is `Array.isArray(data.books)` at ProfileView.tsx:119; nothing checks the ELEMENTS, and nothing checks `summaries` at all. Exact input: `{\"version\":2,\"exportedAt\":\"x\",\"books\":[{}],\"summaries\":[]}` — any JSON with a `books` array of non-Book objects, e.g. another app's export. It passes the guard; `bookRepo.create({...book, profileId})` fills in only `id` and `addedAt`, so a record with `title: undefined` is written to IndexedDB (verified in node). Broken consumer: LibraryPage.tsx:50 runs `book.title.toLowerCase()` inside the filter, throwing `TypeError: Cannot read properties of undefined` (verified) before a single card renders. Because the corrupt record is PERSISTED, the library route crashes to the error boundary on every subsequent load; the book cannot be opened to delete it, and the only escape is Danger Zone -> Reset All, which destroys the whole library. Second consumer: `libraryToMarkdown` -> `bookToMarkdown` (markdown.ts:24) dereferences `summary.keyInsights.length` on unvalidated imported summaries, and ProfileView.tsx:320 calls `void handleExportMarkdown()` with no catch, so Markdown export silently does nothing.",
+      "evidence": "src/features/library/useLibrary.tsx\n102:   const importLibrary = useCallback(\n103:     async (payload: LibraryExport): Promise<number> => {\n109:       for (const book of payload.books ?? []) {      // `?? []` is dead code under the declared type\n111:         await bookRepo.create({ ...book, profileId: profile.id });\n114:       for (const summary of payload.summaries ?? []) {   // summaries never validated at all\n115:         await summaryRepo.upsert(summary);\n\nsrc/components/ProfileView.tsx\n117:         const data = JSON.parse(content) as LibraryExport;\n119:         if (!Array.isArray(data.books)) {              // the ONLY guard; element shapes unchecked",
+      "confidence": "high",
+      "suggestedPatch": "Change the parameter to `payload: unknown` and add a narrowing guard in useLibrary.tsx that returns 0 (or throws a typed ImportError) unless the payload matches: a small `isBook(value): value is Book` / `isSummary(value): value is Summary` pair checking the required string fields, applied with `.filter(isBook)` at line 109 and `.filter(isSummary)` at line 114. Delete the now-redundant `Array.isArray` check at ProfileView.tsx:119 and report the skipped-record count to the user. Risk: users importing older/hand-edited backups will see records silently dropped rather than half-imported, so the toast copy at ProfileView.tsx:133 should report the skip count.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types",
+      "overlapsExisting": "F022"
+    },
+    {
+      "id": "RT-F001",
+      "category": "untyped-public-function",
+      "severity": "critical",
+      "file": "src/lib/ai/chat.ts",
+      "line": 11,
+      "title": "createBookChatSession is typed as total but throws MissingKeyError; its only consumer calls it bare inside useEffect, so the no-key path replaces the whole app with the error boundary",
+      "description": "`createBookChatSession(book, summary): Chat` declares that it always yields a Chat. It cannot: `getClient()` (src/lib/ai/client.ts:11) throws `MissingKeyError` whenever `localStorage` holds no Gemini key, and the catch block re-throws it as an AiError. This is the ONLY synchronous AI entry point in the codebase — every other one (`summarizeBook`, `generateBookQuiz`, `generateAudioSummary`, `sendMessageStream`) is `async`, so its throw becomes a rejection that the caller's try/catch absorbs. Here the throw is synchronous and the sole consumer, ChatModal.tsx:36-38, invokes it inside a `useEffect` with no try/catch. Exact input: a user with no API key (the default for every fresh install) opens any book and clicks the 'Chat' button (BookDetail.tsx:340 sets showChat with no key gate). Broken consumer: the throw escapes the effect, react-router's route `errorElement` (routes.tsx:16) catches it, and the ENTIRE app — nav, library, everything — is replaced by 'Something went wrong'. This directly violates the documented project invariant 'The app works with no key... Only AI actions gate, and they open the key dialog': instead of opening ApiKeyDialog, the app bricks itself. No test covers this path.",
+      "evidence": "src/lib/ai/chat.ts\n 11: export function createBookChatSession(book: Book, summary: Summary): Chat {\n 12:   try {\n 13:     return getClient().chats.create({\n 16:   } catch (error) {\n 17:     throw toAiError(error);   // MissingKeyError passes straight through\n 18:   }\n\nsrc/components/ChatModal.tsx\n 36:   useEffect(() => {\n 37:     chatSession.current = createBookChatSession(book, summary);   // no try/catch\n 38:   }, [book, summary]);",
+      "confidence": "high",
+      "suggestedPatch": "Make the contract honest at the source: change the signature to `createBookChatSession(book, summary): Chat | null`, returning null when `getApiKey()` is absent (or keep the throw and change the return to a `{ ok: true; chat: Chat } | { ok: false; error: AiError }` result). Then in ChatModal.tsx:36-38 wrap the effect body in try/catch and route the failure through `useShell().handleAiError`, which already opens the key dialog — the same handling every other AI action gets. Risk: ChatModal must gain a 'no session' render branch, so the fix touches its render as well as its effect.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F002",
+      "category": "untyped-public-function",
+      "severity": "critical",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 80,
+      "title": "migrateLegacyData declares Promise<MigrationResult> but rejects on malformed legacy data; ProfileContext awaits it with no catch, so the app hangs on the loading spinner forever and re-duplicates data on every retry",
+      "description": "`migrateLegacyData(): Promise<MigrationResult>` claims it always resolves to a result object. It has at least four reachable rejection paths, all over data the app does not control: (a) `readJson<T>(key): T | null` (line 54-62) is a bare `JSON.parse(raw) as T` with zero shape validation, so if `booksum_library_<id>` holds a JSON object instead of an array, `for (const legacy of legacyBooks)` at line 101 throws `TypeError: ... is not iterable` (verified in node); (b) `base64ToBytes(legacy.pdfData)` at line 136 throws `DOMException: Invalid character` on any malformed base64 (verified in node) — and legacy records are exactly the multi-megabyte base64 PDFs that CLAUDE.md says 'broke the original app', so truncated/quota-clipped values are likely; (c) the same at line 142 for `audioData`; (d) `blobs.put` / `books.create` reject with QuotaExceededError when those same PDFs are re-written into IndexedDB. Broken consumer: ProfileContext.tsx:30-42 runs `void (async () => { await migrateLegacyData(); ... setIsLoading(false); })()` with no `.catch`. A rejection skips `setIsLoading(false)` entirely, so `App.tsx:12` renders the full-screen spinner forever — and `main.tsx` has no top-level error boundary, so nothing else fires either. Worse, `localStorage.setItem(MIGRATION_MARKER, ...)` on line 149 is only reached on success, so every reload re-runs the migration from scratch: `profiles.create()` mints a NEW uuid each time, leaving a duplicate profile plus a partial book set per attempt. Silent data duplication behind a permanent spinner.",
+      "evidence": " 54: function readJson<T>(key: string): T | null {\n 58:     return JSON.parse(raw) as T;          // no shape check; T is a fiction\n 99:     const legacyBooks = readJson<LegacyBook[]>(`${LIBRARY_KEY_PREFIX}${userId}`) ?? [];\n101:     for (const legacy of legacyBooks) {   // TypeError if the JSON was not an array\n136:         const bytes = base64ToBytes(legacy.pdfData);   // DOMException on bad base64\n149:   localStorage.setItem(MIGRATION_MARKER, new Date().toISOString());   // never reached on throw\n\nsrc/features/profile/ProfileContext.tsx\n 30:     void (async () => {\n 31:       await migrateLegacyData();\n 41:       setIsLoading(false);      // skipped on rejection -> spinner forever\n 42:     })();",
+      "confidence": "high",
+      "suggestedPatch": "Two-part fix. (1) Make the failure mode representable: add `failed: number` (or an `errors: string[]`) to `MigrationResult` and wrap the per-book body (lines 101-146) in try/catch so one bad legacy record is counted and skipped instead of aborting the run; move the MIGRATION_MARKER write so it lands even on a partially-failed run, which is what actually prevents duplication. (2) At the consumer, ProfileContext.tsx:31, wrap in try/catch (or `.catch`) and always `setIsLoading(false)` in a finally so the app boots even when migration fails. Also narrow `readJson<T>` to return `unknown` and add an `Array.isArray` check at line 99. Risk: changing MigrationResult's shape touches migrate.test.ts assertions.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F102",
+      "category": "boundary-without-validation",
+      "severity": "high",
+      "file": "src/features/profile/ProfileContext.tsx",
+      "line": 31,
+      "title": "The boot path treats the erased localStorage->IndexedDB migration as infallible; one throw wedges the app forever",
+      "description": "F007 covers the cast (`JSON.parse(raw) as T` at migrate.ts:58). This is its blast radius, in a file no lot covered. ProfileProvider's mount effect awaits `migrateLegacyData()` inside a `void (async () => ...)()` with no try/catch, and `setIsLoading(false)` is the last statement. If the migration rejects, `isLoading` stays `true` forever, `App.tsx:12` renders the spinner, no router ever mounts, and there is no in-app recovery — the user must manually clear site data. Reachable throws all originate at the erased boundary: `readJson<LegacyBook[]>` returns whatever was under `booksum_library_*`, and if that is an object rather than an array, `for (const legacy of legacyBooks)` at migrate.ts:101 throws TypeError (verified: 'is not iterable'); `base64ToBytes(legacy.pdfData)` calls `atob`, which throws DOMException on non-base64 (verified); and an IndexedDB quota or blocked error rejects too. The migration is also completely untested against malformed input — all 8 cases in migrate.test.ts seed well-formed JSON.",
+      "evidence": " 27\t  useEffect(() => {\n 28\t    let cancelled = false;\n 29\t\n 30\t    void (async () => {\n 31\t      await migrateLegacyData();\n 32\t      const list = await profileRepo.list();\n 33\t      if (cancelled) return;\n ...\n 41\t      setIsLoading(false);\n 42\t    })();",
+      "confidence": "high",
+      "suggestedPatch": "Two-part. (1) In migrate.ts, make readJson honest: change the signature to `readJson(key: string): unknown` and have callers narrow — `const list = readJson(k); const legacyBooks = Array.isArray(list) ? list : [];` and `const p = readJson(k); const legacyProfile = p && typeof p === 'object' ? (p as LegacyProfile) : null;`. Also wrap each base64ToBytes call in a try/catch that skips that one blob instead of aborting the whole migration. (2) In ProfileContext.tsx wrap lines 31-41 in try/catch/finally so `setIsLoading(false)` runs in the `finally`, and surface the failure with `toast.error` — a legacy import that partly fails must still let the app boot. Risk: none to behaviour on the happy path; a previously-fatal migration now completes partially, so log what was skipped.",
+      "effort": "moderate",
+      "redteamClass": "boundary-erasure"
+    },
+    {
+      "id": "RT-F004",
+      "category": "boundary-without-validation",
+      "severity": "high",
+      "file": "src/lib/ai/quiz.ts",
+      "line": 16,
+      "title": "QuizQuestion[] is asserted straight off the model with no bounds check; `options: string[]` implies non-empty and `correctAnswerIndex: number` implies in-range, and the unvalidated values are persisted as ReviewCards that permanently jam the review queue",
+      "description": "`generateBookQuiz(...): Promise<QuizQuestion[]>` mints `QuizQuestion` values from `JSON.parse(response.text || '{}') as { questions?: QuizQuestion[] }`. `QuizQuestion.options: string[]` (types.ts:107) carries an implicit non-empty promise and `correctAnswerIndex: number` an implicit in-bounds promise; the Gemini responseSchema (schemas.ts:64-72) only says ARRAY-of-STRING and NUMBER — no minItems, no range — and a grep of the whole repo confirms NOT ONE site checks `options.length` or bounds-checks `correctAnswerIndex`. The values do not stay in memory: QuizModal.tsx:52-60 copies each question verbatim into `newCard(...)` and writes it to IndexedDB as a `ReviewCard`, which repeats the same two lies at types.ts:88-89. Exact input: the model returns `{\"questions\":[{\"question\":\"Q\",\"options\":[],\"correctAnswerIndex\":0,\"explanation\":\"E\"}]}`. Broken consumer: ReviewPage.tsx:93 renders `current.options.map(...)` -> zero buttons, so `selected` never leaves null, so `isAnswered` is false, so the grade buttons at line 125 never render — and `grade()` (useReviewQueue.ts:33-41) is the ONLY thing that removes a card from the queue. That card sits at `queue[0]` forever: the review feature is permanently unusable for that profile with no in-app remedy. The sibling lie is quieter and more likely: a 1-based `correctAnswerIndex` (a classic model slip) makes every answer score as wrong forever, in both QuizModal.tsx:78 and ReviewPage.tsx:76, with no error anywhere.",
+      "evidence": "src/lib/ai/quiz.ts\n 16:     const data = JSON.parse(response.text || '{}') as { questions?: QuizQuestion[] };\n 17:     return data.questions ?? [];      // options=[] and out-of-range index both pass\n\nsrc/components/QuizModal.tsx\n 52:           await reviewCards.upsert(\n 53:             newCard({\n 57:               options: question.options,                 // persisted unvalidated\n 58:               correctAnswerIndex: question.correctAnswerIndex,\n\nsrc/features/review/ReviewPage.tsx\n 93:           {current.options.map((option, index) => {     // [] -> no buttons -> card ungradeable",
+      "confidence": "high",
+      "suggestedPatch": "Add a guard in quiz.ts between lines 16 and 17: `return (data.questions ?? []).filter((q): q is QuizQuestion => Array.isArray(q?.options) && q.options.length > 0 && Number.isInteger(q?.correctAnswerIndex) && q.correctAnswerIndex >= 0 && q.correctAnswerIndex < q.options.length && typeof q?.question === 'string')`. QuizModal already renders a 'Could not generate quiz' branch when the array comes back empty (line 125), so dropping bad questions needs no UI change. Risk: does not repair ReviewCards already written to IndexedDB by earlier runs — pair it with a defensive `card.options.length > 0` filter in `reviewCards.listDue` (repo.ts:84) to unjam existing queues.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types",
+      "overlapsExisting": "F005"
+    },
+    {
+      "id": "RT-F301",
+      "category": "implicit-any-from-missing-annotation",
+      "severity": "high",
+      "file": "src/lib/ai/schemas.ts",
+      "line": 3,
+      "title": "@google/genai types `responseSchema` as `Schema | unknown`, so all three response schemas are completely unchecked",
+      "description": "This is an implicit-any escape hatch of exactly the `import.meta.env` shape, and it governs the contract for every AI response the app parses. node_modules/@google/genai/dist/genai.d.ts:12090 declares `export declare type SchemaUnion = Schema | unknown;`. A union with `unknown` collapses to `unknown`, so `GenerateContentConfig.responseSchema?: SchemaUnion` (genai.d.ts:5204) accepts literally any value. The three schema objects in this file — GENERIC_BOOK_SCHEMA (line 3), RECOMMENDATION_SCHEMA (line 36), QUIZ_SCHEMA (line 55) — carry no type annotation, so nothing ever checks them against the SDK's real `Schema` type. `strict: true` and `noImplicitAny` are both on and neither helps. PROVEN: a probe compiled against the repo's real @google/genai under strict mode passes `{ typ: Type.OBJECT, propertes: { title: { type: 'STRNIG' } }, requiredd: ['title'], totallyMadeUpField: 12345 }` as `responseSchema` with zero errors, and `responseSchema: 42` also compiles. Blast radius: these schemas are the only thing constraining what Gemini returns for summarize.ts (two call sites), quiz.ts and recommend.ts, and each of those then does `JSON.parse(response.text) as <hand-written interface>`. The schema and the interface it is supposed to mirror (RawBookResponse at line 87) are two independent hand-maintained descriptions of the same shape with no compiler link between them — rename a property in one and nothing anywhere fails. A silent typo in a key name degrades the model's structured output rather than erroring, which surfaces as an empty summary, not a stack trace.",
+      "evidence": "-- node_modules/@google/genai/dist/genai.d.ts --\n5204:    responseSchema?: SchemaUnion;\n12090: export declare type SchemaUnion = Schema | unknown;\n\n-- src/lib/ai/schemas.ts (no annotation => never checked) --\n3: export const GENERIC_BOOK_SCHEMA = {\n4:   type: Type.OBJECT,\n5:   properties: {\n...\n36: export const RECOMMENDATION_SCHEMA = {\n55: export const QUIZ_SCHEMA = {",
+      "confidence": "high",
+      "suggestedPatch": "Isolate the SDK's looseness at the one place it enters by annotating the three exported constants with the SDK's own type — `import { Type, type Schema } from '@google/genai';` then `export const GENERIC_BOOK_SCHEMA: Schema = {...}`, `export const RECOMMENDATION_SCHEMA: Schema = {...}`, `export const QUIZ_SCHEMA: Schema = {...}`. This is verified zero-risk: a probe annotating the repo's current schema literals with `Schema` compiles clean, so no existing schema changes shape and no runtime behaviour moves. The annotation restores excess-property checking (misspelled keys become errors) and enum checking on every `type:` field. schemas.ts is already the correct single shim file for this — nothing else in the repo constructs a Schema — so the whole vendor hole closes with three type annotations.",
+      "redteamClass": "assertion-clusters-and-external-any",
+      "overlapsExisting": "F031"
+    },
+    {
+      "id": "RT-F101",
+      "category": "boundary-without-validation",
+      "severity": "high",
+      "file": "src/lib/storage/db.ts",
+      "line": 7,
+      "title": "The DBSchema declaration is the single assertion that makes all ten IndexedDB reads look type-safe",
+      "description": "Every prior repo.ts finding is a symptom of this one declaration. `BookSumDB extends DBSchema` tells `idb` that the `profiles`/`books`/`summaries`/`blobs`/`reviewCards` stores contain Profile/Book/Summary/StoredBlob/ReviewCard, and `idb` propagates that as the return type of get/getAll/getFromIndex/getAllFromIndex with zero runtime cost and zero runtime checking. There is no validation anywhere in src/lib/storage, so what comes out is whatever was put in. The lie is realisable and self-inflicted, not hypothetical: `useLibrary.importLibrary` (F022) writes objects straight out of an unvalidated backup file into `books` and `summaries`, and `migrateLegacyData` writes objects derived from unvalidated localStorage. Once a malformed record lands, every subsequent read in every future session returns it typed as a valid domain object, and the corruption survives reloads permanently. Per the audit spec's type-assertion-cluster guidance, the fix belongs at the SOURCE — this declaration — not at the ten consumers.",
+      "evidence": "  7\texport interface BookSumDB extends DBSchema {\n  8\t  profiles: { key: string; value: Profile };\n  9\t  books: { key: string; value: Book; indexes: { 'by-profile': string } };\n 10\t  summaries: { key: string; value: Summary; indexes: { 'by-book': string } };\n 11\t  blobs: { key: string; value: StoredBlob; indexes: { 'by-book': string } };\n 12\t  reviewCards: {\n 13\t    key: string;\n 14\t    value: ReviewCard;\n 15\t    indexes: { 'by-profile-due': [string, string] };\n 16\t  };\n 17\t}",
+      "confidence": "high",
+      "suggestedPatch": "Re-type the source rather than the consumers. Change the schema's `value` types to a raw shape (`value: unknown`, or `value: Partial<Book> & { id: string }`) and add one hand-written narrowing guard per entity in a new `src/lib/storage/guards.ts` — `isBook(v: unknown): v is Book` etc., checked with `typeof`/`Array.isArray`. Then make repo.ts the only place that applies them: `getAll` results go through `.filter(isBook)` and `get` results through `isBook(r) ? r : undefined`. That keeps the repo's public signatures identical (`Promise<Book[]>`, `Promise<Book | undefined>`), so no caller changes, and it closes F004/F022's blast radius at the read side as well as the write side. Risk: filtering silently drops corrupt records, so log a count and surface it once via toast rather than dropping in silence.",
+      "effort": "significant",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F094"
+    },
+    {
+      "id": "RT-F005",
+      "category": "untyped-public-function",
+      "severity": "high",
+      "file": "src/lib/storage/db.ts",
+      "line": 23,
+      "title": "getDb memoizes the promise before it settles and never clears it on rejection, so one transient IndexedDB open failure permanently poisons every Promise<T> in the repo for the rest of the session",
+      "description": "`getDb(): Promise<IDBPDatabase<BookSumDB>>` is the root of every storage contract in the app, and its declared type says nothing about failure. `dbPromise` is assigned synchronously at line 23 and is only ever cleared by the test-only `resetDb()`. If `openDB` rejects even once — storage denied in Safari private browsing, a blocked upgrade because another tab holds the old version, the user clearing site data mid-session, or an origin over quota — the REJECTED promise stays cached, and every later `getDb()` returns that same rejected promise. There is no retry path. Every declared-total signature downstream then lies at once: `profiles.list(): Promise<Profile[]>`, `books.listByProfile(): Promise<Book[]>`, `summaries.getByBook(): Promise<Summary | undefined>`, `blobs.get(): Promise<Blob | undefined>` — all reject. Broken consumers, none of which catch: `useLibrary.reload` (useLibrary.tsx:22-34) never reaches `setIsLoading(false)`, so the library shows its spinner forever; `ProfileContext` (ProfileContext.tsx:30-42) likewise never clears `isLoading`, so App.tsx:12 renders the full-screen spinner and, with no top-level error boundary in main.tsx, nothing is ever reported to the user. This is a distinct root cause from RT-F002 with the same terminal symptom.",
+      "evidence": " 19: let dbPromise: Promise<IDBPDatabase<BookSumDB>> | null = null;\n 21: export function getDb(): Promise<IDBPDatabase<BookSumDB>> {\n 22:   if (!dbPromise) {\n 23:     dbPromise = openDB<BookSumDB>(DB_NAME, DB_VERSION, {   // rejection is cached forever\n 42:   return dbPromise;\n 43: }",
+      "confidence": "high",
+      "suggestedPatch": "Clear the memo on failure so the next call retries: `dbPromise = openDB(...).catch((error) => { dbPromise = null; throw error; })`. That keeps the declared `Promise<IDBPDatabase<BookSumDB>>` honest for the retry case; separately, add a `.catch` in useLibrary.tsx:37 and ProfileContext.tsx:30 that sets `isLoading` false and raises a toast, so a hard storage failure shows a message instead of an eternal spinner. Risk: retrying an open that fails deterministically (private browsing) will re-attempt on every repo call — bound it with a one-shot 'storage unavailable' flag if that proves noisy.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F303",
+      "category": "untyped-public-function",
+      "severity": "medium",
+      "file": "src/app/routes.tsx",
+      "line": 12,
+      "title": "`routeTable` is an exported value with no `RouteObject[]` annotation, so route-key typos compile silently",
+      "description": "`routeTable` is exported (and consumed by src/app/routing.test.tsx as well as by AppRoutes) with no type annotation. TypeScript's excess-property check only fires on a FRESH object literal assigned directly to an annotated target; here the literal is assigned to an inferred `const`, and `createBrowserRouter(routeTable)` at line 31 then receives a non-fresh variable, so the check is skipped entirely at both ends. The result is that a typo in any route key is accepted by the compiler and only shows up as broken navigation at runtime. PROVEN: a probe reproducing this exact shape against the repo's real react-router — with `errorElment` instead of `errorElement`, `elemnt` instead of `element`, and `pathh` instead of `path` — compiles with zero errors under `strict: true`; annotating the same literal `: RouteObject[]` reports all three as TS2561 'Did you mean to write ...'. Consequences of each silent typo are severe and silent in kind: a misspelled `errorElement` means the app has no error boundary at all (the very thing ErrorBoundary.tsx exists for), a misspelled `element` renders a blank route, and a misspelled `path` means the route never matches and users get a 404 on a link that looks correct in source.",
+      "evidence": "12: export const routeTable = [\n13:   {\n14:     path: '/',\n15:     element: <AppShell />,\n16:     errorElement: <ErrorBoundary />,\n17:     children: [\n18:       { index: true, element: <LibraryPage /> },\n...\n31:   const router = useMemo(() => createBrowserRouter(routeTable), []);",
+      "confidence": "high",
+      "suggestedPatch": "One-line change: `import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';` and `export const routeTable: RouteObject[] = [...]`. The repo already sets `@typescript-eslint/consistent-type-imports`, so the `type` modifier is required. Verified against the current route table: annotating it produces no errors, so this is purely additive. Worth applying the same rule generally — any exported const that is destined for a library API should carry that library's type, or the excess-property check never runs.",
+      "redteamClass": "assertion-clusters-and-external-any",
+      "overlapsExisting": "F055"
+    },
+    {
+      "id": "RT-F104",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 42,
+      "title": "Second, uncovered instance of the FileReader-result assertion — this one feeds the Gemini request body",
+      "description": "F004 covers the FileReader assertion in ProfileView. This is the same pattern in a file no lot covered, and it is on the PDF-upload path. `FileReader.result` is typed `string | ArrayBuffer | null` by lib.dom precisely because the same object serves readAsArrayBuffer; asserting `as string` removes the compiler's only reason to make the caller think about it. The unchecked `[1]` index compounds it: `split(',')[1]` is really `string | undefined` and only types as `string` because `noUncheckedIndexedAccess` is off, so `resolve(base64)` satisfies `Promise<string>` while potentially resolving `undefined`. The value goes straight to `summarizePdf(base64Data: string)` and into the Gemini request as `inlineData.data`, where a malformed value produces an opaque SDK error rather than a local one. There is also no size check despite the UI text promising a 10MB maximum, so an arbitrarily large file is base64-inflated in memory and posted.",
+      "evidence": " 38\t  const convertFileToBase64 = (file: File): Promise<string> => {\n 39\t    return new Promise((resolve, reject) => {\n 40\t      const reader = new FileReader();\n 41\t      reader.onload = () => {\n 42\t        const base64 = (reader.result as string).split(',')[1];\n 43\t        resolve(base64);\n 44\t      };\n 45\t      reader.onerror = reject;\n 46\t      reader.readAsDataURL(file);",
+      "confidence": "high",
+      "suggestedPatch": "Replace the assertion with a narrowing check and reject explicitly:\n```ts\nreader.onload = () => {\n  const result = reader.result;\n  const base64 = typeof result === 'string' ? result.split(',')[1] : undefined;\n  if (!base64) { reject(new Error('Could not read that PDF.')); return; }\n  resolve(base64);\n};\nreader.onerror = () => reject(new Error('Could not read that PDF.'));\n```\nThe `onerror` change matters too: `reject` currently rejects with a ProgressEvent, which `toAiError` cannot recognise and reports to the user as 'Something went wrong talking to Gemini' for a purely local file-read failure. Optionally add `if (selected.size > 10 * 1024 * 1024)` to handleFileChange to match the UI's promise. Risk: none — the new paths only replace a crash or a wrong message with a correct one.",
+      "effort": "trivial",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F057"
+    },
+    {
+      "id": "RT-F203",
+      "category": "discriminated-union-opportunity",
+      "severity": "medium",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 74,
+      "title": "AddBookModal gates `priority` on status but not `rating`, so every Want-to-Read book is persisted with a phantom rating of 4 that the export and the status toggle both treat as real",
+      "description": "CONSTRUCTIBLE IMPOSSIBLE STATE: a Book with `status: 'Want to Read'` and `rating: 4` that the user never rated. `Book.status` decides which of `rating` and `priority` is meaningful — the modal knows this, because it shows the rating input only when `status === 'Finished'` (line 149) and the priority select only otherwise (line 167), and it correctly writes `priority: status === 'Want to Read' ? priority : undefined` (line 75). It then writes `rating` unconditionally on the very next line up (line 74), taking the value straight from `useState(4)` (line 32) — a field the user was never shown. `Book.rating: number` (types.ts:36) records no relationship to `status`, so the compiler cannot see the asymmetry. CONSUMERS THAT MISHANDLE IT: (1) markdown.ts:14 emits `**Rating:** ${book.rating}/5` unconditionally, so both the per-book export (BookDetail.tsx:417) and the whole-library Markdown backup (ProfileView.tsx:89) state 'Rating: 4/5' for books the user has not read. (2) BookDetail.tsx:215 `rating: newStatus === 'Finished' ? book.rating || 5 : book.rating` — marking that book finished keeps the phantom 4 rather than prompting, at which point StatsView.tsx:18-20 folds it into the average rating over finished books, permanently skewing the headline stat with a number the user never entered. BookCard.tsx:97 and BookDetail.tsx:268 both gate the display on `status === 'Finished'`, which is why this is invisible in the UI and only surfaces in the export and after a status flip. DISTINCT FROM PRIOR FINDINGS: F061 is about `rating: 0` conflating 'unrated' with 'rated zero' at StatsView:20, and RT-F008 is about the Goodreads parser's `0` sentinel; this is the opposite failure — a non-zero rating fabricated by the add-book UI for a status where the field has no meaning.",
+      "evidence": "32    const [rating, setRating] = useState(4);\n...\n69        await onAdd(\n70          {\n71            ...generated.book,\n72            oneSentenceTakeaway: generated.summary.oneSentenceTakeaway,\n73            status,\n74            rating,\n75            priority: status === 'Want to Read' ? priority : undefined,\n76            hasPdf: Boolean(pdf),\n77          },",
+      "confidence": "high",
+      "suggestedPatch": "Smallest first step, one line and no type change: mirror the priority guard on line 74 — `rating: status === 'Finished' ? rating : 0` — so an unread book carries no fabricated score. That alone fixes the export and the status toggle. The structural fix, for the same file plus types.ts, is to make Book a two-arm discriminated union on `status`: `type Book = BookBase & ({ status: 'Finished'; rating: number; finishedAt?: string } | { status: 'Want to Read'; priority?: Priority })`, which would make line 74 a compile error and would also retire the dead `finishedAt`. HONEST COST: that union touches every producer (AddBookModal, useLibrary.importGoodreadsRows, migrate.ts, summarize.toGenerated, the repo tests) and every consumer that reads `rating` or `priority` without first narrowing on `status` (BookCard, BookDetail, StatsView, markdown.ts, LibraryPage's sort) — roughly a dozen files. Do the one-line guard now and log the union as a structural recommendation.",
+      "redteamClass": "union-and-brand-near-misses"
+    },
+    {
+      "id": "RT-F012",
+      "category": "untyped-public-function",
+      "severity": "medium",
+      "file": "src/components/AudioPlayer.tsx",
+      "line": 50,
+      "title": "togglePlay ignores the Promise returned by play() — the same call is caught 21 lines above — and flips isPlaying unconditionally, so the UI shows Pause while nothing is playing",
+      "description": "`HTMLMediaElement.play()` is declared `Promise<void>` and rejects routinely: NotAllowedError when autoplay policy blocks a gesture-less play, AbortError when `src` changes mid-load, NotSupportedError on a bad blob URL. The file already knows this — line 29 attaches `.catch((e) => console.error('Autoplay failed', e))` to the identical call. `togglePlay` at lines 45-54 does not, so the rejection is unhandled. Worse, `setIsPlaying(!isPlaying)` on line 52 runs regardless of whether playback actually started, so the type-level 'this succeeded' assumption leaks into state: the button renders the Pause icon and the progress bar sits at 0 while nothing plays, and the user has no way to tell the difference from a stalled stream. Exact input: a generated WAV whose blob URL has already been revoked, or any environment where the play attempt is rejected. Broken consumer: the AudioPlayer's own render (lines 190-194), which trusts `isPlaying`.",
+      "evidence": " 27:   useEffect(() => {\n 29:       audioRef.current.play().catch((e) => console.error('Autoplay failed', e));   // handled here\n 45:   const togglePlay = () => {\n 49:       } else {\n 50:         audioRef.current.play();      // same call, rejection ignored\n 51:       }\n 52:       setIsPlaying(!isPlaying);       // state flips even when play() rejected",
+      "confidence": "high",
+      "suggestedPatch": "Make the state follow the outcome rather than the intention: `audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))` on line 50, and move the `setIsPlaying(!isPlaying)` on line 52 into the pause branch only. The existing `onPlay`/`onPause` handlers (lines 117-118) already sync state from the element, so this mainly removes the optimistic flip. Risk: none — the element's own events remain the source of truth.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F204",
+      "category": "discriminated-union-opportunity",
+      "severity": "medium",
+      "file": "src/components/ChatModal.tsx",
+      "line": 73,
+      "title": "Chat Message has no error variant, so a failure is rendered as if the assistant said it — and if the stream already emitted one chunk, the error is dropped entirely",
+      "description": "CONSTRUCTIBLE IMPOSSIBLE STATE: a `Message` with `role: 'model'` whose `text` is an AiError string rather than model output. `interface Message { role: 'user' | 'model'; text: string }` (lines 15-18) has no third arm and no status field, so the catch block at 70-79 has nowhere to put a failure and overwrites the streaming placeholder's text instead. TWO DISTINCT CONSUMER FAILURES, both reachable: (1) When the request fails before any chunk arrives (no API key, offline, 429), the placeholder's text is replaced with `toAiError(err).message` and the renderer at lines 140-152 paints it in the orange assistant bubble behind the Sparkles avatar, styled identically to a real answer — the user cannot distinguish 'Could not reach Google. Check your connection and try again.' from something the book assistant asserted. (2) Worse, when the stream fails *after* emitting at least one chunk, the replace predicate `entry.role === 'model' && entry.text === ''` (line 75) no longer matches — the placeholder's text is non-empty by then — so `.map` returns the array unchanged and the error message is silently discarded. `sendMessageStream` (chat.ts:29-38) calls `onChunk(text)` inside the `for await` loop and rethrows anything the iterator raises, so a mid-stream safety block or dropped connection lands exactly here. `isLoading` then flips false in the `finally` and the user is left looking at a truncated half-sentence with no indication anything went wrong. The type gives no hint that `text` carries two different kinds of value.",
+      "evidence": "15  interface Message {\n16    role: 'user' | 'model';\n17    text: string;\n18  }\n...\n70      } catch (err) {\n71        console.error('Chat error', err);\n72        const message = toAiError(err).message;\n73        setMessages((prev) =>\n74          prev.map((entry, index) =>\n75            index === prev.length - 1 && entry.role === 'model' && entry.text === ''\n76              ? { ...entry, text: message }\n77              : entry,\n78          ),\n79        );",
+      "confidence": "high",
+      "suggestedPatch": "Smallest first step, contained entirely in ChatModal.tsx: add the missing arm to the local type — `type Message = { role: 'user'; text: string } | { role: 'model'; text: string; failed?: true }` — then in the catch, drop the `entry.text === ''` predicate and replace the last model entry with `{ ...entry, text: entry.text ? entry.text + '\\n\\n' + message : message, failed: true }`, and in the renderer branch on `msg.failed` to use the error styling the app already has (the red panel at ApiKeyDialog.tsx:66 is the existing precedent). `Message` is declared locally and used nowhere else in the repo, so this touches one file and no other producer or consumer.",
+      "redteamClass": "union-and-brand-near-misses"
+    },
+    {
+      "id": "RT-F006",
+      "category": "tsconfig-strictness-gap",
+      "severity": "medium",
+      "file": "src/components/EReader.tsx",
+      "line": 182,
+      "title": "pages is inferred string[] but .filter(Boolean) can yield an empty array, so pages[currentPage] is undefined while typed string and crashes RenderFormattedContent",
+      "description": "The `pages` useMemo is inferred as `string[]`, and the `['No content available.']` fallback on line 183 shows the author intended a non-empty guarantee. The guarantee does not hold: the fallback only fires when `detailedSummary` is falsy, so a whitespace-only `detailedSummary` passes the check and then `.map(s => s.trim()).filter(Boolean)` reduces it to `[]` (verified in node). With `noUncheckedIndexedAccess` off, `pages[currentPage]` at line 395 is typed `string` while holding `undefined`, and it is handed to `RenderFormattedContent`'s required `content: string` prop, whose first statement is `content.split('\\n')` -> `TypeError: Cannot read properties of undefined (reading 'split')` (verified). Exact input: a `detailedSummary` of `'   '` or `'\\n\\n'`. That is reachable because `generateDetailedSummary` (summarize.ts:99) returns `text || 'Failed to...'` — a whitespace-only stream is truthy, so it is returned and persisted verbatim as a real deep-dive. Broken consumer: ReaderPage -> EReader throws during render, and react-router's errorElement replaces the whole app; the progress bar on line 457 also divides by `pages.length` of 0.",
+      "evidence": "182:   const pages = useMemo(() => {\n183:     if (!summary?.detailedSummary) return ['No content available.'];\n185:     const sections = summary.detailedSummary\n186:       .split(/(?=## )/g)\n187:       .map((s) => s.trim())\n188:       .filter(Boolean);          // '   ' -> [''] -> []\n189:     return sections;\n395:             content={pages[currentPage]}    // typed string, can be undefined",
+      "confidence": "high",
+      "suggestedPatch": "Make the non-empty guarantee real at line 189: `return sections.length > 0 ? sections : ['No content available.'];`. Optionally also clamp the index at line 395 (`pages[Math.min(currentPage, pages.length - 1)] ?? ''`) so a shrinking `pages` from a summary update cannot leave `currentPage` past the end. Risk: none — it is a one-line widening of an existing fallback.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F206",
+      "category": "branded-type-opportunity",
+      "severity": "medium",
+      "file": "src/components/QuizModal.tsx",
+      "line": 49,
+      "title": "profileId and bookId are freely interchangeable across the review-card path, and QuizModal has both wrong calls one keystroke away on adjacent lines",
+      "description": "COMPILING-WRONG-CALLS, both in the same effect. (1) `reviewCards.listByProfile(profileId: string)` (repo.ts:78) and `reviewCards.listByBook(bookId: string)` (repo.ts:94) are adjacent methods on the same object with byte-identical signatures `(x: string) => Promise<ReviewCard[]>`. Line 49 calls `reviewCards.listByBook(book.id)`; changing it to `reviewCards.listByProfile(book.id)` type-checks, returns `[]` because no card's `profileId` is ever a book id, and so the `seen` dedupe set is empty forever — every quiz retake re-inserts every question as a fresh card with a fresh `crypto.randomUUID()`, growing the reviewCards store without bound and flooding the review queue with duplicates. Nothing throws; the only symptom is a review deck that keeps growing. (2) Five lines later, `newCard({ profileId: book.profileId, bookId: book.id, ... })` puts the two most confusable values in the app on consecutive lines of one object literal. `NewCardInput.profileId` and `NewCardInput.bookId` are both `string` (srs.ts:14-15), as are `Book.profileId` and `Book.id` (types.ts:29-30), so transposing them satisfies the type exactly. CONSUMER THAT MISHANDLES IT: `useReviewQueue` calls `cardRepo.listDue(profile.id)` (useReviewQueue.ts:20), which filters `card.profileId === profileId` (repo.ts:80) — transposed cards are never due for anyone, so the Review page shows 'Nothing due' permanently while the store fills up, and `reviewCards.removeByBook` (repo.ts:104) can never reclaim them either because it matches on `card.bookId`. WHY THERE IS NO RUNTIME BACKSTOP: both values are `crypto.randomUUID()` output (repo.ts:4), and the reviewCards store's only index is `['profileId', 'dueAt']` (db.ts:38) with no foreign-key constraint, so a card pointing at a profile that is really a book is a perfectly valid record. DISTINCT FROM RT-F101: that finding is about the `DBSchema` declaration being an unvalidated assertion over IndexedDB contents; this is about the two id kinds being mutually assignable in the repo's own public surface.",
+      "evidence": "49          const seen = new Set((await reviewCards.listByBook(book.id)).map((c) => c.question));\n50          for (const question of quizData) {\n51            if (seen.has(question.question)) continue;\n52            await reviewCards.upsert(\n53              newCard({\n54                profileId: book.profileId,\n55                bookId: book.id,\n56                question: question.question,\n\n-- repo.ts:78 and repo.ts:94, identical signatures, 16 lines apart\n78    async listByProfile(profileId: string): Promise<ReviewCard[]> {\n94    async listByBook(bookId: string): Promise<ReviewCard[]> {",
+      "confidence": "high",
+      "suggestedPatch": "Smallest first step that actually removes the hazard, without a repo-wide brand migration: give the two lookups shapes that are not mutually assignable. Change `reviewCards.listByProfile` / `listByBook` to take a single tagged argument — `listBy(scope: { profileId: string } | { bookId: string })` — so `listBy({ bookId: book.id })` cannot be mistaken for the profile lookup and the wrong call stops compiling. That is one method in repo.ts plus its four call sites (QuizModal.tsx:49, useReviewQueue via listDue, repo.ts:86 and repo.ts:106) and the repo tests. HONEST NOTE ON THE FULLER FIX: branding `ProfileId` and `BookId` outright would also catch case (2) — the transposed `newCard` literal, which a tagged-argument change does not reach — but that genuinely does require touching every producer and consumer of both ids (repo.ts, useLibrary, useBookRoute, QuizModal, srs.ts, migrate.ts, AppShell, the LibraryExport round-trip, plus `as BookId` escapes where ids re-enter from `useParams` and from imported JSON). Recommend the tagged lookup now and the brand as a scoped structural item, not as part of this audit's apply wave.",
+      "redteamClass": "union-and-brand-near-misses",
+      "overlapsExisting": "F016"
+    },
+    {
+      "id": "RT-F202",
+      "category": "discriminated-union-opportunity",
+      "severity": "medium",
+      "file": "src/features/book/useBookRoute.ts",
+      "line": 13,
+      "title": "useBookRoute returns a book and a summary as independent values, and every direct book-to-book navigation commits a render where the summary belongs to the previous book",
+      "description": "CONSTRUCTIBLE IMPOSSIBLE STATE: `summary.bookId !== book.id`. `book` is derived synchronously from the route param on every render (line 13, `books.find(c => c.id === id)`), while `summary` is a `useState` slot written asynchronously by the effect at line 21. React Router renders the same `BookDetailPage` element for `book/:id` at the same tree position, so a /book/A -> /book/B navigation re-renders rather than remounts and the `summary` state survives. That means at least one committed frame has `book = B` and `summary = SummaryOf(A)`. HOW IT IS REACHED: the DailyWisdomModal is mounted in AppShell above the Outlet, so it can fire while the user is already on /book/A; its `onReadMore` calls `navigate('/book/' + dailyBook.id)` (AppShell.tsx:213) — a direct book-to-book navigation. Browser Back/Forward between two book pages does the same. CONSUMERS THAT MISHANDLE IT: (1) BookDetail renders `book.title` and `book.author` from the new book alongside `summary.oneSentenceTakeaway` (line 452), `summary.summary` (461), `summary.keyInsights` (470) and `summary.actionableSteps` (490) from the old one — the reader sees book B's title over book A's content. (2) Worse, the pair is a write source, not just a render source: `BookDetail.handleMasterclassClick` (BookDetail.tsx:184-187) captures the current `summary` for the whole duration of a streaming `generateDetailedSummary` call, then calls `onSummaryUpdate({ ...summary, detailedSummary })`, which BookDetailPage.tsx:44-46 forwards to `saveSummary`. `saveSummary` resolves the target book by `bookRepo.get(summary.bookId)` (useLibrary.tsx:81) — so a deep dive started on A and landing after a navigation to B is written onto A's summary while the page shows B, and B's reader then opens on 'No content available.' The type system permits all of this because `Book` and `Summary` are two unrelated values in an untagged bag; nothing expresses that they must agree on an id. HONEST SCOPE: the guaranteed part of this is the render-frame mismatch (short, but committed and painted); the persistent write to the wrong record needs an in-flight deep dive across the navigation.",
+      "evidence": "12    const [summary, setSummary] = useState<Summary | undefined>(undefined);\n13    const book: Book | undefined = books.find((candidate) => candidate.id === id);\n14\n15    useEffect(() => {\n16      if (isLoading) return;\n17      if (!book) {\n18        void navigate('/', { replace: true });\n19        return;\n20      }\n21      void getSummary(book.id).then(setSummary);\n22    }, [book, isLoading, getSummary, navigate]);\n24    return { book, summary, setSummary, isLoading };",
+      "confidence": "high",
+      "suggestedPatch": "Smallest first step: make the pair inseparable rather than adding a tag. Replace the two independent slots with one, keyed by the book it belongs to — `const [loaded, setLoaded] = useState<{ bookId: string; summary: Summary | undefined } | null>(null)` — set it as `setLoaded({ bookId: book.id, summary: s })` inside the effect, and return `summary: loaded?.bookId === book?.id ? loaded.summary : undefined`. That is a ~6-line change confined to useBookRoute.ts; both consumers already accept `Summary | undefined`, so BookDetail and EReader need no edit and will simply show their existing not-yet-summarised states for the mismatched frame instead of the wrong book's text. Add a cancellation guard in the same effect (`let cancelled = false` / `if (!cancelled) setLoaded(...)`, the pattern ProfileContext.tsx:28 already uses) so a late resolution cannot overwrite a newer book. Does NOT require touching every producer and consumer.",
+      "redteamClass": "union-and-brand-near-misses"
+    },
+    {
+      "id": "RT-F105",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 35,
+      "title": "The recommendation cache is asserted out of localStorage and the only check is one a string also passes",
+      "description": "The home page reads a cross-session localStorage value and asserts it to `{ at: number; items: Recommendation[] }`. The single guard is `parsed.items?.length`, which is a truthiness check on `.length` — it passes for a non-empty string, for an array of nulls, and for an array of numbers. `setRecommendations(parsed.items)` then hands it to `RecommendationCarousel`, whose props declare `Recommendation[]` and which immediately does `recommendations.map(rec => ...)` and reads `rec.title` (as the React key), `rec.coverUrl` (as an `<img src>`) and `rec.description`. A cached `items` of `\"stale\"` throws 'recommendations.map is not a function' during render; `[null]` throws on `rec.title`. Either takes out the library route via the router ErrorBoundary, and because the bad value is persisted the failure repeats on every reload until the user clears storage — the try/catch at line 39 only covers the parse, not the render. The writer at line 74 stores `getAIRecommendations()` output, which is itself an unvalidated model response (F030), so the cache is downstream of an already-erased boundary.",
+      "evidence": " 32\t    const cached = localStorage.getItem(`${RECS_CACHE_KEY}.${profile.id}`);\n 33\t    if (!cached) return;\n 34\t    try {\n 35\t      const parsed = JSON.parse(cached) as { at: number; items: Recommendation[] };\n 36\t      if (Date.now() - parsed.at < RECS_TTL_MS && parsed.items?.length) {\n 37\t        setRecommendations(parsed.items);\n 38\t      }\n 39\t    } catch {\n 40\t      localStorage.removeItem(`${RECS_CACHE_KEY}.${profile.id}`);",
+      "confidence": "high",
+      "suggestedPatch": "Export a guard next to the type (`src/features/library/recommendationDefaults.ts` is the natural home since RECS_CACHE_KEY already lives there):\n```ts\nexport const isRecommendation = (v: unknown): v is Recommendation =>\n  typeof v === 'object' && v !== null &&\n  ['title','author','description','coverUrl'].every(k => typeof (v as Record<string, unknown>)[k] === 'string');\n```\nThen parse to `unknown` and narrow: `const parsed: unknown = JSON.parse(cached);` followed by an object check, `typeof parsed.at === 'number'`, `Array.isArray(parsed.items)` and `parsed.items.filter(isRecommendation)`; if the filtered list is empty, remove the key and fall through to RECOMMENDED_BOOKS. Risk: none — the defaults array is already the fallback, so a rejected cache degrades to the shipped recommendations.",
+      "effort": "moderate",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F067"
+    },
+    {
+      "id": "RT-F205",
+      "category": "weak-type-as-Object-or-Function",
+      "severity": "medium",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 56,
+      "title": "The priority sort table is Record<string, number> instead of Record<Priority, number>, so a mis-keyed or renamed priority silently degrades the sort and the ?? 1 that catches it is invisible to the compiler",
+      "description": "COMPILING-WRONG-VALUE: `priorityScore` is declared `Record<string, number>`, so its keys are unchecked. Writing `{ Hgih: 3, Medium: 2, Low: 1 }`, or renaming a member of the `Priority` union in types.ts:2 without updating this literal, type-checks cleanly and silently collapses every Want-to-Read book to the same score — the queue stops being priority-ordered and falls through to date order with no error anywhere. Declaring it `Record<Priority, number>` would make both mistakes compile errors, and costs one word. THE SECOND HALF IS ALREADY LIVE: because the index signature is `string`, `priorityScore[a.priority || 'Low']` is typed `number` and can never be `undefined` as far as the compiler is concerned — which makes the `?? 1` on lines 57-58 provably dead code by the types. It is not dead at runtime. `Book.priority?: Priority` is not validated at either of its two ingress points: migrate.ts:111 copies `legacy.priority` out of a `readJson<LegacyBook>` cast over raw localStorage (migrate.ts:54-61), and useLibrary.importLibrary (useLibrary.tsx:111) copies it out of a hand-editable backup file. So a stored `priority: 'urgent'` is representable, reaches this lookup, misses, and is rescued only by a fallback the type system says is unnecessary — `eslint --fix` with `no-unnecessary-condition` enabled, or any reviewer trusting the declared type, would remove it and turn a silent mis-sort into `NaN` propagating through the comparator. CONSUMER THAT MISHANDLES THE SAME VALUE: BookCard.tsx:69-75 renders `{book.priority}` verbatim while `getPriorityColor(p?: string)` falls through its `switch` to the `default` arm, so that record paints a badge reading 'urgent' in the blue Low styling. DISTINCT FROM RT-F108: that finding covers the `e.target.value as Priority` assertion in AddBookModal as a producer; this is the weak Record type at the consumer that hides the miss, in a different file.",
+      "evidence": "54        .sort((a, b) => {\n55          if (a.status === 'Want to Read' && b.status === 'Want to Read') {\n56            const priorityScore: Record<string, number> = { High: 3, Medium: 2, Low: 1 };\n57            const scoreA = priorityScore[a.priority || 'Low'] ?? 1;\n58            const scoreB = priorityScore[b.priority || 'Low'] ?? 1;\n59            if (scoreA !== scoreB) return scoreB - scoreA;\n60          }",
+      "confidence": "high",
+      "suggestedPatch": "Two-token fix, one file, no ripple: change line 56 to `const priorityScore: Record<Priority, number> = { High: 3, Medium: 2, Low: 1 };` (`Priority` is already imported into this module's type graph via `types.ts`; add it to the existing `import type { BookStatus }` on line 14). The compiler then rejects a typo'd or renamed key, and — because the index type is now the union — `priorityScore[a.priority || 'Low']` remains `number`, so the `?? 1` stays syntactically valid while the real guard moves to compile time. Hoist the literal out of the comparator while you are there; it is currently reallocated for every comparison. This does NOT fix the unvalidated ingress at migrate.ts:111 / importLibrary — that needs a `isPriority()` guard at those two boundaries, which is a separate ~8-line change and is the honest prerequisite for trusting `Book.priority` as a union at all.",
+      "redteamClass": "union-and-brand-near-misses",
+      "overlapsExisting": "F129"
+    },
+    {
+      "id": "RT-F201",
+      "category": "branded-type-opportunity",
+      "severity": "medium",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 48,
+      "title": "addBook is the one site that mints a summary id and a book id together, and swapping them type-checks and leaves no runtime trace",
+      "description": "COMPILING-WRONG-CALL: `Summary.id` and `Summary.bookId` are both bare `string` (types.ts:55-56) and `Book.id` is bare `string` (types.ts:29). At useLibrary.tsx:48 both values are in scope at once, so writing `await summaryRepo.upsert({ ...options.summary, id: book.id, bookId: summaryId })` — the two identifiers transposed — satisfies `Summary` exactly and `npx tsc --noEmit` stays at exit 0. WHY IT IS UNDETECTABLE AT RUNTIME TOO: every id in the system comes from `crypto.randomUUID()` (repo.ts:4 `newId`, useLibrary.tsx:44, srs.ts:24, toastStore.ts:17), so both values are indistinguishable v4 UUIDs — no length check, no prefix, no assertion, and no IndexedDB constraint can catch the swap. CONSUMER THAT MISHANDLES IT: `summaries.getByBook(bookId)` (repo.ts:112) reads the `by-book` index, so it would return `undefined` for the book forever, while `Book.summaryId` still points at a stored record — which is precisely the 'summarised but no summary' contradiction F050/F011/F012 already document as a visible UI failure, arriving here as silent write-time corruption instead. `books.remove` (repo.ts:68-70) resolves the orphan via `getByBook` too, so it would never delete it. CORROBORATION THAT THIS CONFUSION IS ALREADY LIVE: ProfileView.tsx:88 builds `const summaryById = new Map(data.summaries.map((s) => [s.bookId, s]))` — a map named 'ById' that is keyed by *book* id. Correcting the map to match its own name compiles (both fields are `string`) and makes `summaryById.get(b.id)` return `undefined` for every book, at which point `libraryToMarkdown` silently writes 'Not summarised yet.' (markdown.ts:19-20) for the entire library export with no error. HONEST SCOPE: no call site is wrong today; this is a latent foot-gun, and it is reported because the failure mode is silent, unrecoverable data corruption with zero runtime signal — the exact profile the spec says branded types are worth paying for.",
+      "evidence": "44      const summaryId = options.summary ? crypto.randomUUID() : undefined;\n45      const book = await bookRepo.create({ ...draft, profileId: profile.id, summaryId });\n46\n47      if (options.summary && summaryId) {\n48        await summaryRepo.upsert({ ...options.summary, id: summaryId, bookId: book.id });\n49      }\n\n-- types.ts:54-57 (both fields are indistinguishable to the compiler)\n54  export interface Summary {\n55    id: string;\n56    bookId: string;",
+      "confidence": "high",
+      "suggestedPatch": "Smallest first step that pays off, and it is genuinely small because the ids have exactly one producer: in src/lib/storage/repo.ts add `export type BookId = string & { readonly __brand: 'BookId' }` and `SummaryId`, retype `newId` to a generic `const newId = <T extends string>() => crypto.randomUUID() as T`, and brand only the three fields that actually collide — `Book.id: BookId`, `Summary.id: SummaryId`, `Summary.bookId: BookId`. HONEST RETROFIT COST: branding `Book.id` alone touches every producer and consumer of a book id (useLibrary, useBookRoute, BookDetail/BookDetailPage, QuizModal, blobs.*, reviewCards.*, migrate.ts, the LibraryExport round-trip and the repo tests) and will need `as BookId` at the two boundaries where ids come back from JSON (`importLibrary`) and from the route param (`useParams`). If that is too much, the strictly-cheaper 90% fix is to stop having the two values in scope together: change `AddBookOptions.summary` to be written by a single repo helper `summaries.createFor(book, draft)` that mints the id itself, so useLibrary never holds both a summary id and a book id at the same time. That is a ~10-line change in one file and removes the swap opportunity outright.",
+      "redteamClass": "union-and-brand-near-misses"
+    },
+    {
+      "id": "RT-F011",
+      "category": "untyped-public-function",
+      "severity": "medium",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 129,
+      "title": "importGoodreadsRows declares Promise<{added, duplicates}> as if it always resolves, and its only caller uses try/finally with no catch, so a quota failure part-way through a large import is swallowed entirely",
+      "description": "`importGoodreadsRows(rows): Promise<{ added: number; duplicates: number }>` claims it always resolves to a count. It writes one IndexedDB record per row in a loop (line 150) with no transaction and no error handling, so `bookRepo.create` can reject with QuotaExceededError or an aborted transaction mid-loop — most likely on exactly the workload the project invariants call out ('Importing a large library must stay free'). The declared type gives the caller no signal that this can fail. Broken consumer: GoodreadsImport.tsx:35-48 wraps the call in `try { ... } finally { setIsImporting(false) }` with NO catch, and the call site is `onClick={() => void handleImport()}` (line 97), so the rejection becomes an unhandled promise rejection: no toast, no error boundary, `onDone()` never fires so the modal stays open, and the spinner just stops. The user is left with a partially imported library and zero indication that anything went wrong, while the already-written books have silently landed.",
+      "evidence": "src/features/library/useLibrary.tsx\n129:     async (rows: GoodreadsRow[]): Promise<{ added: number; duplicates: number }> => {\n150:         await bookRepo.create({          // can reject mid-loop; loop has no try/catch\n165:       return { added, duplicates };\n\nsrc/features/library/GoodreadsImport.tsx\n 38:     try {\n 39:       const { added, duplicates } = await importGoodreadsRows(preview.rows);\n 45:     } finally {                          // no catch: rejection is swallowed\n 46:       setIsImporting(false);",
+      "confidence": "high",
+      "suggestedPatch": "Widen the contract to report partial success: return `{ added: number; duplicates: number; failed: number }` and wrap the per-row `bookRepo.create` at line 150 in try/catch so one rejected write increments `failed` instead of aborting. Add a `catch` beside the `finally` at GoodreadsImport.tsx:45 that raises `toast.error('Import stopped partway — some books may not have been saved.')`. Risk: the success toast copy at GoodreadsImport.tsx:40-43 and goodreadsImport.test.tsx assertions need updating for the new field.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types",
+      "overlapsExisting": "F131"
+    },
+    {
+      "id": "RT-F304",
+      "category": "unknown-misuse",
+      "severity": "medium",
+      "file": "src/features/settings/useTheme.test.tsx",
+      "line": 27,
+      "title": "Vitest's `stubGlobal(value: unknown)` plus a bare `vi.fn()` means the matchMedia and fetch mocks are checked against nothing",
+      "description": "Two vendor escape hatches compose here. node_modules/vitest/dist/index.d.ts:588 declares `stubGlobal: (name: string | symbol | number, value: unknown) => VitestUtils` — the replacement value is `unknown`, so it is never compared to the global it replaces. node_modules/@vitest/spy/dist/index.d.ts:151 declares `type Procedure = (...args: any[]) => any` as the default type argument of `Mock<T>`, so a bare `vi.fn()` accepts any implementation and returns `any` from every call. `mockPrefersDark` uses both: `vi.fn()` with no type argument, `.mockImplementation` with a hand-rolled return shape, and `stubGlobal` to install it as `window.matchMedia`. Nothing checks that shape against `(query: string) => MediaQueryList`. PROVEN: under `strict: true` a probe compiles `vi.stubGlobal('matchMedia', 12345)`, `vi.stubGlobal('fetch', { not: 'a function' })`, `vi.fn().mockImplementation((wrongParam: number) => ({ typo_matches: wrongParam }))`, and `vi.fn()('anything', 999).does.not.exist()` — all with zero errors. This matters because this mock is the only thing standing between useTheme's system-preference branch and reality: useTheme.ts:11 reads `.matches` and useTheme.ts:23-24 call `query.addEventListener?.('change', ...)` with optional chaining, so a mock that silently lost `addEventListener` or renamed `matches` would make the tests pass while the feature broke. Per the spec, a fixture that does not match the real shape means the test is exercising a fake. The same `unknown` hole is used for `fetch` at src/lib/covers/index.test.ts:6 and :68, src/features/library/goodreadsImport.test.tsx:85, and src/test/smoke.test.tsx:47 — those three do at least annotate the implementation's parameter as `RequestInfo | URL`, which is the pattern to copy.",
+      "evidence": "26: function mockPrefersDark(matches: boolean) {\n27:   vi.stubGlobal(\n28:     'matchMedia',\n29:     vi.fn().mockImplementation((query: string) => ({\n30:       matches,\n31:       media: query,\n32:       addEventListener: vi.fn(),\n\n-- node_modules/vitest/dist/index.d.ts --\n588:    stubGlobal: (name: string | symbol | number, value: unknown) => VitestUtils;\n-- node_modules/@vitest/spy/dist/index.d.ts --\n151: type Procedure = (...args: any[]) => any;",
+      "confidence": "high",
+      "suggestedPatch": "Close the hole where it enters by giving `vi.fn` its real type argument, which makes the return shape checkable: `vi.fn<(query: string) => MediaQueryList>().mockImplementation((query) => ({ ... }) as MediaQueryList)` — or better, drop the cast and let the object literal be checked directly by typing the helper's return: `function fakeMediaQueryList(query: string, matches: boolean): MediaQueryList { return { matches, media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn() }; }` then `vi.stubGlobal('matchMedia', vi.fn<typeof window.matchMedia>(() => fakeMediaQueryList(...)))`. Because `stubGlobal` will always take `unknown`, the durable fix is a single typed test helper (e.g. `src/test/globals.ts` exporting `stubMatchMedia(matches: boolean)` and `stubFetch(handler)`) that owns the one unchecked `stubGlobal` call and exposes a strictly-typed face to the five test files — the spec's isolation prescription applied to the test harness.",
+      "redteamClass": "assertion-clusters-and-external-any",
+      "overlapsExisting": "F075"
+    },
+    {
+      "id": "RT-F106",
+      "category": "type-assertion-as-T",
+      "severity": "medium",
+      "file": "src/lib/ai/errors.ts",
+      "line": 40,
+      "title": "The universal error normaliser asserts `unknown` to an object and crashes on two of the values JS can throw",
+      "description": "`statusOf` reads `.status` off a value typed `unknown` by asserting it to `{ status?: unknown }`. Verified in node: this throws TypeError for `null` and for `undefined` (a thrown string or number is fine). F029 covers line 53's substring-matching of the error message; this is a different defect on a different line — an assertion that removes the compiler's protection over a property read. It matters more than it looks because of where it sits: `toAiError` is documented as 'Normalises anything thrown by the Gemini SDK or fetch', it is the sole error funnel for the whole app (8 call sites including `AppShell.handleAiError`, which every feature routes through), and the whole point of the function is to be total over `unknown`. When it is not, a throw of `null`/`undefined` — `Promise.reject()` with no argument, a `throw null` from any dependency, an aborted operation — converts a handled error path into an unhandled crash inside the handler, which is strictly worse than the original failure. The `unknown` parameter type is correct; the assertion is what discards it.",
+      "evidence": " 39\tfunction statusOf(error: unknown): number | undefined {\n 40\t  const status = (error as { status?: unknown }).status;\n 41\t  return typeof status === 'number' ? status : undefined;\n 42\t}\n 43\t\n 44\t/** Normalises anything thrown by the Gemini SDK or fetch into an AiError. */\n 45\texport function toAiError(error: unknown): AiError {",
+      "confidence": "high",
+      "suggestedPatch": "Narrow instead of asserting:\n```ts\nfunction statusOf(error: unknown): number | undefined {\n  if (typeof error !== 'object' || error === null || !('status' in error)) return undefined;\n  const status = (error as { status: unknown }).status;\n  return typeof status === 'number' ? status : undefined;\n}\n```\nThe `in` check narrows without an assertion and covers null, undefined and primitives in one line. errors.test.ts already exists — add two table rows for `toAiError(null)` and `toAiError(undefined)` asserting kind 'unknown'. Risk: none; behaviour is unchanged for every value that does not currently crash.",
+      "effort": "trivial",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F028"
+    },
+    {
+      "id": "RT-F009",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "src/lib/ai/recommend.ts",
+      "line": 30,
+      "title": "getAIRecommendations declares Promise<Recommendation[]> with four required strings but builds them from an unvalidated cast, then the values are round-tripped through localStorage and re-asserted",
+      "description": "`Recommendation` (lines 9-14) requires `title`, `author`, `description` and `coverUrl` to all be present strings. They come from `JSON.parse(response.text || '{}') as { recommendations?: Omit<Recommendation, 'coverUrl'>[] }` with no element validation, and the values then make a second unvalidated trip: LibraryPage.tsx:76 serialises them into localStorage and LibraryPage.tsx:35 reads them back as `JSON.parse(cached) as { at: number; items: Recommendation[] }`, where the only check is `parsed.items?.length`. So a stale cache entry written by an older version, or a hand-edited localStorage value, re-enters typed code as fully-populated Recommendations. Exact input: the model omits `title` for one entry. Broken consumers: `fetchCover(rec.title, rec.author)` at line 37 bottoms out in `placeholderCover(title)` which calls `title.trim()` -> TypeError (caught here, so the whole refresh degrades to a toast); RecommendationCarousel.tsx:81 uses `key={rec.title}` so React keys collide on undefined; coverFallback (line 19) calls the same `placeholderCover(rec.title)` from an `<img onError>` handler where there is no try/catch at all; and LibraryPage.tsx:90 forwards the undefined title into `summarizeBook(rec.title, rec.author)`, producing a prompt about a book named 'undefined'.",
+      "evidence": " 30:     const data = JSON.parse(response.text || '{}') as {\n 31:       recommendations?: Omit<Recommendation, 'coverUrl'>[];\n 32:     };\n 34:     return Promise.all(\n 35:       (data.recommendations ?? []).map(async (rec) => ({\n 36:         ...rec,\n 37:         coverUrl: await fetchCover(rec.title, rec.author),   // rec.title may be undefined",
+      "confidence": "high",
+      "suggestedPatch": "Filter at line 35: `(data.recommendations ?? []).filter((r) => typeof r?.title === 'string' && r.title.trim() !== '' && typeof r?.author === 'string')` before the map. Apply the same predicate to `parsed.items` at LibraryPage.tsx:36 so a stale or edited cache cannot re-enter typed code. Risk: none — LibraryPage.tsx:72 already no-ops on an empty result and falls back to RECOMMENDED_BOOKS.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types",
+      "overlapsExisting": "F030"
+    },
+    {
+      "id": "RT-F010",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "src/lib/ai/summarize.ts",
+      "line": 22,
+      "title": "toGenerated promises a fully-formed Book and Summary but its `??` and `||` defaults only guard null/undefined, so a wrong-typed model field is persisted as a real summary",
+      "description": "`toGenerated(...): GeneratedBook` declares `keyInsights: string[]`, `actionableSteps: string[]`, `rating: number` and `readingTimeMinutes: number` as guaranteed. Its inputs come from `JSON.parse(response.text || '{}') as RawBookResponse` (lines 52 and 73). `RawBookResponse` is honest about ABSENCE — every field is optional, with a comment explaining why — but says nothing about WRONG TYPE, and `??`/`||` only substitute for null/undefined. A model that returns `keyInsights` as a single string rather than an array, or `rating` as `\"4\"`, passes straight through: `data.keyInsights ?? []` keeps the string. The result is written to IndexedDB as a real `Summary` by useLibrary.addBook -> summaryRepo.upsert. Broken consumers: BookDetail.tsx:470 runs `(summary?.keyInsights ?? []).map(...)` — `.map` is not a function on a string, so the book detail route throws to the error boundary every time that book is opened; markdown.ts:24-25 does `keyInsights.length > 0` (a string passes) then `.map` and throws the same way, killing Markdown export. This is the same file as the already-known sentinel at line 99 but a distinct defect at lines 22-41, and unlike that one it corrupts stored data rather than just labelling it.",
+      "evidence": " 22:   return {\n 28:       rating: data.rating ?? 0,                       // `??` does not guard a string \"4\"\n 29:       readingTimeMinutes: data.readingTimeMinutes ?? 5,\n 36:       keyInsights: data.keyInsights ?? [],            // a string survives as string[]\n 37:       actionableSteps: data.actionableSteps ?? [],\n\nsrc/components/BookDetail.tsx\n470:               {(summary?.keyInsights ?? []).map((insight, idx) => (   // .map is not a function",
+      "confidence": "medium",
+      "suggestedPatch": "Coerce by shape rather than by nullishness inside toGenerated: `keyInsights: Array.isArray(data.keyInsights) ? data.keyInsights.filter((i) => typeof i === 'string') : []` (same for actionableSteps), and `rating: Number(data.rating) || 0` / `readingTimeMinutes: Number(data.readingTimeMinutes) || 5`. Risk: none behaviourally for well-formed responses; it only narrows the malformed ones, and toGenerated is the single choke point both summarizeBook and summarizePdf pass through.",
+      "verdict": "PLAUSIBLE",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F007",
+      "category": "untyped-public-function",
+      "severity": "medium",
+      "file": "src/lib/base64.ts",
+      "line": 5,
+      "title": "base64ToBytes is typed as total over every string but throws DOMException on any input that is not valid base64, and one of its two callers feeds it untrusted localStorage",
+      "description": "`base64ToBytes(base64: string): Uint8Array<ArrayBuffer>` declares totality over the whole `string` domain. `atob` throws `DOMException: Invalid character` for any string whose length or alphabet is wrong (verified in node), so the function is partial and the signature says otherwise. Caller 1 — tts.ts:30 — passes a Gemini response and sits inside a try/catch that maps the throw to an AiError, so it is handled. Caller 2 — migrate.ts:136 and :142 — passes `legacy.pdfData` and `legacy.audioData` read verbatim out of localStorage, which is user-editable, survives across app versions, and (per CLAUDE.md) held the multi-megabyte base64 blobs that 'broke the original app', so truncated values are the expected failure. That call site has no try/catch, which is the mechanism behind RT-F002's permanent spinner. Reporting it separately because the fix belongs in base64.ts: a `(string) => Uint8Array` that can reject routine input should say so in its type rather than relying on every caller to remember.",
+      "evidence": "  5: export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {\n  6:   const binary = atob(base64);   // DOMException 'Invalid character' on malformed input\n  7:   const bytes = new Uint8Array(new ArrayBuffer(binary.length));\n\nsrc/lib/storage/migrate.ts\n136:         const bytes = base64ToBytes(legacy.pdfData);   // untrusted localStorage, no try/catch\n142:         const bytes = base64ToBytes(legacy.audioData);",
+      "confidence": "high",
+      "suggestedPatch": "Add a sibling `tryBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> | null` that wraps the `atob` call in try/catch and returns null, and use it at migrate.ts:136 and :142 so an unreadable legacy blob is skipped instead of aborting the migration. Leave `base64ToBytes` for the tts.ts path but document the throw in a JSDoc `@throws`. Risk: none — additive, and the tts.ts caller is unchanged.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types",
+      "overlapsExisting": "F037"
+    },
+    {
+      "id": "RT-F008",
+      "category": "discriminated-union-opportunity",
+      "severity": "medium",
+      "file": "src/lib/goodreads.ts",
+      "line": 109,
+      "title": "parseGoodreadsCsv returns 'Unknown' and 0 as not-found sentinels typed as real author and rating values, and StatsView averages the 0s into the user's rating, silently deflating it",
+      "description": "`GoodreadsRow.author: string` and `rating: number` (lines 5-7) claim every row carries a real author and a real rating. The parser manufactures sentinels for the missing case: line 109 substitutes the literal string `'Unknown'` for a blank author cell, and line 111 substitutes `0` for a missing or unparseable 'My Rating' — which is exactly what Goodreads writes for a book you read but never rated. Nothing downstream distinguishes sentinel from datum, because the types cannot express the difference. Exact input: a real Goodreads export in which some read books are unrated (the common case). Broken consumer: useLibrary.tsx:156 persists `rating: row.rating` as a genuine Book rating with `status: 'Finished'`, and StatsView.tsx:18-20 computes `finished.reduce((acc, b) => acc + b.rating, 0) / finished.length` over ALL finished books — so every unrated import drags the displayed average rating toward zero, with no indication why. BookCard.tsx:100 also renders a confident '0/5' badge for those books. The same sentinel is minted a second time at migrate.ts:113 (`rating: legacy.rating ?? 0`), so it travels in a pack.",
+      "evidence": "107:     rows.push({\n108:       title,\n109:       author: cell(authorAt) || 'Unknown',                 // sentinel typed as a real author\n111:       rating: Number.isFinite(rating) ? rating : 0,        // sentinel typed as a real rating\n\nsrc/components/StatsView.tsx\n 18:     const avgRating =\n 19:       finished.length > 0\n 20:         ? (finished.reduce((acc, b) => acc + b.rating, 0) / finished.length).toFixed(1)",
+      "confidence": "high",
+      "suggestedPatch": "Make absence representable: change `GoodreadsRow.rating` to `rating?: number` and emit `undefined` (not 0) at goodreads.ts:111 when the cell is blank or unparseable, then map it to `rating: row.rating ?? 0` at the persistence boundary only. The real fix for the visible bug is at StatsView.tsx:18 — average over `finished.filter((b) => b.rating > 0)` and fall back to '—' when none qualify. Risk: `Book.rating` stays a required number, so this is a display-layer change plus one optional field; goodreads.test.ts assertions on the 0 default will need updating.",
+      "verdict": "CONFIRMED",
+      "redteamClass": "lying-types"
+    },
+    {
+      "id": "RT-F305",
+      "category": "type-assertion-as-T",
+      "severity": "medium",
+      "file": "src/lib/storage/migrate.ts",
+      "line": 54,
+      "title": "`readJson<T>` is a generic assertion factory: one `as T` that manufactures a fully-trusted type for every caller and hides from any `as`-grep",
+      "description": "Filed for the assertion-laundering angle only; the boundary/validation aspect of localStorage ingress is owned by another class and is not re-reported here. `readJson<T>(key): T | null` has an entirely unconstrained type parameter whose only binding is `JSON.parse(raw) as T` on line 58. `JSON.parse` returns `any` (confirmed by a compiler-API pass over the repo: it is one of only six expressions in all of src/** whose inferred type is `any`), and the function's sole job is to convert that `any` into whatever the caller names, with no runtime check of any kind. The effect on this audit's own census is the point: the cast count for this file is 1, but the number of unvalidated type claims is the number of call sites — migrate.ts:89 asserts a `LegacyProfile` and migrate.ts:99 asserts a `LegacyBook[]`, and neither line contains the word `as`, so neither appears in any assertion inventory. A helper like this makes the codebase look cleaner than it is and grows the risk silently as callers are added. The values it produces are consumed immediately and structurally: line 99's result is iterated with `for (const legacy of legacyBooks)`, which throws TypeError if the stored JSON was an object rather than an array; line 91 reads `legacyProfile?.name?.trim()`, which throws if `name` was stored as a number. The declared `LegacyBook`/`LegacyProfile` interfaces make every field optional, which reads as careful design but is undermined by the fact that nothing establishes the top-level shape at all.",
+      "evidence": "54: function readJson<T>(key: string): T | null {\n55:   const raw = localStorage.getItem(key);\n56:   if (!raw) return null;\n57:   try {\n58:     return JSON.parse(raw) as T;\n59:   } catch {\n60:     return null;\n61:   }\n62: }\n...\n89:     const legacyProfile = readJson<LegacyProfile>(`booksum_profile_${userId}`);\n99:     const legacyBooks = readJson<LegacyBook[]>(`${LIBRARY_KEY_PREFIX}${userId}`) ?? [];",
+      "confidence": "high",
+      "suggestedPatch": "Make the helper honest about what it actually knows and push the assertion to the two sites that can reason about it. Minimal, no new dependency: change the signature to `function readJson(key: string): unknown` (drop the type parameter and the `as T`), then narrow at each caller with a two-line guard — line 99 becomes `const raw = readJson(key); const legacyBooks: LegacyBook[] = Array.isArray(raw) ? raw : [];` and line 89 becomes `const raw = readJson(key); const legacyProfile = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? (raw as LegacyProfile) : null;`. That turns two invisible lies into two visible, greppable assertions each guarded by a real runtime check, converts the current TypeError-on-corrupt-storage into a clean skip, and costs about six lines. Do NOT keep `readJson<T>` and merely rename it — an unconstrained `<T>` over `JSON.parse` is the pattern itself.",
+      "redteamClass": "assertion-clusters-and-external-any"
+    },
+    {
+      "id": "RT-F107",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "src/lib/storage/repo.ts",
+      "line": 4,
+      "title": "crypto.randomUUID() is typed as always available but is secure-context-only; every id in the app depends on it",
+      "description": "This is a platform-API boundary, not one of the `as`-cast cluster the prior findings enumerate. lib.dom declares `Crypto.randomUUID(): \\`${string}-${string}-...\\`` unconditionally, so the compiler guarantees availability. The runtime does not: `randomUUID` is a secure-context-only API, so on `http://` origins that are not localhost it is `undefined` and the call throws TypeError. That is not a theoretical origin for this app — the README's whole pitch is moving your library between devices, and `vite --host` on a LAN IP over plain http is the standard way to open a local-first app on a phone. In that context the failure is total, because the 5 call sites cover every write in the product: `repo.ts:4` (`newId`, used by profiles.create and books.create), `srs.ts:24` (every review card), `migrate.ts:102` (every migrated summary), `useLibrary.tsx:44` (every summary id) and `toastStore.ts:19` (every toast — so even the error message about the failure cannot render). Creating a profile is the very first action a new user takes, so the app is unusable rather than degraded.",
+      "evidence": "src/lib/storage/repo.ts:\n  4\tconst newId = () => crypto.randomUUID();\n\nother call sites:\n  src/lib/srs.ts:24        id: crypto.randomUUID(),\n  src/lib/storage/migrate.ts:102      const summaryId = crypto.randomUUID();\n  src/features/library/useLibrary.tsx:44      const summaryId = options.summary ? crypto.randomUUID() : undefined;\n  src/components/ui/toastStore.ts:19  toasts = [...toasts, { id: crypto.randomUUID(), kind, message }];",
+      "confidence": "high",
+      "suggestedPatch": "Add one shim and route all five sites through it — e.g. `src/lib/id.ts`:\n```ts\nexport function newId(): string {\n  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();\n  const b = new Uint8Array(16);\n  crypto.getRandomValues(b); // available in insecure contexts\n  b[6] = (b[6]! & 0x0f) | 0x40; b[8] = (b[8]! & 0x3f) | 0x80;\n  const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n}\n```\nThis is the spec's 'isolate the platform quirk in one shim with a strictly typed public face' pattern. `crypto.getRandomValues` is not secure-context-gated, so the fallback is still cryptographically sound. Risk: ids stay v4-shaped and opaque, so nothing downstream changes; keep the fallback branch covered by a unit test that stubs `crypto.randomUUID` to undefined.",
+      "effort": "moderate",
+      "redteamClass": "boundary-erasure"
+    },
+    {
+      "id": "RT-F103",
+      "category": "boundary-without-validation",
+      "severity": "medium",
+      "file": "tsconfig.json",
+      "line": 17,
+      "title": "The env-var boundary is typed `any` by vite/client, so the repo's zero-`any` property has a hole nobody wrote",
+      "description": "The audit spec names env vars as a boundary explicitly, and no lot was assigned to it. There are currently zero `import.meta.env` / `process.env` usages in src — but the type that would govern them is already `any`. `tsconfig.json` lists `vite/client` in `types`, which loads `node_modules/vite/types/importMeta.d.ts`. Because that file's `ViteTypeOptions` leaves `strictImportMetaEnv` commented out, `ImportMetaEnvFallbackKey` resolves to `string` and `ImportMetaEnv extends Record<string, any>`. Empirically verified with a tsc probe against this repo's own vite and typescript: `IsAny<ImportMetaEnv['VITE_SOME_UNDECLARED_KEY']>` resolves to `true`, and `const oops: number = import.meta.env.VITE_X.trim().nope()` compiles with zero errors under `--strict`. So the moment anyone adds a feature flag or an analytics key, they get an unannounced `any` that flows anywhere, with no `any` keyword and no lint hit — and the project's headline invariant work around 'no key in the bundle' makes env vars a likely near-term addition. Vite ships the opt-in fix; this repo has not taken it.",
+      "evidence": "tsconfig.json:\n 17\t    \"types\": [\"vite/client\", \"vitest/globals\", \"@testing-library/jest-dom\"]\n\nnode_modules/vite/types/importMeta.d.ts:\n 11\ttype ImportMetaEnvFallbackKey =\n 12\t  'strictImportMetaEnv' extends keyof ViteTypeOptions ? never : string\n 13\t\n 14\tinterface ImportMetaEnv extends Record<ImportMetaEnvFallbackKey, any> {\n 15\t  BASE_URL: string",
+      "confidence": "high",
+      "suggestedPatch": "Add `src/vite-env.d.ts` containing exactly:\n```ts\n/// <reference types=\"vite/client\" />\ninterface ViteTypeOptions { strictImportMetaEnv: unknown }\ninterface ImportMetaEnv { readonly BASE_URL: string }\n```\nDeclaring `strictImportMetaEnv` flips `ImportMetaEnvFallbackKey` to `never`, which removes the `any` index signature: unknown env keys then become compile errors and declared ones get real types. Adding a key later means declaring it in this one file. Risk: if any tooling in the build reads an undeclared `import.meta.env` key it will now fail to typecheck — which is the point, but check `vite build` once after landing.",
+      "effort": "trivial",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F146"
+    },
+    {
+      "id": "RT-F108",
+      "category": "type-assertion-as-T",
+      "severity": "low",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 174,
+      "title": "A DOM select's string value is asserted into the Priority union that gets persisted and exported",
+      "description": "`e.target.value` is `string`; asserting it to `Priority` tells the compiler the option list and the union can never diverge. They can: the `<option>` values are hand-written literals three lines below and nothing links them to `Priority`. Adding or renaming an option compiles clean and writes a value outside the union into `Book.priority`, from where it reaches IndexedDB, the exported backup file, and `LibraryPage`'s sort (`priorityScore[a.priority || 'Low'] ?? 1`, which silently scores the unknown value as 1) and `BookCard.getPriorityColor` (whose `default:` branch silently paints it blue). Nothing throws — the wrong value just becomes permanent data. Same shape appears benignly at BookDetail.tsx:299 and EReader.tsx:319, which assert a literal array rather than a runtime string and so are safe.",
+      "evidence": "172\t                <select\n173\t                  value={priority}\n174\t                  onChange={(e) => setPriority(e.target.value as Priority)}\n...\n177\t                  <option value=\"Low\">Low</option>\n178\t                  <option value=\"Medium\">Medium</option>\n179\t                  <option value=\"High\">High</option>",
+      "confidence": "high",
+      "suggestedPatch": "Derive the options from the union instead of asserting toward it. Export `export const PRIORITIES = ['Low','Medium','High'] as const satisfies readonly Priority[];` from src/types.ts, render `{PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}`, and narrow on change: `const next = e.target.value; if (PRIORITIES.includes(next as Priority)) setPriority(next as Priority);`. Better still, `<select>` accepts a typed handler if you keep the array as the single source — the assertion then has a runtime check behind it. Risk: none; the rendered markup is identical.",
+      "effort": "trivial",
+      "redteamClass": "boundary-erasure"
+    },
+    {
+      "id": "RT-F306",
+      "category": "implicit-any-from-missing-annotation",
+      "severity": "low",
+      "file": "src/components/AudioPlayer.tsx",
+      "line": 29,
+      "title": "`Promise.prototype.catch` contextually types its callback parameter as `any` — a second proven `noImplicitAny` escape hatch, from lib.es5",
+      "description": "Reported as the second confirmed instance of the class the `import.meta.env` finding opened, this time sourced from TypeScript's own standard library rather than a third-party package. `lib.es5.d.ts` declares `catch<TResult>(onrejected?: ((reason: any) => ...) | undefined | null)`, so the rejection reason is contextually typed `any`. An unannotated arrow-function parameter therefore lands on `any` with no error even though `noImplicitAny` is on — the flag only fires when TypeScript cannot infer a contextual type, and here it can, badly. A compiler-API sweep of all 86 source files found this to be the ONLY unannotated parameter in the repo whose inferred type is `any`, which is why the severity is low: the blast radius is one line and the value only reaches `console.error`. The finding's value is the pattern, not the instance — no lint rule in this project can catch it (the type-aware @typescript-eslint tier is inert for want of `parserOptions.project`), and the same hole reopens at every future `.catch(...)`, `.then(ok, err)`, `new Promise((res, rej) => ...)` (already present at src/components/AddBookModal.tsx:39, where `reject` is `(reason?: any) => void`) and any other lib.dom/lib.es5 callback typed with `any`. PROVEN: under `strict: true` a probe compiles `audio.play().catch((e) => { console.error(e.message.toUpperCase().nope()); const n: number = e; return n; })` with zero errors.",
+      "evidence": "27:   useEffect(() => {\n28:     if (autoPlay && audioRef.current) {\n29:       audioRef.current.play().catch((e) => console.error('Autoplay failed', e));\n30:     }\n31:   }, [track.src, autoPlay]);\n\n-- probe (compiles clean under strict) --\naudio.play().catch((e) => { console.error(e.message.toUpperCase().nope()); const n: number = e; return n; });",
+      "confidence": "high",
+      "suggestedPatch": "Annotate the parameter: `.catch((e: unknown) => console.error('Autoplay failed', e))`. `unknown` is the correct type here rather than a cop-out — a promise rejection genuinely can be anything, and nothing downstream needs to narrow it because `console.error` accepts `unknown`. Systemically, the durable fix is the one already filed against the ESLint config: adding `parserOptions.projectService` turns on `@typescript-eslint/no-unsafe-argument` / `no-unsafe-member-access` / `no-unsafe-assignment`, which are the only tooling in this stack that can see library-sourced `any` at all. Without them, `noImplicitAny` will keep reporting a clean bill of health on exactly the cases it cannot see.",
+      "redteamClass": "assertion-clusters-and-external-any"
+    },
+    {
+      "id": "RT-F109",
+      "category": "boundary-without-validation",
+      "severity": "low",
+      "file": "src/components/BookDetail.tsx",
+      "line": 199,
+      "title": "An unvalidated MIME string read out of IndexedDB reaches a same-origin script-execution sink",
+      "description": "`blobs.get` reconstructs a Blob from a stored record with `new Blob([record.bytes], { type: record.type })` (repo.ts:144). `record.type` is declared `string` by StoredBlob and is never validated on read — db.ts's schema is the only thing asserting it exists at all. `handleOpenPdf` then does `URL.createObjectURL(pdf)` and `window.open(url, '_blank')`. A blob: URL inherits the creating page's origin, so if `record.type` were ever `text/html` the opened document would execute script with full access to this origin's IndexedDB and localStorage — which holds the user's Gemini API key. Being honest about reachability: no current writer can poison it. `blobs.put` takes `blob.type` from a File the user picked and AddBookModal requires `type === 'application/pdf'`; migrate.ts passes the literals `'application/pdf'` and `'audio/wav'`; and blobs are deliberately excluded from LibraryExport, so the untrusted import path cannot reach them. The finding is that the type system provides no barrier at all if a future writer is added (a blob-carrying backup format is a natural next feature), and that the sink is one line from the read.",
+      "evidence": "src/components/BookDetail.tsx:\n195\t  const handleOpenPdf = async () => {\n196\t    if (!book.hasPdf) return;\n197\t    const pdf = await blobs.get(book.id, 'pdf');\n198\t    if (!pdf) return;\n199\t    const url = URL.createObjectURL(pdf);\n200\t    window.open(url, '_blank');\n\nsrc/lib/storage/repo.ts:\n144\t    return record ? new Blob([record.bytes], { type: record.type }) : undefined;",
+      "confidence": "high",
+      "suggestedPatch": "Pin the MIME at the read boundary rather than trusting the record: in repo.ts, map BlobKind to an allowed type and use it — `const MIME: Record<BlobKind, string> = { pdf: 'application/pdf', 'audio-short': 'audio/wav', 'audio-long': 'audio/wav' };` then `new Blob([record.bytes], { type: MIME[kind] })`. The kind is already a parameter, so nothing at the call sites changes and the stored `type` field becomes advisory. Also `URL.revokeObjectURL(url)` after the open (BookDetail.tsx:199 and the two AudioPlayer track URLs leak object URLs for the page's lifetime). Risk: a record stored with an unexpected MIME would now open under the pinned one — acceptable, since only these three kinds exist.",
+      "effort": "trivial",
+      "redteamClass": "boundary-erasure",
+      "overlapsExisting": "F118"
+    },
+    {
+      "id": "RT-F307",
+      "category": "non-null-assertion",
+      "severity": "low",
+      "file": "src/components/ui/useFocusTrap.ts",
+      "line": 47,
+      "title": "Index-site assertions that are no-ops today and would pre-suppress `noUncheckedIndexedAccess` tomorrow",
+      "description": "`noUncheckedIndexedAccess` is off, so `items[0]` is already typed `HTMLElement` and `bytes[i]` is already `number`. PROVEN by probe: the identical code with the `!` and the `as number` removed compiles clean under the repo's exact flags — all three assertions are currently doing nothing at all. Their real effect is deferred. The tsconfig gap for `noUncheckedIndexedAccess` is one of the flags this audit is expected to recommend enabling, and these three sites are precisely the ones that would silently survive it: PROVEN by a second probe compiled with `noUncheckedIndexedAccess: true`, where `items[0]!`, `items[items.length - 1]!` and `bytes[0] as number` all pass without a single error, while the same file's guard-style code stays honest. So the day the flag is turned on, the audit's own verification will report the codebase as clean at exactly the three places where the array-bounds reasoning was never actually done. In useFocusTrap the reasoning happens to hold (line 45 returns early on `items.length === 0`), but the guard is three lines away from the assertion and nothing links them; in base64.ts:17 the loop bound makes it hold too. The inconsistency is the tell: the same repo already prefers real guards for the same hazard at src/app/AppShell.tsx:70-71 (`const randomBook = targetPool[...]; if (!randomBook) return;`) and coalescing at src/lib/goodreads.ts:82 and :96 (`(table[0] ?? [])`, `(cells[index] ?? '')`). The 10 further `!` in test files (migrate.test.ts:93/103/113/116, toastStore.test.ts:25/25/30, reviewQueue.test.tsx:95/112, ProfileContext.test.tsx:16) are the same shape and would behave the same way.",
+      "evidence": "44:       const items = focusable();\n45:       if (items.length === 0) return;\n46:\n47:       const first = items[0]!;\n48:       const last = items[items.length - 1]!;\n\n-- src/lib/base64.ts (same shape, redundant cast) --\n17:     binary += String.fromCharCode(bytes[i] as number);\n\n-- src/app/AppShell.tsx (the correct pattern, already in the repo) --\n70:     const randomBook = targetPool[Math.floor(Math.random() * targetPool.length)];\n71:     if (!randomBook) return;",
+      "confidence": "high",
+      "suggestedPatch": "Delete the three assertions now, while they are provably no-ops — `const first = items[0];`, `const last = items[items.length - 1];`, `String.fromCharCode(bytes[i])` — all three compile unchanged under the current flags. This costs nothing today and buys a truthful signal later: when `noUncheckedIndexedAccess` is eventually enabled, these sites will then correctly fail and can be fixed with the guard pattern the repo already uses (`const first = items[0]; if (!first) return;`) rather than being silently waved through. Sequence it before, not after, any `noUncheckedIndexedAccess` adoption — enabling the flag first and only then removing the assertions inverts the safety. The 10 test-file `!` can be left until the flag lands; they are lower-stakes and are all guarded by preceding `toHaveLength` / seeding assertions.",
+      "redteamClass": "assertion-clusters-and-external-any"
+    },
+    {
+      "id": "RT-F308",
+      "category": "unknown-misuse",
+      "severity": "low",
+      "file": "src/lib/ai/errors.ts",
+      "line": 15,
+      "title": "`AiError.cause` is a permanent `unknown` with zero readers — captured at every failure, never narrowed, never surfaced",
+      "description": "`AiError` declares `readonly cause?: unknown` as a parameter property, and `toAiError` faithfully populates it on line 63 with the original error from the Gemini SDK or from fetch. Nothing in the repo ever reads it: a grep for `.cause` across all 86 source files returns zero hits, in production code and in tests alike. This is the textbook 'unknown that became permanent' — a safer-than-`any` placeholder that never got narrowed because it never got consumed, so it now costs the ceremony of `unknown` and delivers none of the safety benefit. It also quietly shadows the ES2022 `Error.cause` that `AiError` inherits, while `super(message)` never forwards it, so `err.cause` reaching a devtools console or a future structured logger is populated by the subclass field rather than by the standard mechanism — an inconsistency nobody can currently notice because there are no readers. Severity is low because there is no runtime hazard; the cost is that the original SDK error is captured and then unreachable, and that the field's type gives a future reader no information about what it might hold.",
+      "evidence": "11: export class AiError extends Error {\n12:   constructor(\n13:     readonly kind: AiErrorKind,\n14:     message: string,\n15:     readonly cause?: unknown,\n16:   ) {\n17:     super(message);\n...\n63:   return new AiError(kind, MESSAGES[kind], error);",
+      "confidence": "high",
+      "suggestedPatch": "Pick one and commit to it. (a) If the cause is wanted for diagnosis, stop declaring a shadow field and use the standard channel — drop the parameter property and call `super(message, { cause })`, which inherits `Error.cause` and is what devtools, `console.error` and any future logger already understand; then narrow at the single point of use with `error.cause instanceof Error ? error.cause.message : String(error.cause)`. (b) If it is genuinely unused, delete the parameter and the argument at line 63. Do not leave it as `unknown` with no readers — that is the exact state the spec calls out as 'same as any plus extra ceremony'. Option (a) is preferable given `toAiError` collapses eight distinct SDK failure modes into one of eight canned strings; the original message is the only way to tell them apart when a user reports 'Something went wrong talking to Gemini'.",
+      "redteamClass": "assertion-clusters-and-external-any"
+    }
+  ]
+}

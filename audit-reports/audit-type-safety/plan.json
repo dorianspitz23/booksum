@@ -1,0 +1,218 @@
+{
+  "auditType": "type-safety",
+  "target": "C:\\Software Projects\\BookSum\\.worktrees\\audit-type-safety",
+  "createdAt": "2026-08-12T13:57:47Z",
+  "lotCount": 14,
+  "lots": [
+    {
+      "id": "L01",
+      "name": "TypeScript config & strictness surface — tsconfig, eslint, vite, CI",
+      "globs": [
+        "tsconfig.json",
+        "package.json",
+        "eslint.config.js",
+        "vite.config.ts",
+        ".github/workflows/ci.yml"
+      ],
+      "estimatedFiles": 5,
+      "focus": "tsconfig-strictness-gap: `strict: true` is set but `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` are absent — enumerate every strict* flag that is off, what it would catch in this codebase, and adoption cost. Also: does eslint actually enforce type rules (`@typescript-eslint/no-explicit-any`, `no-unnecessary-type-assertion`, `no-non-null-assertion`) or only the recommended set; is `tsc --noEmit` gated in CI or decorative; does `skipLibCheck: true` hide drift with @google/genai and idb types; does `vite.config.ts` weaken types for the test env."
+    },
+    {
+      "id": "L02",
+      "name": "Domain model & IndexedDB schema declarations",
+      "globs": ["src/types.ts", "src/lib/storage/db.ts"],
+      "estimatedFiles": 2,
+      "focus": "This is the spine every other lot casts to, so audit the declared types themselves for lying types: fields declared required that persisted v1 rows may lack, optionals that consumers dereference. discriminated-union-opportunity: `Book` carries denormalised `readingTimeMinutes`/`oneSentenceTakeaway` that are only meaningful once a `Summary` exists — a summarised/unsummarised tag would make that provable. branded-type-opportunity: book id, profile id, summary id and blob key are all bare `string` and are passed positionally into repo calls. Also check the `idb` `DBSchema` value types against what the repo actually writes (ArrayBuffer + MIME, never Blob)."
+    },
+    {
+      "id": "L03",
+      "name": "IndexedDB persistence boundary — repo + migrations",
+      "globs": ["src/lib/storage/repo.ts", "src/lib/storage/migrate.ts"],
+      "estimatedFiles": 2,
+      "focus": "boundary-without-validation, the highest-priority category: rows coming back from `idb` are runtime-unknown, so flag every `as Book` / `as Summary` / `as Profile` on a `get`/`getAll`/cursor result and every `!` on a possibly-undefined `get`. Trace the ArrayBuffer<->Blob conversion at the repo edge for double-casts. In migrate.ts, legacy/base64-era records are by definition a different shape than the current types claim — look for `any`, `as unknown as T`, and `JSON.parse` output typed by assertion when reading pre-migration data, plus untyped-public-function on exported repo helpers."
+    },
+    {
+      "id": "L04",
+      "name": "Gemini transport, API-key storage & error mapping",
+      "globs": [
+        "src/lib/ai/client.ts",
+        "src/lib/ai/apiKey.ts",
+        "src/lib/ai/errors.ts",
+        "src/lib/ai/models.ts"
+      ],
+      "estimatedFiles": 4,
+      "focus": "Two ingress points in four small files. apiKey.ts reads `localStorage` — a `string | null` boundary; check for non-null-assertion or a cast that claims a validated key. errors.ts narrows caught `unknown` from the SDK: distinguish legitimate narrowing from unknown-misuse and `(e as { status: number })`-style type-assertion-as-T over an error shape the SDK never guarantees. client.ts wraps `@google/genai`: if `any` is load-bearing for the SDK it should be isolated here behind a strictly typed public face (compatibility lock-in, recommend isolation not removal) — verify it actually is."
+    },
+    {
+      "id": "L05",
+      "name": "Gemini response parsing & response schemas",
+      "globs": [
+        "src/lib/ai/schemas.ts",
+        "src/lib/ai/summarize.ts",
+        "src/lib/ai/quiz.ts",
+        "src/lib/ai/recommend.ts",
+        "src/lib/ai/chat.ts",
+        "src/lib/ai/tts.ts",
+        "src/lib/ai/prompts.ts"
+      ],
+      "estimatedFiles": 7,
+      "focus": "boundary-without-validation at its purest: model output is attacker-adjacent, non-deterministic text. Flag every `JSON.parse(...) as Summary/QuizQuestion[]/Recommendation[]` with no runtime guard, and every `response.text!` / `.candidates[0]` where the SDK types those as optional (non-null-assertion → crash on a blocked or truncated completion). schemas.ts declares a Gemini `responseSchema` alongside a TS type — check the two for silent drift (the schema is the only thing enforcing the shape, and it is not type-checked against the interface). tts.ts returns audio bytes: check the base64/ArrayBuffer typing."
+    },
+    {
+      "id": "L06",
+      "name": "External ingress — Goodreads CSV parser & cover HTTP clients",
+      "globs": [
+        "src/lib/goodreads.ts",
+        "src/lib/covers/index.ts",
+        "src/lib/covers/googleBooks.ts",
+        "src/lib/covers/openLibrary.ts",
+        "src/lib/covers/placeholder.ts"
+      ],
+      "estimatedFiles": 5,
+      "focus": "Two untrusted ingress paths. CSV: every cell is `string | undefined`, so look for `row['My Rating']` indexed access typed as present (no `noUncheckedIndexedAccess` to save you), `Number(...)`/`parseInt` producing `NaN` typed as `number`, date strings typed as `Date`, and the parsed row cast straight to `Book` without a guard. HTTP: `await res.json()` is `any` in lib.dom — flag `as GoogleBooksResponse` / `as OpenLibraryDoc` with no validation, and js-ambiguous-return on cover lookups that resolve `string | null | undefined` where callers may not handle every arm."
+    },
+    {
+      "id": "L07",
+      "name": "Binary, download & pure lib helpers — base64, wav, download, markdown, srs, contrast",
+      "globs": [
+        "src/lib/base64.ts",
+        "src/lib/audio/wav.ts",
+        "src/lib/download.ts",
+        "src/lib/markdown.ts",
+        "src/lib/srs.ts",
+        "src/lib/contrast.ts"
+      ],
+      "estimatedFiles": 6,
+      "focus": "Binary code is where casts hide: check ArrayBuffer / Uint8Array / DataView handling in wav.ts and base64.ts for `as ArrayBuffer` over a possibly-`SharedArrayBuffer` or ArrayBufferView, and for `atob`/`charCodeAt` paths that silently accept malformed input. markdown.ts: non-null-assertion on regex `match[1]` capture groups (undefined at runtime on a non-matching branch). srs.ts: grade/interval/ease are all bare `number` — branded-type-opportunity and discriminated-union-opportunity for the review outcome; also check whether the scheduling function's declared return can actually be produced for every input. download.ts touches Blob/URL/anchor DOM APIs — look for element casts."
+    },
+    {
+      "id": "L08",
+      "name": "App shell, router wiring & error boundary",
+      "globs": [
+        "src/App.tsx",
+        "src/main.tsx",
+        "src/app/AppShell.tsx",
+        "src/app/ErrorBoundary.tsx",
+        "src/app/ShellContext.ts",
+        "src/app/routes.tsx"
+      ],
+      "estimatedFiles": 6,
+      "focus": "ErrorBoundary handles `unknown`/`Error` from componentDidCatch — check for `any` on the caught value or `(error as Error).message` where a non-Error can be thrown. ShellContext: React contexts are the classic `createContext(null as unknown as T)` double-cast site — if present, that is a lying type every consumer trusts. routes.tsx: react-router loader/params/element typings, `useParams()` returning `Record<string, string | undefined>` narrowed by assertion. main.tsx: `document.getElementById('root')!` non-null-assertion. Also `localStorage`/`matchMedia` reads in AppShell typed without validation."
+    },
+    {
+      "id": "L09",
+      "name": "Library feature — list, recommendations & Goodreads import UI",
+      "globs": [
+        "src/features/library/GoodreadsImport.tsx",
+        "src/features/library/LibraryPage.tsx",
+        "src/features/library/RecommendationCarousel.tsx",
+        "src/features/library/recommendationDefaults.ts",
+        "src/features/library/useLibrary.tsx"
+      ],
+      "estimatedFiles": 5,
+      "focus": "The file-input boundary: `e.target.files![0]`, `(e.target as HTMLInputElement)`, and `await file.text()` feeding the CSV parser — non-null-assertion and boundary-without-validation on user-chosen files (wrong file type still parses). useLibrary.tsx is the shared data hook: audit its exported surface for untyped-public-function and for a lying return type (does it really always give `Book[]`, or `Book[] | undefined` while loading?). Sort/filter/view state held as bare `string` is a discriminated-union-opportunity; check import progress/result state for a status field whose companion data is only valid in some states."
+    },
+    {
+      "id": "L10",
+      "name": "Feature hooks & pages — book route, profile, review, settings, stats",
+      "globs": [
+        "src/features/book/*.{ts,tsx}",
+        "src/features/profile/ProfileContext.tsx",
+        "src/features/profile/ProfilePage.tsx",
+        "src/features/profile/ProfilePicker.tsx",
+        "src/features/review/ReviewPage.tsx",
+        "src/features/review/useReviewQueue.ts",
+        "src/features/settings/ApiKeyDialog.tsx",
+        "src/features/settings/ThemeToggle.tsx",
+        "src/features/settings/useTheme.ts",
+        "src/features/stats/StatsPage.tsx"
+      ],
+      "estimatedFiles": 12,
+      "focus": "useBookRoute reads a route param that is `string | undefined` and loads a book that may not exist — the prime lying-types candidate (declared `Book` where `Book | undefined` is the truth; check what the page does on a bogus id). ProfileContext: context default value and the documented `isLoading` gate — a type that lets consumers touch a null profile is the bug CLAUDE.md warns about. useTheme.ts reads a theme string out of `localStorage` (unvalidated `string` widened to a `'light' | 'dark'` union is boundary-without-validation). useReviewQueue: SRS grade primitives and queue-item unions. ApiKeyDialog handles the raw key string."
+    },
+    {
+      "id": "L11",
+      "name": "Large views — BookDetail, EReader, ProfileView",
+      "globs": [
+        "src/components/BookDetail.tsx",
+        "src/components/EReader.tsx",
+        "src/components/ProfileView.tsx"
+      ],
+      "estimatedFiles": 3,
+      "focus": "The three heaviest files in the app — expect a type-assertion cluster, which the spec says means the SOURCE type is wrong rather than each site needing a cast. EReader owns its own theme model and PDF/blob rendering: check blob-to-object-URL typing, `as HTMLElement` on refs/queries, and reader-settings state that wants a literal union. BookDetail orchestrates summarise/quiz/chat/audio — audit its prop and local state types for `any` and for optional summary fields dereferenced without narrowing. ProfileView edits profile records — flag partial-update objects cast to the full type. Report per-file weakness density here."
+    },
+    {
+      "id": "L12",
+      "name": "Modals, media components & shared UI primitives",
+      "globs": [
+        "src/components/AddBookModal.tsx",
+        "src/components/AudioPlayer.tsx",
+        "src/components/ChatModal.tsx",
+        "src/components/DailyWisdomModal.tsx",
+        "src/components/QuizModal.tsx",
+        "src/components/StatsView.tsx",
+        "src/components/BookCard.tsx",
+        "src/components/ui/Dialog.tsx",
+        "src/components/ui/ConfirmDialog.tsx",
+        "src/components/ui/Toast.tsx",
+        "src/components/ui/toastStore.ts",
+        "src/components/ui/useFocusTrap.ts"
+      ],
+      "estimatedFiles": 12,
+      "focus": "AddBookModal takes file/PDF input and AudioPlayer drives an `HTMLAudioElement` — check ref types (`useRef<T>(null!)` non-null-assertion), `as HTMLInputElement`, and event handlers with implicit-any parameters. useFocusTrap does `querySelectorAll` and must cast NodeList entries to focusable elements — verify the cast is guarded. toastStore is a hand-rolled subscribe/emit store: prime generic-opportunity and a place where listener/payload types go `any`; ConfirmDialog stores a promise resolver whose type is easy to widen. QuizModal/ChatModal consume unvalidated AI-shaped data — check whether they re-assert it. BookCard/StatsView: prop contracts and numeric formatting coercion."
+    },
+    {
+      "id": "L13",
+      "name": "lib test suites & test harness",
+      "globs": ["src/lib/**/*.test.ts", "src/test/setup.ts", "src/test/smoke.test.tsx"],
+      "estimatedFiles": 14,
+      "focus": "Do NOT downgrade these reflexively — a fixture cast to a domain type while missing fields means the production code depending on those fields is untested. Look for `{ id: '1', title: 'x' } as Book` in repo/migrate/goodreads tests, `as unknown as` on fake-indexeddb and fetch mocks, `vi.fn() as any`, and `@ts-expect-error` on mock wiring. The fake-indexeddb Blob-to-`{}` gotcha means storage fixtures are especially likely to assert a shape the fake store never produces. setup.ts declares global test types — check for `any` on globals/matchers that would silently disable checking across the whole suite."
+    },
+    {
+      "id": "L14",
+      "name": "App, feature & component test suites",
+      "globs": [
+        "src/app/routing.test.tsx",
+        "src/features/**/*.test.tsx",
+        "src/components/ui/Dialog.test.tsx",
+        "src/components/ui/toastStore.test.ts"
+      ],
+      "estimatedFiles": 8,
+      "focus": "Same rule as L13: lying types in fixtures are high-value. React tests are where `as any` on props, `as unknown as Profile` on context values, and `vi.mock` factories returning loosely typed stubs concentrate — a mocked module whose stub does not match the real export signature means the test passes while production drifts. Check goodreadsImport/useLibrary tests for CSV and Book fixtures missing required fields, ProfileContext tests for a partial profile cast whole, and useTheme tests for a fake localStorage/matchMedia typed by assertion."
+    }
+  ],
+  "excluded": [
+    "node_modules/**",
+    "dist/**",
+    "dist-ssr/**",
+    "build/**",
+    "coverage/**",
+    ".git/**",
+    ".worktrees/**",
+    "audit-reports/**",
+    ".vite/**",
+    "package-lock.json",
+    "docs/**",
+    "public/**",
+    "index.html",
+    "src/index.css",
+    "README.md",
+    "CLAUDE.md",
+    ".env.example",
+    ".gitignore",
+    ".prettierrc.json",
+    ".prettierignore",
+    "**/*.tsbuildinfo"
+  ],
+  "fileCensus": {
+    "totalInScope": 91,
+    "byArea": {
+      "src/lib": 25,
+      "src/features": 17,
+      "src/components": 15,
+      "src/app": 7,
+      "tests": 22,
+      "config": 5
+    }
+  }
+}

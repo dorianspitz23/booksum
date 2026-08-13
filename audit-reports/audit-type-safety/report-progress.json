@@ -1,0 +1,30 @@
+{
+  "auditType": "type-safety",
+  "phase": "complete",
+  "startedAt": "2026-08-12T17:19:13.777Z",
+  "returnAllowed": true,
+  "deliverables": [
+    {
+      "id": "findings.json",
+      "path": "C:/Software Projects/BookSum/.worktrees/audit-type-safety/audit-reports/audit-type-safety/findings.json",
+      "required": true,
+      "done": true,
+      "bytes": 919810
+    },
+    {
+      "id": "report.md",
+      "path": "C:/Software Projects/BookSum/.worktrees/audit-type-safety/audit-reports/audit-type-safety/report.md",
+      "required": true,
+      "done": true,
+      "bytes": 284886
+    },
+    {
+      "id": "waves.json",
+      "path": "C:/Software Projects/BookSum/.worktrees/audit-type-safety/audit-reports/audit-type-safety/waves.json",
+      "required": true,
+      "done": true,
+      "bytes": 52775
+    }
+  ],
+  "completedAt": "2026-08-13T07:55:54.519Z"
+}

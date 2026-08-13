@@ -1,0 +1,130 @@
+{
+  "lotId": "L09",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T14:38:46Z",
+  "filesScanned": 5,
+  "findingCount": 11,
+  "findings": [
+    {
+      "id": "L09-F01",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/features/library/GoodreadsImport.tsx",
+      "line": 24,
+      "title": "CSV file boundary trusts any user-picked bytes: no MIME, size, or header-shape gate before persisting rows",
+      "description": "`await file.text()` returns a `string` for ANY bytes the user picks and never throws on invalid UTF-8 (the decoder substitutes U+FFFD), so the entire `File -> string -> GoodreadsParseResult` chain is typed end-to-end with zero runtime validation. `file.type` and `file.size` are never consulted; the `accept=\".csv,text/csv\"` attribute on line 66 is advisory only (every OS picker lets the user switch to 'All Files'). The parser does no header validation either: `columnOf('title')` (src/lib/goodreads.ts:83-98) returns -1 for a non-Goodreads file and `cell(-1)` yields ''. Two distinct failure modes result, and BOTH are reachable: (a) file has no `title` column (a PDF renamed .csv, a semicolon-delimited European CSV) -> every row is skipped, `{rows: [], skipped: N}`, and the user correctly sees the 'No books found' toast on line 28 -- benign; (b) file HAS a `title` column but is not a Goodreads export (a Calibre export uses `title,authors,...` -- `author` singular does not match) -> EVERY row imports as a real book with `author: 'Unknown'` (goodreads.ts:109), `status: 'Want to Read'` (toStatus('')), `rating: 0`, `category: 'Other'` (useLibrary.tsx:154). The preview panel on lines 84-91 reports this as '4000 books found, 0 finished, 4000 to read, 0 rows skipped' -- indistinguishable from a successful parse -- and clicking Import writes 4000 junk records into IndexedDB with no undo short of deleting each one or wiping the whole profile. There is also no `file.size` cap: `file.text()` materialises the whole file as one JS string and `parseCsv` walks it char-by-char, so a several-hundred-MB pick freezes the tab (the try/catch only catches the OOM after the fact). Correct behaviour: gate on the header row (require `title` plus at least one of `author` / `exclusive shelf`) and report 'this does not look like a Goodreads export' instead of a book count, and reject on `file.size` before reading. Blast radius: the app's only bulk-ingress path; every imported record is persistent and flows into LibraryPage, StatsView, ProfileView and the review queue.",
+      "evidence": "19  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {\n20    const file = event.target.files?.[0];\n21    if (!file) return;\n22\n23    try {\n24      const parsed = parseGoodreadsCsv(await file.text());\n25      setPreview(parsed);\n26      setFilename(file.name);\n27      if (parsed.rows.length === 0) {\n28        toast.error('No books found in that file. Is it a Goodreads CSV export?');",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F02",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 102,
+      "title": "importLibrary declares `payload: LibraryExport` for an unvalidated user JSON file and persists each element unchecked",
+      "description": "`importLibrary` accepts `payload: LibraryExport` -- a type that is fiction at this boundary. The only producer is src/components/ProfileView.tsx:117, `const data = JSON.parse(content) as LibraryExport`, whose sole guard is `Array.isArray(data.books)` (ProfileView.tsx:119); individual elements are never checked. The `?? []` on lines 109 and 114 is the author acknowledging the declared type is not trustworthy, but the loop body then spreads each unvalidated element straight into `bookRepo.create({ ...book, profileId })`, and `books.create` (src/lib/storage/repo.ts:51-61) fills in only `id` and `addedAt` -- every other field passes through verbatim into IndexedDB. Concrete failure: a hand-edited or truncated backup containing `{\"version\":2,\"books\":[{\"id\":\"a\"}],\"summaries\":[]}` passes `Array.isArray`, the confirm dialog says 'Found 1 book', and a `Book` record with no `title` is persisted. Navigating to `/` then runs LibraryPage.tsx:50 `book.title.toLowerCase()` -> `TypeError: Cannot read properties of undefined (reading 'toLowerCase')` inside the `filteredBooks` useMemo, which throws on every render of the default route. The corruption survives reload because it is in IndexedDB, so the app's home page is permanently broken until the user clears storage. Correct behaviour: validate each element against the `Book`/`Summary` shape (a hand-written guard or Zod) at this boundary and drop or report the bad rows; the declared parameter type should be `unknown` until validated. Blast radius: one caller today (ProfilePage -> ProfileView), but it writes to the store that all six `useLibrary` consumers read.",
+      "evidence": "102  const importLibrary = useCallback(\n103    async (payload: LibraryExport): Promise<number> => {\n104      if (!profile) return 0;\n105\n106      const existing = new Set((await bookRepo.listByProfile(profile.id)).map((b) => b.id));\n107      let added = 0;\n108\n109      for (const book of payload.books ?? []) {\n110        if (existing.has(book.id)) continue;\n111        await bookRepo.create({ ...book, profileId: profile.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F03",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 170,
+      "title": "useLibrary returns an untagged `{ books, isLoading }` bag, so `Book[]` cannot distinguish 'empty' from 'not loaded yet'",
+      "description": "The hook returns `books: Book[]` alongside a separate `isLoading: boolean`. Nothing in the type stops a consumer from reading `books` while `isLoading` is true, and during the whole first `bookRepo.listByProfile` round-trip `books` is `[]` -- an honest-looking empty library that is actually 'unknown'. Of the six consumers, only src/features/book/useBookRoute.ts:10 destructures `isLoading`, and it MUST (line 16 `if (isLoading) return;` is the only thing preventing a redirect off a valid `/book/:id` URL). The other four -- LibraryPage.tsx:18, StatsPage.tsx:6, ProfilePage.tsx:9, AppShell.tsx:27 -- take `books` alone and treat `[]` as authoritative. The compiler cannot flag any of them. ProfilePage.tsx:24 is the sharpest case: 'Delete everything' does `books.map((book) => removeBook(book.id))` and would silently delete only whatever subset happens to be in the stale array. Correct shape: a tagged union -- `{ status: 'loading' } | { status: 'ready'; books: Book[] }` -- which makes reading `books` in the loading state a compile error. Note the profile gate itself is correct and should not be flagged: `reload` waits on `profileLoading` (lines 22-25) and App.tsx:12/22 does not even mount `LibraryProvider` until the profile has settled and is non-null. Blast radius: six call sites, all of the library, stats, profile and book routes.",
+      "evidence": "170  return {\n171    books,\n172    isLoading,\n173    addBook,\n174    updateBook,\n175    removeBook,\n176    getSummary,\n177    saveSummary,\n178    exportLibrary,\n179    importLibrary,",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F04",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 188,
+      "title": "LibraryPage renders the zero-books empty state during the initial load because it never reads `isLoading`",
+      "description": "Consumer-side manifestation of L09-F03, on the app's default route. Line 18 destructures only `{ books, addBook, getSummary }` -- `isLoading` is available on the same object and is simply not taken -- so `filteredBooks.length > 0 ? grid : emptyState` treats the loading `[]` as 'this user has no books'. App.tsx:12 gates on `useProfile().isLoading`, not on the library's, so `LibraryProvider` mounts with a settled profile while `books` is still `[]` and `isLoading` is still `true`. The first paint of `/` for a user with 500 imported books is therefore 'Your library is quiet' plus an 'Add Your First Book' button, for the duration of the IndexedDB open + index read. The same array also drives `categories` (line 65), so the topic filter row is empty in that window. This is only possible because the producer's type does not tag its states; the fix here is to consume the tag (render a skeleton while loading), and it disappears entirely once L09-F03 is fixed. Blast radius: the default route, every cold load.",
+      "evidence": "18    const { books, addBook, getSummary } = useLibrary();\n...\n188      {filteredBooks.length > 0 ? (\n189        <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8\">\n190          {filteredBooks.map((book) => (\n191            <BookCard key={book.id} book={book} onClick={() => void navigate(`/book/${book.id}`)} />\n192          ))}\n193        </div>\n194      ) : (\n195        <div className=\"flex flex-col items-center justify-center py-24 text-center\">\n200            Your library is quiet",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F05",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 35,
+      "title": "localStorage recommendation cache is cast to a concrete shape and rendered without validation",
+      "description": "`JSON.parse(cached) as { at: number; items: Recommendation[] }` is a pure assertion over external, persistent, user-writable storage. The value flows unchecked into `setRecommendations(parsed.items)` and then into RecommendationCarousel.tsx:79 `recommendations.map(...)` and `rec.title` / `rec.author` / `rec.description` / `rec.coverUrl`. The try/catch on line 39 only covers `JSON.parse`, i.e. syntax errors -- a syntactically valid but wrong-shaped value passes the assertion, and the resulting failure happens later during the carousel's render, outside the catch, so the self-healing `localStorage.removeItem` on line 40 never runs. Concrete failure: a stored `{\"at\":<now>,\"items\":\"abc\"}` satisfies the `parsed.items?.length` truthiness test (string length 3) and then throws `TypeError: recommendations.map is not a function` from the error boundary -- on every load, permanently, because the poison stays in localStorage. Milder always-live version: entries missing `coverUrl` render `<img src={undefined}>` (React drops the attribute, so `onError` and the placeholder fallback on line 94 may never fire) and entries missing `title` produce `key={undefined}`. Reachability: the app is the only writer today, but a shared origin makes localStorage non-exclusive -- the planned Phase 4 GitHub Pages demo puts BookSum on `<user>.github.io`, one origin shared with every other Pages site under that account -- and any future change to `Recommendation` leaves 24h of stale-shaped caches that still pass the TTL check. Correct behaviour: validate the parsed object (array check plus per-item field check) and drop the cache when it fails, the way ProfileView.tsx:119 at least array-checks its import.",
+      "evidence": "33    try {\n34      const parsed = JSON.parse(cached) as { at: number; items: Recommendation[] };\n35      if (Date.now() - parsed.at < RECS_TTL_MS && parsed.items?.length) {\n36        setRecommendations(parsed.items);\n37      }\n38    } catch {\n39      localStorage.removeItem(`${RECS_CACHE_KEY}.${profile.id}`);\n40    }",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F06",
+      "category": "untyped-public-function",
+      "severity": "Medium",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 185,
+      "title": "The feature's entire public contract is inferred: `LibraryApi = ReturnType<typeof useLibraryState>`",
+      "description": "`useLibraryState` is module-private and carries no return type annotation; `LibraryApi` is derived from it with `ReturnType<>`, and `useLibrary(): LibraryApi` therefore has an annotation that is just an alias for 'whatever the implementation currently happens to return'. Nothing declares what this module promises. An incidental change inside any of the ten `useCallback`s -- a widened parameter, a narrowed return, a renamed key in the returned object literal -- silently rewrites the feature's public API, and TypeScript reports the breakage at the six consumer sites rather than at the source. There is no interface to diff a PR against and no place to document the contract. The repo already has the idiomatic fix one folder over: src/features/profile/ProfileContext.tsx:9-18 declares `interface ProfileContextValue` explicitly and annotates `useProfile(): ProfileContextValue`. `LibraryProvider` (line 193) likewise has no return annotation. Blast radius: six app call sites (AppShell.tsx:27, LibraryPage.tsx:18, StatsPage.tsx:6, ProfilePage.tsx:9, BookDetailPage.tsx:13, useBookRoute.ts:10, GoodreadsImport.tsx:13) plus two test files that re-derive `ReturnType<typeof useLibrary>`.",
+      "evidence": "183  }\n184\n185  export type LibraryApi = ReturnType<typeof useLibraryState>;\n186\n187  const LibraryContext = createContext<LibraryApi | undefined>(undefined);\n...\n198  export function useLibrary(): LibraryApi {\n199    const context = useContext(LibraryContext);\n200    if (!context) throw new Error('useLibrary must be used within a LibraryProvider');",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F07",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/features/library/GoodreadsImport.tsx",
+      "line": 15,
+      "title": "Import workflow held as three independent states, letting a failed pick import the previous file's rows",
+      "description": "`preview`, `filename` and `isImporting` model one linear workflow as three orthogonal states -- eight representable combinations for four legal ones (`filename` set with `preview` null, and vice versa, are both representable and both meaningless). The illegal combination is reachable: `handleFile`'s catch on line 30 toasts and returns without clearing `preview` or `filename`, because both are only assigned on the success path (lines 25-26). Concrete failure: the user picks A.csv successfully (preview shows '100 books found', the drop zone shows 'A.csv'), then re-opens the picker and chooses B.csv, whose read rejects -- `file.text()` throws `DOMException: NotReadableError` / `NotFoundError` when the file was moved, deleted, or its permission revoked between selection and read, and on a disconnected network share. The user sees 'Could not read that file.' but the drop zone still reads 'A.csv', the preview still reads '100 books found', and the Import button is still enabled; clicking it imports A's rows while the user believes they are importing B. Correct shape: a single tagged state, `{ phase: 'idle' } | { phase: 'parsed'; filename: string; result: GoodreadsParseResult } | { phase: 'importing'; ... }`, which makes the stale combination unrepresentable and forces the error path to transition explicitly. Blast radius: this component only, but the outcome is persisted book records.",
+      "evidence": "14    const fileInputRef = useRef<HTMLInputElement>(null);\n15    const [preview, setPreview] = useState<GoodreadsParseResult | null>(null);\n16    const [filename, setFilename] = useState<string | null>(null);\n17    const [isImporting, setIsImporting] = useState(false);\n...\n25        setPreview(parsed);\n26        setFilename(file.name);\n...\n30      } catch {\n31        toast.error('Could not read that file.');\n32      }",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F08",
+      "category": "discriminated-union-opportunity",
+      "severity": "Low",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 22,
+      "title": "The 'All' sentinel shares a value space with real, AI-generated category strings",
+      "description": "`activeCategory` is a bare `string` whose sentinel value 'All' lives in the same value space as real `book.category` values, and `Book.category` is itself untyped (`category: string`, src/types.ts:33) and populated from unconstrained model output: src/lib/ai/summarize.ts:26 `category: data.category || 'Other'`, whose response schema declares only `{ type: Type.STRING }` (src/lib/ai/schemas.ts:8) -- the eight-value constraint exists solely as English in the prompt (src/lib/ai/prompts.ts:12), and the `Category` enum in types.ts:6 is never bound to the field. So the set is NOT closed by the buttons: `categories` on line 65 is derived from stored data. If the model ever returns 'All' for a book, `categories` contains 'All' twice, `key={cat}` on line 173 collides, and the second button -- which looks like a category filter -- short-circuits the check on line 47 and shows every book instead of that category's. The same collision silently makes `showRecommendations` (line 110) true when a real category is selected. The file already demonstrates the correct pattern one line below: `statusFilter` is typed `'All' | BookStatus` (line 23). Fix shape: type the sentinel out of the data space -- `null` for 'no filter', or a tagged `{ kind: 'all' } | { kind: 'category'; name: string }` -- and narrow `Book.category` to the `Category` enum. Blast radius: this page's filter row.",
+      "evidence": "22    const [activeCategory, setActiveCategory] = useState<string>('All');\n23    const [statusFilter, setStatusFilter] = useState<'All' | BookStatus>('All');\n...\n47          const matchesCategory = activeCategory === 'All' || book.category === activeCategory;\n...\n65    const categories = ['All', ...Array.from(new Set(books.map((b) => b.category)))];\n...\n173              key={cat}\n174              onClick={() => setActiveCategory(cat)}",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F09",
+      "category": "weak-type-as-Object-or-Function",
+      "severity": "Low",
+      "file": "src/features/library/LibraryPage.tsx",
+      "line": 56,
+      "title": "Priority score map typed `Record<string, number>` instead of `Record<Priority, number>`",
+      "description": "The key domain is `Priority` ('Low' | 'Medium' | 'High', src/types.ts:2), not `string`. Typing the map with a `string` index signature has two costs. First, the map stops being exhaustive: adding a fourth `Priority` value compiles cleanly and silently scores it 1, changing the 'Want to Read' ordering with no compile error anywhere. Second, the index access is a small lie in both directions -- with `noUncheckedIndexedAccess` off (confirmed in tsconfig.json) `priorityScore[...]` is typed `number` and never `undefined`, so the `?? 1` fallbacks on lines 57-58 are unreachable as far as the compiler is concerned while reading as though they were load-bearing; they are in fact dead, because `a.priority || 'Low'` can only produce a key that exists. `Record<Priority, number>` makes the literal exhaustive, makes the lookup genuinely total, and lets both `?? 1` fallbacks be deleted. Blast radius: the sort comparator on this page.",
+      "evidence": "54        .sort((a, b) => {\n55          if (a.status === 'Want to Read' && b.status === 'Want to Read') {\n56            const priorityScore: Record<string, number> = { High: 3, Medium: 2, Low: 1 };\n57            const scoreA = priorityScore[a.priority || 'Low'] ?? 1;\n58            const scoreB = priorityScore[b.priority || 'Low'] ?? 1;\n59            if (scoreA !== scoreB) return scoreB - scoreA;\n60          }",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F10",
+      "category": "discriminated-union-opportunity",
+      "severity": "Low",
+      "file": "src/features/library/useLibrary.tsx",
+      "line": 128,
+      "title": "The 'no active profile' precondition is unrepresentable in the mutators' return types, and is reported to the user as success",
+      "description": "Three sibling mutators handle the same precondition three different ways, and two of them encode failure as a legitimate-looking result. `importGoodreadsRows` returns `{ added: 0, duplicates: 0 }` for 'no profile' -- byte-identical to 'the file parsed but every row was already in the library' -- and GoodreadsImport.tsx:39-43 renders that as a green `toast.success('Imported 0 books.')`. `importLibrary` (line 104) returns `0` for the same state, which ProfileView.tsx:133 reports as 'Imported 0 new books.' Meanwhile `addBook` (line 42) throws `new Error('No active profile')` for the identical precondition. Honest reachability: App.tsx:22 does not mount `LibraryProvider` until `profile` is non-null, so these branches are dead in the current app -- the finding is that the return types cannot express the precondition, so nothing catches a future change to where the provider mounts, or a direct call from a test or a new caller, and the failure mode when it lands is a silent success message over dropped data. Fix shape: either make the precondition a type-level invariant (take the profile as an argument, so a null profile cannot reach the call) or return a tagged result so 'no profile' is a distinct case callers must handle. Blast radius: two call sites today, both user-facing toasts.",
+      "evidence": "128  const importGoodreadsRows = useCallback(\n129    async (rows: GoodreadsRow[]): Promise<{ added: number; duplicates: number }> => {\n130      if (!profile) return { added: 0, duplicates: 0 };\n...\n41    if (!profile) throw new Error('No active profile');   // addBook, same precondition\n...\n104      if (!profile) return 0;                             // importLibrary, third contract",
+      "confidence": "high"
+    },
+    {
+      "id": "L09-F11",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/features/library/RecommendationCarousel.tsx",
+      "line": 12,
+      "title": "A recommendation title doubles as its identity for both the React key and the in-flight marker",
+      "description": "`addingBookTitle: string | null` is a raw title used as an identity: it is compared against `rec.title` on lines 109 and 149 to decide which card shows the 'Generating...' spinner, and `rec.title` is also the React reconciliation key on line 81. Nothing guarantees titles are unique -- `Recommendation[]` comes from `getAIRecommendations` (src/lib/ai/recommend.ts:34), which maps model output straight through with no dedupe, and the defaults in recommendationDefaults.ts are a separate list that a refreshed set can overlap. Concrete failure: the model returns two entries with the same title (a common case for reissues, or a title the model repeats), so the list renders duplicate React keys and, once the user clicks one, BOTH cards show the 'Generating...' spinner while only one summary is being fetched -- and clicking the other is silently swallowed by the `if (addingBookTitle) return;` guard at LibraryPage.tsx:87. A distinct identity on `Recommendation` (or an index-based key plus an index-based in-flight marker) removes the ambiguity; a branded `RecommendationId` would make the title/identity mixup a compile error. Blast radius: the carousel and LibraryPage's preview flow.",
+      "evidence": "12    addingBookTitle: string | null;\n...\n81            key={rec.title}\n...\n109                  {addingBookTitle === rec.title ? (\n110                    <>\n111                      <Loader2 size={12} className=\"animate-spin\" /> Generating...\n...\n149                    {addingBookTitle === rec.title ? (",
+      "confidence": "high"
+    }
+  ]
+}

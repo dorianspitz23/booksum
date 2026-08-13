@@ -1,0 +1,259 @@
+{
+  "lotId": "L01",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T16:12:00Z",
+  "filesScanned": 5,
+  "findingCount": 9,
+  "findings": [
+    {
+      "id": "L01-F01",
+      "category": "tsconfig-strictness-gap",
+      "severity": "High",
+      "file": "eslint.config.js",
+      "line": 9,
+      "title": "ESLint runs only the non-type-aware typescript-eslint tier — every type-checked rule is inert",
+      "description": "`eslint.config.js` spreads `tseslint.configs.recommended` and never sets `languageOptions.parserOptions.project` or `projectService`. Verified empirically with `npx eslint --print-config src/lib/storage/repo.ts`: 97 rules resolve, `parserOptions` is `{}`, and every type-checked rule is unset — `no-unsafe-assignment`, `no-unsafe-member-access`, `no-unsafe-call`, `no-unsafe-return`, `no-unsafe-argument`, `no-unnecessary-type-assertion`, `await-thenable`, `no-floating-promises`, `no-misused-promises`, `restrict-template-expressions`. These rules cannot fire at all without type information, so switching to `recommendedTypeChecked` alone would be a no-op; the parser must be given the project first.\n\nWhy it matters here specifically: this is the tier that polices the `any` produced by untyped runtime data, and this app has at least four such ingress points where `JSON.parse`/`response.json()` output is cast straight to a domain type (`src/lib/ai/summarize.ts:52` and `:73` `as RawBookResponse`, `src/lib/storage/migrate.ts:58` `as T`, `src/components/ProfileView.tsx:117` `as LibraryExport`, `src/lib/covers/googleBooks.ts:12` `as {items?:...}`). `no-unsafe-assignment`/`no-unsafe-argument` are exactly the rules that flag those, and today nothing does. `no-unnecessary-type-assertion` would also tell the team which of the 10 `as` casts in the codebase are already redundant.\n\nCorrect behaviour: set `parserOptions.projectService: true` (plus `tsconfigRootDir`) and layer `tseslint.configs.recommendedTypeChecked` over the current recommended set, with a `disableTypeChecked` override for plain-JS config files. Note the honest cost: enabling the type-checked tier will surface new errors that must be triaged before CI goes green again, and it materially slows `eslint .`.\n\nNote in fairness to the current config: `@typescript-eslint/no-explicit-any` (error) and `@typescript-eslint/ban-ts-comment` (error) ARE active via the recommended set, and the codebase has zero `any` annotations and zero `@ts-ignore`/`@ts-expect-error`/`eslint-disable` comments. The gap is the type-aware tier only.",
+      "evidence": "eslint.config.js\n  6  export default tseslint.config(\n  7    { ignores: ['dist', 'node_modules', 'coverage'] },\n  8    js.configs.recommended,\n  9    ...tseslint.configs.recommended,          // <-- non-type-aware tier only\n 10    {\n 11      files: ['**/*.{ts,tsx}'],\n 12      languageOptions: {\n 13        ecmaVersion: 2022,\n 14        globals: { ...globals.browser },       // <-- no parserOptions.project/projectService\n\n$ npx eslint --print-config src/lib/storage/repo.ts\n  total rules resolved: 97\n  @typescript-eslint/no-explicit-any                 [2]\n  @typescript-eslint/ban-ts-comment                  [2]\n  @typescript-eslint/no-unsafe-assignment            -- NOT SET --\n  @typescript-eslint/no-unnecessary-type-assertion   -- NOT SET --\n  @typescript-eslint/no-floating-promises            -- NOT SET --\n  parserOptions: {}\n  has project/projectService: false",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F02",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Medium",
+      "file": "tsconfig.json",
+      "line": 8,
+      "title": "noUncheckedIndexedAccess is off — 10 real unchecked-index sites, several on rendered UI paths",
+      "description": "`strict: true` is set but `noUncheckedIndexedAccess` is not, so every array index and index-signature read is typed as `T` when the runtime can produce `undefined`. Measured empirically: `npx tsc --noEmit --noUncheckedIndexedAccess` produces exactly 10 errors across 4 files (baseline is 0).\n\nThe worst cluster is `src/components/QuizModal.tsx` (5 errors), where `questions[currentQuestionIndex]` is dereferenced on the render path at lines 178, 182, 183 and 232 and in the click handler at line 78 — e.g. `questions[currentQuestionIndex].correctAnswerIndex`. `questions` is AI-generated content and `currentQuestionIndex` is React state, so the compiler currently cannot prove the pair is in range; a quiz response with fewer questions than expected, or a state update ordering bug, is a `TypeError: Cannot read properties of undefined` in render. `src/components/BookDetail.tsx` (3) and `src/components/AddBookModal.tsx`/`EReader.tsx` (1 each) are the remainder.\n\nCorrect behaviour: enable the flag and resolve each site with a narrowing guard or a destructured local, not with `!`. Adoption cost is genuinely low here — 10 errors in 4 files, all in component code, no library or storage churn.\n\nImportant interaction: see L01-F04. `@typescript-eslint/no-non-null-assertion` is currently off, so the cheapest way to silence all 10 of these errors is to append `!`, which converts a compile-time gap into a runtime crash. Enable the lint rule in the same change, or this flag makes things worse.",
+      "evidence": "tsconfig.json\n  8      \"strict\": true,\n  9      \"noUnusedLocals\": true,\n 10      \"noUnusedParameters\": true,\n 11      \"noFallthroughCasesInSwitch\": true,   // <-- no noUncheckedIndexedAccess\n\n$ npx tsc --noEmit --noUncheckedIndexedAccess   (10 errors; baseline 0)\n  src/components/QuizModal.tsx(78,19):  error TS2532: Object is possibly 'undefined'.\n  src/components/QuizModal.tsx(178,18): error TS2532: Object is possibly 'undefined'.\n  src/components/QuizModal.tsx(182,18): error TS2532: Object is possibly 'undefined'.\n  src/components/QuizModal.tsx(183,45): error TS2532: Object is possibly 'undefined'.\n  src/components/QuizModal.tsx(232,22): error TS2532: Object is possibly 'undefined'.\n  src/components/BookDetail.tsx(71,25): error TS2532: Object is possibly 'undefined'.\n  src/components/BookDetail.tsx(79,31): error TS2345: 'string | undefined' not assignable to 'string'.\n  src/components/BookDetail.tsx(85,29): error TS2345: 'string | undefined' not assignable to 'string'.\n  src/components/AddBookModal.tsx(43,17): error TS2345: 'string | undefined' not assignable.\n  src/components/EReader.tsx(395,15): error TS2322: 'string | undefined' not assignable to 'string'.",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F03",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Medium",
+      "file": "tsconfig.json",
+      "line": 8,
+      "title": "exactOptionalPropertyTypes is off — 9 sites write explicit `undefined` into `?:` fields persisted to IndexedDB",
+      "description": "`exactOptionalPropertyTypes` is not enabled, so a field declared `priority?: Priority` silently accepts an explicit `priority: undefined`. Measured: `npx tsc --noEmit --exactOptionalPropertyTypes` produces exactly 9 errors across 7 files.\n\nThis matters more than usual in this codebase because the offending sites are the paths that build records for IndexedDB, where \"key absent\" and \"key present with value undefined\" are not the same thing — they differ on `in` checks, `Object.keys` length, structured-clone round-trips, index population, and JSON export shape. The affected producers are `src/lib/storage/migrate.ts` (3 errors: `Profile`, `Book` and `Summary` construction at lines 90, 105, 122), `src/features/library/useLibrary.tsx:45` (`summaryId`/`oneSentenceTakeaway`), `src/lib/goodreads.ts:107` (`isbn13`, `dateRead` from CSV), and `src/components/AddBookModal.tsx:70` (`priority`). Two more are in `src/lib/markdown.test.ts` (lines 60, 84) where fixtures pass `personalNotes: undefined` and `summary: undefined` — per the audit spec these are the higher-value ones, because the fixture shape differs from the production record shape the code claims to handle.\n\nCorrect behaviour: decide per field whether it is genuinely optional (`?:`, omit the key) or nullable-but-present (`: T | undefined`), then enable the flag. Adoption cost is moderate rather than trivial — it is only 9 errors, but each is a deliberate modelling decision on a persisted type, and `Book`/`Profile`/`Summary` are shared by many consumers.",
+      "evidence": "$ npx tsc --noEmit --exactOptionalPropertyTypes   (9 errors; baseline 0)\n  src/lib/storage/migrate.ts(90,43):  TS2379 '{ name; bio: string|undefined; monthlyGoal: number|undefined;\n                                       favoriteVoice: VoiceName|undefined; createdAt: string|undefined }'\n                                       not assignable to '{ name } & Partial<Omit<Profile,'id'|'name'>>'\n  src/lib/storage/migrate.ts(105,39): TS2379 Book draft: 'priority: Priority | undefined'\n  src/lib/storage/migrate.ts(122,30): TS2379 Summary: 'detailedSummary: string | undefined'\n  src/features/library/useLibrary.tsx(45,42): TS2379 'summaryId: `${string}-...` | undefined'\n  src/lib/goodreads.ts(107,15):       TS2379 'isbn13: string|undefined; dateRead: string|undefined'\n  src/components/AddBookModal.tsx(70,9): TS2379 BookDraft: 'priority: Priority | undefined'\n  src/components/ProfileView.tsx(90,7):  TS2345 '{ book; summary: Summary|undefined }[]' vs LibraryEntry[]\n  src/lib/markdown.test.ts(60,27):    TS2379 fixture Book with 'personalNotes: undefined'\n  src/lib/markdown.test.ts(84,7):     TS2375 fixture LibraryEntry with 'summary: undefined'",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F04",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Medium",
+      "file": "eslint.config.js",
+      "line": 17,
+      "title": "no-non-null-assertion is not enabled — 12 unguarded `!` assertions, and nothing stops more being added",
+      "description": "`@typescript-eslint/no-non-null-assertion` is not part of `tseslint.configs.recommended` (it lives in the stylistic set) and the `rules` block in `eslint.config.js` does not add it. Confirmed via `--print-config`: the rule resolves to `-- NOT SET --`. The codebase currently carries 12 non-null assertions on 11 lines across 5 files: `src/components/ui/useFocusTrap.ts:47,48` (production — `items[0]!` and `items[items.length - 1]!`), plus 10 in tests (`src/lib/storage/migrate.test.ts` x4, `src/components/ui/toastStore.test.ts` x3, `src/features/review/reviewQueue.test.tsx` x2, `src/features/profile/ProfileContext.test.tsx` x1).\n\nEach `!` is a claim the compiler is forbidden from checking and that crashes at runtime if wrong. The two production ones in `useFocusTrap.ts` sit on a focus-trap path where an empty `items` list is plausible (a dialog rendered before its children mount), and the test ones assert that repository reads returned a row — when that assumption breaks the test fails with an opaque `Cannot read properties of undefined` instead of a clear assertion message.\n\nCorrect behaviour: enable the rule (at minimum as `warn`) so the count cannot grow silently, and replace the existing sites with explicit guards or `toBeDefined()` assertions in tests. Adoption cost is trivial — 11 lines. This should land in the same change as L01-F02, because enabling `noUncheckedIndexedAccess` without this rule invites 10 new `!` as the path of least resistance.",
+      "evidence": "eslint.config.js — rules block, no non-null-assertion entry\n 17      rules: {\n 18        'react-hooks/rules-of-hooks': 'error',\n 19        'react-hooks/exhaustive-deps': 'warn',\n 20        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],\n 21        '@typescript-eslint/consistent-type-imports': 'error',\n 22        'no-console': ['warn', { allow: ['warn', 'error'] }],\n\n$ npx eslint --print-config ...  ->  @typescript-eslint/no-non-null-assertion  -- NOT SET --\n\n12 occurrences / 5 files (ripgrep):\n  src/components/ui/useFocusTrap.ts:47   const first = items[0]!;\n  src/components/ui/useFocusTrap.ts:48   const last  = items[items.length - 1]!;\n  src/lib/storage/migrate.test.ts:93,103,113,116   src/components/ui/toastStore.test.ts:25(x2),30\n  src/features/review/reviewQueue.test.tsx:95,112  src/features/profile/ProfileContext.test.tsx:16",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F05",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Medium",
+      "file": "tsconfig.json",
+      "line": 8,
+      "title": "noPropertyAccessFromIndexSignature is off, masking a lying `Record<string, string>` on the Google Books boundary",
+      "description": "`noPropertyAccessFromIndexSignature` is not enabled. Measured: `npx tsc --noEmit --noPropertyAccessFromIndexSignature` produces exactly 5 errors, and all 5 are in one file — `src/lib/covers/googleBooks.ts` lines 19-23.\n\nThe flag itself is a style guard, but here it points at a genuine lying type at an external-API boundary. `src/lib/covers/googleBooks.ts:12-14` casts the Google Books response to `{ items?: { volumeInfo?: { imageLinks?: Record<string, string> } }[] }`. Because `imageLinks` is `Record<string, string>`, the compiler believes every key maps to a present `string`. So in the fallback chain at lines 19-23, `links?.extraLarge` is typed `string | undefined` only because `links` itself may be undefined — the compiler considers the `?? links?.large ?? ... ?? links?.smallThumbnail` tail unreachable whenever `links` exists. In reality the Google Books API commonly returns only `thumbnail` and `smallThumbnail`, so the fallbacks are the hot path. The types describe the opposite of the runtime.\n\nCorrect behaviour: replace `Record<string, string>` with an explicit optional-keyed interface (`{ extraLarge?: string; large?: string; medium?: string; thumbnail?: string; smallThumbnail?: string }`), which makes the `??` chain honest and makes these 5 errors disappear without enabling anything. Enabling `noUncheckedIndexedAccess` (L01-F02) would independently make the index reads honest, and notably adds zero errors here because the `??` chain already handles undefined. Adoption cost: trivial, one file, one type.",
+      "evidence": "src/lib/covers/googleBooks.ts\n 12      const data = (await response.json()) as {\n 13        items?: { volumeInfo?: { imageLinks?: Record<string, string> } }[];\n 14      };\n ...\n 17        const links = item.volumeInfo?.imageLinks;\n 18        const url =\n 19          links?.extraLarge ??      // typed 'string' when links exists -> tail looks dead\n 20          links?.large ??\n 21          links?.medium ??\n 22          links?.thumbnail ??\n 23          links?.smallThumbnail;\n\n$ npx tsc --noEmit --noPropertyAccessFromIndexSignature   (5 errors, all this file)\n  googleBooks.ts(19,16) TS4111 'extraLarge' comes from an index signature, use ['extraLarge']\n  googleBooks.ts(20,16)/(21,16)/(22,16)/(23,16) — same for large/medium/thumbnail/smallThumbnail",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F06",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "tsconfig.json",
+      "line": 15,
+      "title": "skipLibCheck: true masks an unresolved module in the @google/genai type surface (legitimate, but undocumented)",
+      "description": "`skipLibCheck: true` is set. Measured what it hides: `npx tsc --noEmit --skipLibCheck false` produces exactly 2 errors, both in `node_modules`, none in source:\n\n1. `node_modules/@google/genai/dist/genai.d.ts(1,29)` — cannot resolve `@modelcontextprotocol/sdk/client/index.js`. This is an **optional** peer dependency of `@google/genai` (`peerDependenciesMeta: { \"@modelcontextprotocol/sdk\": { optional: true } }`) and is deliberately not installed.\n2. `node_modules/@testing-library/jest-dom/types/jest.d.ts(1,23)` — cannot find type definitions for `jest`, which this project correctly does not have (it uses Vitest).\n\nSo `skipLibCheck` is load-bearing, not laziness — this is the \"compatibility lock-in\" pattern the audit spec says to isolate rather than rip out, and the recommendation is NOT to turn it off. Blast radius today is nil: the unresolved `Client` type is only referenced by `@google/genai`'s MCP tool helper, and the app imports only `GoogleGenAI`, `Chat`, `Type` and `Modality` (`src/lib/ai/client.ts:1`, `chat.ts:1`, `schemas.ts:1`, `tts.ts:1`), none of which touch it.\n\nThe real gap is that this is undocumented. Every other non-obvious setting in this repo carries a comment explaining why (see `vite.config.ts:5-8` and `:13-15`, and `.github/workflows/ci.yml:15-16`), but `skipLibCheck` does not — so a future contributor cannot tell whether it is deliberate insulation or an unexamined default, and will not know that flipping it breaks the build for a reason unrelated to their change. Correct behaviour: add a comment naming both causes, and re-run `--skipLibCheck false` on dependency bumps so newly-introduced third-party type drift is noticed rather than permanently silenced.",
+      "evidence": "tsconfig.json\n 14      \"verbatimModuleSyntax\": true,\n 15      \"skipLibCheck\": true,          // <-- no comment explaining what it is insulating\n 16      \"noEmit\": true,\n\n$ npx tsc --noEmit --skipLibCheck false   (2 errors, both third-party)\n  node_modules/@google/genai/dist/genai.d.ts(1,29): error TS2307:\n    Cannot find module '@modelcontextprotocol/sdk/client/index.js'\n  node_modules/@testing-library/jest-dom/types/jest.d.ts(1,23): error TS2688:\n    Cannot find type definition file for 'jest'\n\n@google/genai package.json: peerDependenciesMeta.@modelcontextprotocol/sdk.optional === true",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F07",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "tsconfig.json",
+      "line": 17,
+      "title": "Vitest and jest-dom globals are in the type scope of production source, not just tests",
+      "description": "`\"types\": [\"vite/client\", \"vitest/globals\", \"@testing-library/jest-dom\"]` applies to the whole program, and `node_modules/vitest/globals.d.ts` uses `declare global` to publish `describe`, `it`, `test`, `expect`, `vi`, `beforeEach`, `afterEach` and friends. Combined with `include: [\"src\", \"vite.config.ts\"]` — a single program covering all 86 source files, of which 21 are tests — this means a production module such as `src/lib/storage/repo.ts` or a React component can reference `vi.fn()` or `expect(...)` and `tsc --noEmit` will accept it. The failure only appears in the browser at runtime as `vi is not defined`, and it ships in the bundle.\n\nESLint does not backstop this either: `no-undef` is explicitly disabled for TypeScript files by the `tseslint` recommended preset (confirmed via `--print-config`: `no-undef: [0, {\"typeof\": false}]`), on the assumption that the compiler catches undefined identifiers — which here it does not, because the globals are genuinely declared.\n\nCorrect behaviour: split the program so test globals are scoped to test files — either a `tsconfig.test.json` covering `**/*.test.ts(x)` and `src/test/**` that adds `vitest/globals` and `@testing-library/jest-dom`, with the root config dropping them; or drop `globals: true` from `vite.config.ts:11` and import `describe`/`it`/`expect`/`vi` explicitly in tests. Adoption cost is moderate: the second option touches all 21 test files (mechanical, one import line each) and would require dropping `\"vitest/globals\"` from `types` in the same commit. Severity is Low because no production file currently does this — the finding is that nothing prevents it.",
+      "evidence": "tsconfig.json\n 17      \"types\": [\"vite/client\", \"vitest/globals\", \"@testing-library/jest-dom\"]\n 18    },\n 19    \"include\": [\"src\", \"vite.config.ts\"]      // one program: 86 files, 21 of them tests\n\nnode_modules/vitest/globals.d.ts\n  1  declare global {\n  2    let suite: typeof import('vitest')['suite']\n  4    let describe: typeof import('vitest')['describe']\n  5    let it: typeof import('vitest')['it']\n  8    let expect: typeof import('vitest')['expect']\n 11    let vi: typeof import('vitest')['vitest']\n\n$ npx eslint --print-config src/lib/storage/repo.ts  ->  no-undef  [0,{\"typeof\":false}]",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F08",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "tsconfig.json",
+      "line": 11,
+      "title": "Four zero-cost strictness flags are unset — they add 0 errors today but nothing locks the property in",
+      "description": "Four checking flags outside the `strict` family are not enabled, and each measures **0 errors** against the current source, so enabling them is a pure ratchet with no remediation work at all:\n\n- `noImplicitReturns` (0 errors) — would catch a function with a conditional return path that falls through to `undefined`.\n- `noUncheckedSideEffectImports` (0 errors) — would catch `import './missing.css'`-style imports that resolve to nothing.\n- `allowUnreachableCode: false` (0 errors) — currently unreachable code is a suggestion-level hint, not an error.\n- `allowUnusedLabels: false` (0 errors).\n\nBecause `strict: true` already covers the whole strict family (verified below), these four plus the flags in L01-F02/F03/F05/F09 are the entire remaining strictness surface. The codebase is clean enough today that all four can be turned on in a single commit with no code changes; leaving them off means the first violation lands silently rather than failing CI.\n\nFor completeness, I verified that `strict: true` really does enable every sub-flag in TypeScript 6.0.3 — passing each explicitly adds 0 errors: `noImplicitAny`, `strictNullChecks`, `noImplicitThis`, `strictFunctionTypes`, `strictBindCallApply`, `strictPropertyInitialization`, `strictBuiltinIteratorReturn`, `useUnknownInCatchVariables`. So there is no hidden strict-family gap; the codebase is genuinely null-aware, and the multi-week `strictNullChecks` migration the audit spec warns about does not apply here.",
+      "evidence": "tsconfig.json — current checking flags\n  8      \"strict\": true,\n  9      \"noUnusedLocals\": true,\n 10      \"noUnusedParameters\": true,\n 11      \"noFallthroughCasesInSwitch\": true,\n 12      \"isolatedModules\": true,\n\n$ npx tsc --noEmit --<flag>        (error counts, baseline 0)\n  noImplicitReturns              0      strictNullChecks             0\n  noUncheckedSideEffectImports   0      strictFunctionTypes          0\n  allowUnreachableCode false     0      strictBindCallApply          0\n  allowUnusedLabels false        0      strictPropertyInitialization 0\n  noImplicitAny                  0      strictBuiltinIteratorReturn  0\n  noImplicitThis                 0      useUnknownInCatchVariables   0",
+      "confidence": "high"
+    },
+    {
+      "id": "L01-F09",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "tsconfig.json",
+      "line": 8,
+      "title": "noImplicitOverride is off — one unmarked override in the AI error class hierarchy",
+      "description": "`noImplicitOverride` is not enabled. Measured: `npx tsc --noEmit --noImplicitOverride` produces exactly 1 error, at `src/lib/ai/errors.ts:15`, where a constructor parameter property redeclares a member inherited from `Error` without an `override` modifier.\n\nWithout the flag, a subclass member that shadows a base-class member is indistinguishable from one that was meant to be new. On an `Error` subclass this is the classic footgun: silently redeclaring `message`, `name` or `cause` as a parameter property can shadow the base field that `Error.prototype.toString`, the `stack` header and most logging paths read from, so the error renders with an empty or stale message while the subclass field holds the real one. It also means a future rename in the base type would silently orphan the subclass member rather than erroring.\n\nCorrect behaviour: enable `noImplicitOverride` and add the explicit `override` keyword at that one site — or, if the redeclaration is not actually intended to override, drop the parameter property and pass the value through to `super()`. Adoption cost: trivial, one line, and it is the only blocker for turning the flag on permanently.",
+      "evidence": "tsconfig.json\n  8      \"strict\": true,          // noImplicitOverride is NOT part of the strict family\n\n$ npx tsc --noEmit --noImplicitOverride   (1 error; baseline 0)\n  src/lib/ai/errors.ts(15,5): error TS4115: This parameter property must have an\n    'override' modifier because it overrides a member in base class 'Error'.",
+      "confidence": "high"
+    }
+  ],
+  "strictFlagMeasurements": [
+    {
+      "flag": "noUncheckedIndexedAccess",
+      "currentlyEnabled": false,
+      "errorCount": 10,
+      "topOffenders": [
+        "src/components/QuizModal.tsx:78",
+        "src/components/QuizModal.tsx:178",
+        "src/components/QuizModal.tsx:182",
+        "src/components/QuizModal.tsx:183",
+        "src/components/QuizModal.tsx:232",
+        "src/components/BookDetail.tsx:71",
+        "src/components/BookDetail.tsx:79",
+        "src/components/BookDetail.tsx:85",
+        "src/components/AddBookModal.tsx:43",
+        "src/components/EReader.tsx:395"
+      ],
+      "adoptionCost": "moderate",
+      "notes": "10 errors / 4 files, all component code. Must land together with @typescript-eslint/no-non-null-assertion (see L01-F04) or the cheapest fix for all 10 is to append `!`, trading a compile-time gap for a runtime crash. Worst cluster is QuizModal indexing AI-generated `questions` by React state on the render path."
+    },
+    {
+      "flag": "exactOptionalPropertyTypes",
+      "currentlyEnabled": false,
+      "errorCount": 9,
+      "topOffenders": [
+        "src/lib/storage/migrate.ts:90",
+        "src/lib/storage/migrate.ts:105",
+        "src/lib/storage/migrate.ts:122",
+        "src/features/library/useLibrary.tsx:45",
+        "src/lib/goodreads.ts:107",
+        "src/components/AddBookModal.tsx:70",
+        "src/components/ProfileView.tsx:90",
+        "src/lib/markdown.test.ts:60",
+        "src/lib/markdown.test.ts:84"
+      ],
+      "adoptionCost": "moderate",
+      "notes": "Only 9 errors, but each is a modelling decision on a type persisted to IndexedDB (Book, Profile, Summary, LibraryEntry) where absent-key vs present-undefined differ for `in` checks, Object.keys, index population and JSON export. Two are test fixtures whose shape diverges from the production record shape."
+    },
+    {
+      "flag": "noPropertyAccessFromIndexSignature",
+      "currentlyEnabled": false,
+      "errorCount": 5,
+      "topOffenders": [
+        "src/lib/covers/googleBooks.ts:19",
+        "src/lib/covers/googleBooks.ts:20",
+        "src/lib/covers/googleBooks.ts:21",
+        "src/lib/covers/googleBooks.ts:22",
+        "src/lib/covers/googleBooks.ts:23"
+      ],
+      "adoptionCost": "trivial",
+      "notes": "All 5 in one file. They point at a lying type: `imageLinks?: Record<string, string>` on the Google Books response makes the `??` fallback chain look unreachable to the compiler when it is the runtime hot path. Fixing the source type to an optional-keyed interface removes all 5 without enabling the flag."
+    },
+    {
+      "flag": "noImplicitOverride",
+      "currentlyEnabled": false,
+      "errorCount": 1,
+      "topOffenders": ["src/lib/ai/errors.ts:15"],
+      "adoptionCost": "trivial",
+      "notes": "One parameter property overriding an inherited Error member without `override`. Single-line fix unblocks the flag permanently."
+    },
+    {
+      "flag": "noImplicitReturns",
+      "currentlyEnabled": false,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Zero-cost ratchet — enable now, no code changes required."
+    },
+    {
+      "flag": "noUncheckedSideEffectImports",
+      "currentlyEnabled": false,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Zero-cost ratchet — enable now, no code changes required."
+    },
+    {
+      "flag": "allowUnreachableCode (as false)",
+      "currentlyEnabled": false,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Zero-cost ratchet. Currently unreachable code is only a suggestion-level hint, not an error."
+    },
+    {
+      "flag": "allowUnusedLabels (as false)",
+      "currentlyEnabled": false,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Zero-cost ratchet."
+    },
+    {
+      "flag": "skipLibCheck (measured as false)",
+      "currentlyEnabled": true,
+      "errorCount": 2,
+      "topOffenders": [
+        "node_modules/@google/genai/dist/genai.d.ts:1",
+        "node_modules/@testing-library/jest-dom/types/jest.d.ts:1"
+      ],
+      "adoptionCost": "significant",
+      "notes": "Load-bearing, do NOT recommend disabling. Both errors are third-party and neither is a source defect: @modelcontextprotocol/sdk is an OPTIONAL peer dep of @google/genai and is deliberately not installed; jest types are absent because the project uses Vitest. Blast radius nil — the unresolved `Client` type is only used by genai's MCP helper, which the app never imports. Recommendation is documentation + periodic re-check on dependency bumps."
+    },
+    {
+      "flag": "strict family (noImplicitAny, strictNullChecks, noImplicitThis, strictFunctionTypes, strictBindCallApply, strictPropertyInitialization, strictBuiltinIteratorReturn, useUnknownInCatchVariables)",
+      "currentlyEnabled": true,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Verified individually: passing each sub-flag explicitly adds 0 errors, confirming `strict: true` already covers all of them in TypeScript 6.0.3. The codebase is genuinely null-aware — the multi-week strictNullChecks migration the audit spec warns about does NOT apply to this repo."
+    },
+    {
+      "flag": "ALL opt-in flags combined",
+      "currentlyEnabled": false,
+      "errorCount": 25,
+      "topOffenders": [
+        "src/lib/covers/googleBooks.ts (5)",
+        "src/components/QuizModal.tsx (5)",
+        "src/lib/storage/migrate.ts (3)",
+        "src/components/BookDetail.tsx (3)",
+        "src/lib/markdown.test.ts (2)",
+        "src/components/AddBookModal.tsx (2)",
+        "src/lib/goodreads.ts (1)",
+        "src/lib/ai/errors.ts (1)",
+        "src/features/library/useLibrary.tsx (1)",
+        "src/components/ProfileView.tsx (1)",
+        "src/components/EReader.tsx (1)"
+      ],
+      "adoptionCost": "moderate",
+      "notes": "Total cost of maximum strictness = 25 errors across 11 of 86 files (8332 LOC). Command: `npx tsc --noEmit --noUncheckedIndexedAccess --exactOptionalPropertyTypes --noPropertyAccessFromIndexSignature --noImplicitOverride --noImplicitReturns --noUncheckedSideEffectImports`. Suggested order: (1) the four zero-cost flags + noImplicitOverride, (2) fix googleBooks.ts source type, (3) noUncheckedIndexedAccess together with the no-non-null-assertion lint rule, (4) exactOptionalPropertyTypes last since it requires per-field modelling decisions on persisted types."
+    },
+    {
+      "flag": "ESLint type-aware tier (parserOptions.project / projectService)",
+      "currentlyEnabled": false,
+      "errorCount": null,
+      "topOffenders": [
+        "eslint.config.js:9",
+        "eslint.config.js:14"
+      ],
+      "adoptionCost": "moderate",
+      "notes": "Not measurable as an error count without editing the config (read-only run). Verified via `npx eslint --print-config src/lib/storage/repo.ts`: 97 rules resolve, parserOptions is {}, and all no-unsafe-*, no-unnecessary-type-assertion, await-thenable, no-floating-promises and no-misused-promises rules are unset and CANNOT fire. no-explicit-any (error) and ban-ts-comment (error) ARE active. Also unset: no-non-null-assertion, eqeqeq. no-undef is disabled for TS files by the tseslint preset."
+    },
+    {
+      "flag": "CI gating (informational — NOT a finding)",
+      "currentlyEnabled": true,
+      "errorCount": 0,
+      "topOffenders": [],
+      "adoptionCost": "trivial",
+      "notes": "Checked per the lot brief and found sound; no finding raised. .github/workflows/ci.yml runs `npm ci`, `npm run typecheck` (line 20), `npm run lint` (21), `npm run format:check` (22), `npm test` (23) and `npm run build` (24) on pull_request and on push to main. typecheck is gated twice, since package.json defines `build` as `npm run typecheck && vite build`. The typecheck is real, not decorative. Separately, vite.config.ts does NOT weaken types for the test env — it imports defineConfig from 'vitest/config' (the correctly-typed entry point) and contains no casts or any; also checked and not a finding."
+    }
+  ]
+}

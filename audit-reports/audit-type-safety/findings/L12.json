@@ -1,0 +1,196 @@
+{
+  "lotId": "L12",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T00:00:00.000Z",
+  "filesScanned": 12,
+  "findingCount": 17,
+  "findings": [
+    {
+      "id": "L12-F01",
+      "category": "non-null-assertion",
+      "severity": "Critical",
+      "file": "src/components/ChatModal.tsx",
+      "line": 11,
+      "title": "ChatModal declares `summary: Summary` as required, forcing its only caller to pass `summary!` on a value that is genuinely `Summary | undefined`",
+      "description": "ChatModalProps types `summary` as a non-optional `Summary`. BookDetail — the only mount site — holds `summary: Summary | undefined` (BookDetail.tsx:119) and defends against `undefined` everywhere else in that file (`summary?.summary`, `if (!summary) return`, `summary?.keyInsights ?? []`), but at the mount site it silences the compiler with a non-null assertion: `<ChatModal book={book} summary={summary!} .../>` (BookDetail.tsx:534). The Chat button that sets `showChat` is gated only on `!isPreview` (BookDetail.tsx:337-345) — NOT on a summary existing. So for any unsummarised book (every Goodreads-imported book, and any book whose summarisation failed) clicking Chat mounts ChatModal with `summary === undefined`. ChatModal.tsx:37 then calls `createBookChatSession(book, summary)`, which evaluates `chatSystemInstruction(book, summary)` inside its own try block (chat.ts:12-19); that template dereferences `summary.oneSentenceTakeaway`, `summary.summary` and `summary.keyInsights.join('\\n- ')` (prompts.ts:61-67). The resulting TypeError is caught by `createBookChatSession` and rethrown as an AI error, out of a `useEffect` body — an uncaught throw during render/commit, which unwinds to the app's error boundary. The user gets a full-app crash screen from clicking a button. Correct shape: declare `summary: Summary | undefined` (as DailyWisdomModal.tsx:8 already does) and render the modal only when a summary exists, or gate the button. Blast radius: one mount site, but it is the whole-app error boundary, and the same prop lie is repeated in QuizModal (L12-F02).",
+      "evidence": "  9 | interface ChatModalProps {\n 10 |   book: Book;\n 11 |   summary: Summary;              // <- lies: caller has Summary | undefined\n 12 |   onClose: () => void;\n 13 | }\n ...\n 36 |   useEffect(() => {\n 37 |     chatSession.current = createBookChatSession(book, summary);   // TypeError when undefined\n 38 |   }, [book, summary]);\n\n// caller (outside lot, for context):\n// BookDetail.tsx:119  summary: Summary | undefined;\n// BookDetail.tsx:534  {showChat && <ChatModal book={book} summary={summary!} onClose={...} />}",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F02",
+      "category": "non-null-assertion",
+      "severity": "High",
+      "file": "src/components/QuizModal.tsx",
+      "line": 23,
+      "title": "QuizModal repeats the same required-`summary` lie; the `!` at the call site turns a missing summary into a bogus \"AI error\" toast",
+      "description": "Identical defect to L12-F01: `QuizModalProps.summary` is typed `Summary` (non-optional) while BookDetail holds `Summary | undefined` and asserts it away — `<QuizModal book={book} summary={summary!} .../>` (BookDetail.tsx:536). The Quiz button is gated only on `!isPreview` (BookDetail.tsx:346-347), not on a summary existing. With `summary === undefined`, `generateBookQuiz(book, summary)` (QuizModal.tsx:44) builds `quizPrompt(book, summary)` which dereferences `summary.summary` and `summary.keyInsights.join('\\n')` (prompts.ts:48-49). Because that happens inside an async function wrapped in try/catch, the TypeError is swallowed by `generateBookQuiz`'s `throw toAiError(error)` (quiz.ts:18-20) and surfaces as `toast.error(toAiError(error).message)` — the user is told the AI service failed when the real cause is a programming error the type system was asked to ignore. Severity is High rather than Critical only because the throw is contained (no error-boundary crash) — but it is also silent-misdiagnosis territory: a support report of \"the quiz says the AI is broken\" will chase the wrong cause. Fix shape: `summary: Summary | undefined` plus an explicit not-summarised branch, or gate both buttons on `summary`.",
+      "evidence": " 21 | interface QuizModalProps {\n 22 |   book: Book;\n 23 |   summary: Summary;             // <- lies: caller has Summary | undefined\n 24 |   onClose: () => void;\n 25 | }\n ...\n 43 |       try {\n 44 |         const quizData = await generateBookQuiz(book, summary);   // prompts.ts:48 reads summary.summary\n ...\n 63 |       } catch (error) {\n 65 |         toast.error(toAiError(error).message);   // TypeError reported as an AI failure\n\n// caller (outside lot): BookDetail.tsx:536  summary={summary!}",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F03",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/components/QuizModal.tsx",
+      "line": 52,
+      "title": "Unvalidated model JSON is persisted straight into IndexedDB as `ReviewCard`s, permanently poisoning the spaced-repetition queue",
+      "description": "`generateBookQuiz` returns `QuizQuestion[]` obtained by asserting `JSON.parse(response.text || '{}') as { questions?: QuizQuestion[] }` (quiz.ts:16) — no runtime validation. QuizModal is the consumer that makes that fiction durable: for every returned item it calls `newCard({ options: question.options, correctAnswerIndex: question.correctAnswerIndex, ... })` and `await reviewCards.upsert(...)`, writing a `ReviewCard` into IndexedDB whose declared type promises `options: string[]` and a valid `correctAnswerIndex: number` (types.ts:88-89). The Gemini response schema does NOT enforce either invariant: `options` has no `minItems`/`maxItems` and `correctAnswerIndex` is `Type.NUMBER` (not `Type.INTEGER`) with no `minimum`/`maximum` — the \"Array of 4 possible answers\" and \"Index (0-3)\" constraints live only in prose `description` fields (schemas.ts:64-72). A model returning 3 options with index 3, a float index, `-1`, or `options: null` produces a `ReviewCard` that the type system swears is well-formed. Unlike the in-modal render, these rows survive the session: ReviewPage.tsx:76 (`selected === current.correctAnswerIndex`) and :94 (`index === current.correctAnswerIndex`) then render a card that can never be answered correctly, forever, and SRS `scheduleCard` keeps re-surfacing it because the user keeps failing it. There is no repair path short of clearing the store. Fix shape: validate at the `generateBookQuiz` boundary (a guard that drops questions where `Number.isInteger(correctAnswerIndex) && correctAnswerIndex >= 0 && correctAnswerIndex < options.length` fails) before either rendering or persisting. Blast radius: the whole review feature plus the `reviewCards` object store.",
+      "evidence": " 49 |         const seen = new Set((await reviewCards.listByBook(book.id)).map((c) => c.question));\n 50 |         for (const question of quizData) {\n 51 |           if (seen.has(question.question)) continue;\n 52 |           await reviewCards.upsert(\n 53 |             newCard({\n 56 |               question: question.question,\n 57 |               options: question.options,                       // unvalidated\n 58 |               correctAnswerIndex: question.correctAnswerIndex, // unvalidated, unbounded\n 59 |               explanation: question.explanation,\n 60 |             }),\n 61 |           );\n 62 |         }",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F04",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/components/QuizModal.tsx",
+      "line": 183,
+      "title": "`correctAnswerIndex` is used as an index into `options` with no bounds relationship in the type; an out-of-range index silently makes the quiz unwinnable",
+      "description": "`QuizQuestion` (types.ts:105-110) models `options: string[]` and `correctAnswerIndex: number` as two independent fields — nothing in the type ties the index to the array's bounds, and nothing validates it (see L12-F03 for the producer). QuizModal renders correctness by comparing the rendered option's position to that index (line 183) and scores by the same comparison (line 78). Failure scenario: the model returns `options: ['A','B','C']` with `correctAnswerIndex: 3` (schema only *describes* \"Index (0-3)\" and \"4 possible answers\"). `isCorrect` is then false for every rendered option — no green highlight appears, whichever answer the user picks is styled as wrong, `setScore` is never called, and the finish screen reports `Math.round((0 / n) * 100)` = \"0%\" with \"You answered 0 out of 3 correctly!\". The app looks broken and blames the user. Note this is exactly the case `noUncheckedIndexedAccess` is designed to expose: with that flag off, an expression like `options[correctAnswerIndex]` is typed as a definite `string` even though it is `undefined` at runtime. Fix shape: validate the index at the boundary and drop or repair malformed questions; longer term, a non-empty-tuple/branded index type or an `{ options, correctAnswer: string }` shape removes the class of bug entirely.",
+      "evidence": " 78 |     if (index === questions[currentQuestionIndex].correctAnswerIndex) {\n 79 |       setScore((s) => s + 1);\n 80 |     }\n ...\n 93 |   const getPercentage = () => Math.round((score / questions.length) * 100);\n ...\n182 |                 {questions[currentQuestionIndex].options.map((option, idx) => {\n183 |                   const isCorrect = idx === questions[currentQuestionIndex].correctAnswerIndex;\n184 |                   const isSelected = selectedOption === idx;",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F05",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/components/BookCard.tsx",
+      "line": 89,
+      "title": "\"Is this book summarised?\" is encoded three independent ways on `Book`; BookCard renders two of them and visibly contradicts itself",
+      "description": "`Book` carries three separate, unlinked signals for the same fact: `summaryId?: string` (\"absent until an AI summary has been generated\", types.ts:49-50), `oneSentenceTakeaway?: string` (types.ts:48) and `readingTimeMinutes: number` — the last one *required*, so it has no \"unknown\" value and gets a `0` placeholder. BookCard consults `oneSentenceTakeaway` for the summary blurb (line 89) and prints `readingTimeMinutes` unconditionally (line 95), never consulting `summaryId`. Confirmed failure path: a Goodreads-imported book is created with `readingTimeMinutes: 0` and no takeaway and no summaryId (useLibrary.tsx:150-160). The user opens it and generates a summary; `saveSummary` writes the `Summary` row and patches ONLY `summaryId` back onto the book — it never backfills `oneSentenceTakeaway` or `readingTimeMinutes` (useLibrary.tsx:78-88). The book is now summarised, yet its card still renders \"Not summarised yet\" next to \"0 min read\". Two of the three flags say \"no summary\", the authoritative one says \"summary\". (The other creation path, AddBookModal -> LibraryPage.tsx:92, sets the takeaway explicitly, which is why the bug only shows on the import-then-summarise route.) The type system permits all four combinations of the three flags because they are three optional/defaulted fields rather than one tagged union. Fix shape: a discriminated union on `Book` — `{ summarised: false } | { summarised: true; summaryId: string; oneSentenceTakeaway: string; readingTimeMinutes: number }` — so the denormalised pair cannot exist without the id, and `saveSummary` cannot compile without writing all three. Blast radius: BookCard renders in LibraryPage (line 191) and StatsView (line 119), i.e. every list surface in the app; BookDetail.tsx:330 prints the same stale `readingTimeMinutes`, and StatsView.tsx:17 sums it into \"Total Learning\".",
+      "evidence": " 88 |         <p className=\"... italic border-l-2 border-orange-100 pl-4\">\n 89 |           {book.oneSentenceTakeaway ? `\"${book.oneSentenceTakeaway}\"` : 'Not summarised yet'}\n 90 |         </p>\n ...\n 94 |             <Clock size={14} className=\"text-orange-500\" />\n 95 |             <span>{book.readingTimeMinutes} min read</span>   // renders \"0 min read\", no summarised check\n\n// producers (outside lot, for context):\n// useLibrary.tsx:157  readingTimeMinutes: 0,          <- Goodreads import placeholder\n// useLibrary.tsx:82-83 if (book && book.summaryId !== summary.id) await bookRepo.update({ ...book, summaryId: summary.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F06",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/components/ui/ConfirmDialog.tsx",
+      "line": 19,
+      "title": "Pending-confirm state is split across a nullable state field and a nullable ref that the types never tie together, so `Promise<boolean>` can hang forever",
+      "description": "A pending confirmation is one logical thing represented as two independent nullable slots: `options: ConfirmOptions | null` (line 18) and `resolverRef: ((value: boolean) => void) | null` (line 19). The invariant `options !== null` <=> `resolverRef.current !== null` is real but unencoded, and the code violates it: `confirm()` assigns `resolverRef.current = resolve` unconditionally (line 24), so a second `confirm()` issued while one is pending overwrites the first resolver with no trace. The first promise then never settles. The declared contract `type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>` (line 13) claims every call yields a settling promise; the runtime does not deliver that. Concrete failure: a consumer does `if (!(await confirm({...}))) return;` before a destructive action (all three consumers do — ProfilePage.tsx:10, BookDetailPage.tsx:16, ProfileView.tsx:49). If a second confirm is raised — a double-click on a delete control, or a second component racing on the same provider — the first `await` never resumes, so its `finally`/spinner-reset never runs and its enclosing async function is retained forever. The same shape means unmounting the provider mid-confirm leaks a pending promise. The `?? ''` and `?.` fallbacks scattered through the JSX (lines 41, 45, 51, 56, 61) exist purely because the type cannot express \"open implies options\". Fix shape: one state value shaped as a discriminated union — `{ status: 'idle' } | { status: 'pending'; options: ConfirmOptions; resolve: (v: boolean) => void }` — and have `confirm()` settle any existing pending entry with `false` before replacing it. Blast radius: 3 consumers, all on destructive paths (delete profile, delete book).",
+      "evidence": " 18 |   const [options, setOptions] = useState<ConfirmOptions | null>(null);\n 19 |   const resolverRef = useRef<((value: boolean) => void) | null>(null);\n 20 |\n 21 |   const confirm = useCallback<ConfirmFn>((next) => {\n 22 |     setOptions(next);\n 23 |     return new Promise<boolean>((resolve) => {\n 24 |       resolverRef.current = resolve;   // clobbers any in-flight resolver -> that promise never settles\n 25 |     });\n 26 |   }, []);\n 27 |\n 28 |   const settle = useCallback((value: boolean) => {\n 29 |     resolverRef.current?.(value);",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F07",
+      "category": "type-assertion-as-T",
+      "severity": "Medium",
+      "file": "src/components/ui/useFocusTrap.ts",
+      "line": 18,
+      "title": "`querySelectorAll<HTMLElement>` is an unchecked assertion over a runtime selector string in the app's shared focus trap",
+      "description": "`querySelectorAll<E extends Element>(selectors: string): NodeListOf<E>` does not validate `E` against the selector — supplying `HTMLElement` is an assertion, indistinguishable in safety from `as HTMLElement[]`, over a selector string the compiler never parses. Two of the six clauses in `FOCUSABLE` (line 5) — `a[href]` and `[tabindex]:not([tabindex=\"-1\"])` — match non-HTML elements: an `<a>` inside inline SVG is an `SVGAElement`, and any SVG node carrying `tabindex` matches too. The codebase renders inline SVG in every dialog (lucide-react icons inside the close buttons of Dialog.tsx:46, QuizModal.tsx:171, ChatModal.tsx:120, DailyWisdomModal.tsx:44), so the selector runs against SVG content on every open. The assertion also claims nothing about *visibility*: `display:none`/`visibility:hidden`/`inert` controls match the selector, so `focusable()[0]?.focus()` (line 26) can be a silent no-op on a hidden first control, and the Tab wrap-around at lines 51-57 then compares `document.activeElement` against elements that can never hold focus — the trap stops wrapping and Tab escapes the modal to the page behind it, which is the accessibility guarantee the hook exists to provide. Fix shape: keep the query as `Element`, then narrow with a real guard (`instanceof HTMLElement` plus an offsetParent/`checkVisibility()` filter) so the array type is earned rather than asserted. Blast radius: this is the single shared trap for every modal surface in the app — Dialog (used by AddBookModal.tsx:100, ApiKeyDialog.tsx:38 and ConfirmDialog.tsx:39), plus ChatModal.tsx:34, QuizModal.tsx:31 and DailyWisdomModal.tsx:22 which call it directly. Related: the hook's `{ active: boolean }` parameter encodes no notion of a trap *stack*, and both effects register on `document`, so two simultaneously-active traps both handle the same Escape/Tab (line 38's `stopPropagation` does not stop sibling listeners on the same node — that would need `stopImmediatePropagation`). CLAUDE.md documents \"never leave two `aria-modal` dialogs open at once\" as a convention; the types provide no enforcement of it.",
+      "evidence": "  4 | const FOCUSABLE =\n  5 |   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex=\"-1\"])';\n ...\n 17 |   const focusable = useCallback(\n 18 |     () => Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []),\n 19 |     [panelRef],\n 20 |   );\n ...\n 26 |     focusable()[0]?.focus();",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F08",
+      "category": "type-assertion-as-T",
+      "severity": "Medium",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 42,
+      "title": "`reader.result as string` asserts away `ArrayBuffer | null` at the PDF file boundary, then indexes the split result without a bounds check",
+      "description": "`FileReader.result` is typed `string | ArrayBuffer | null`; the cast on line 42 tells the compiler it is always a string. It is a *type-safety* assertion over data the code did not produce (file contents), which is the boundary-erasure pattern: the assertion is currently true only because the caller happens to use `readAsDataURL` on line 46 — a detail four lines away that no type links to the cast. Change that call to `readAsArrayBuffer` and the code compiles unchanged while `.split` becomes a TypeError at runtime. Compounding it, `.split(',')[1]` is typed `string` (with `noUncheckedIndexedAccess` off) but is `string | undefined` at runtime, and the enclosing `Promise<string>` return type promises a string either way — a zero-byte or malformed selection can resolve `undefined` typed as `string`, which is then handed to `summarizePdf(base64)` and posted to Gemini as `inlineData`. Fix shape: narrow instead of assert — `typeof reader.result === 'string' ? ... : reject(...)` — and check the comma split before resolving. Blast radius: the AddBookModal PDF path only, but it is the app's one arbitrary-file ingress.",
+      "evidence": " 38 |   const convertFileToBase64 = (file: File): Promise<string> => {\n 39 |     return new Promise((resolve, reject) => {\n 40 |       const reader = new FileReader();\n 41 |       reader.onload = () => {\n 42 |         const base64 = (reader.result as string).split(',')[1];   // result is string | ArrayBuffer | null\n 43 |         resolve(base64);                                          // [1] is string | undefined at runtime\n 44 |       };\n 45 |       reader.onerror = reject;\n 46 |       reader.readAsDataURL(file);\n 47 |     });\n 48 |   };",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F09",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/components/AddBookModal.tsx",
+      "line": 91,
+      "title": "A file is accepted as \"a PDF\" on the strength of the browser-reported `File.type` alone, and the advertised 10MB limit is never enforced",
+      "description": "The only validation applied to a user-chosen file is `selected.type === 'application/pdf'` (line 91). `File.type` is not content-sniffed — on Windows it is derived from the extension via the registry, so any file renamed to `.pdf` reports `application/pdf`. After that single check, `file` lives in state typed `File | null` and every downstream type asserts PDF-ness without re-checking: it is base64'd (line 64), sent to Gemini as PDF `inlineData` via `summarizePdf`, and persisted as `blobs.put(book.id, 'pdf', options.pdf)` with `StoredBlob.kind: 'pdf'` (types.ts:69-71) — a type that claims the bytes are a PDF when nothing ever verified it. Separately, the UI advertises \"Maximum size: 10MB\" (line 250) and no code anywhere enforces it: `handleFileChange` checks only the MIME string, and `handleSubmit` has no size guard. A 500MB file is accepted, read fully into a data URL (~1.37x in memory), and posted — the tab OOMs or the request is rejected far downstream with an opaque AI error. Fix shape: validate at the boundary — check `selected.size` against the advertised limit and sniff the `%PDF-` magic bytes (or at minimum the extension AND type) before the file is allowed into state; consider a `ValidatedPdf` wrapper type so downstream code cannot receive an unchecked `File`. Note the sibling ingress (Goodreads CSV) is audited elsewhere; this is the add-a-book path.",
+      "evidence": " 89 |   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {\n 90 |     const selected = e.target.files?.[0];\n 91 |     if (selected && selected.type === 'application/pdf') {   // extension-derived, no sniffing, no size check\n 92 |       setFile(selected);\n 93 |       setError(null);\n 94 |     } else {\n 95 |       setError('Please select a valid PDF file.');\n 96 |     }\n 97 |   };\n ...\n250 |                   <p className=\"...\">Maximum size: 10MB</p>   // never enforced anywhere",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F10",
+      "category": "branded-type-opportunity",
+      "severity": "Medium",
+      "file": "src/components/StatsView.tsx",
+      "line": 20,
+      "title": "`Book.rating: number` conflates \"unrated\" with \"rated 0\", so the average-rating stat is silently wrong for imported libraries",
+      "description": "`Book.rating` is a required `number` (types.ts:36) with no representation for \"not rated\". The Goodreads importer therefore substitutes a sentinel: `rating: Number.isFinite(rating) ? rating : 0` (goodreads.ts:111). StatsView then averages every Finished book's rating unconditionally (line 20), so each unrated import drags the mean toward zero — a user who imports 200 Goodreads books and rated 10 of them sees \"Avg. Rating 0.2\" presented as a fact about their taste. The type system cannot catch it because `0` is a perfectly good `number`. BookCard has the mirrored symptom, rendering `{book.rating}/5` for every Finished book (BookCard.tsx:100), so unrated imports display an authoritative-looking \"0/5\". Secondary weakness on the same lines: the ternary makes `avgRating` an accidental `string | number` union (`.toFixed(1)` returns `string`, the empty-library branch returns the number `0`), which is why `StatCard.value` had to be widened to `string | number` (line 197) — the display type now accepts anything numeric-or-textual and no longer documents what a stat card shows. Fix shape: make the domain explicit — `rating?: number` (or a branded `Rating` 1..5 with an explicit unrated state) so `reduce` cannot silently include sentinels, and return a single formatted `string` from the memo. Blast radius: StatsView's headline stat plus every BookCard rating badge.",
+      "evidence": " 15 |     const finished = books.filter((b) => b.status === 'Finished');\n 17 |     const totalTime = finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0);\n 18 |     const avgRating =\n 19 |       finished.length > 0\n 20 |         ? (finished.reduce((acc, b) => acc + b.rating, 0) / finished.length).toFixed(1)  // sentinel 0s included\n 21 |         : 0;                                                                            // -> string | number\n\n// producer (outside lot): goodreads.ts:111  rating: Number.isFinite(rating) ? rating : 0,",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F11",
+      "category": "generic-opportunity",
+      "severity": "Low",
+      "file": "src/components/ui/toastStore.ts",
+      "line": 10,
+      "title": "The subscribe/emit store shape is hand-rolled twice, byte-identically, in `toastStore.ts` and `lib/ai/apiKey.ts`",
+      "description": "Both modules implement the same `useSyncExternalStore` backing store with the same three declarations copy-pasted: `const listeners = new Set<() => void>()`, an `emit()` that iterates it, and a `subscribeTo*(listener: () => void): () => void` that adds and returns a remover. The types are correct in both (no `Function`, no `unknown` payload, no untyped listener — see the verified negatives), so this is a duplication finding, not a soundness one: two sources of truth for one contract, and any future change (e.g. adding an unsubscribe-idempotency guard or a snapshot-version counter for `useSyncExternalStore` tearing) has to be made in two places or they drift. A single `createStore<T>()` returning `{ getSnapshot, subscribe, emit }` collapses both and makes the snapshot type a parameter rather than a per-module convention. Effort is trivial and the risk is low because both call sites already consume it through `useSyncExternalStore`. Blast radius: 2 modules, 2 React consumers (Toast.tsx:19 and the API-key hook).",
+      "evidence": "// src/components/ui/toastStore.ts\n  9 | let toasts: ToastMessage[] = [];\n 10 | const listeners = new Set<() => void>();\n 12 | function emit() {\n 13 |   for (const listener of listeners) listener();\n 14 | }\n 39 | export function subscribeToToasts(listener: () => void): () => void {\n 40 |   listeners.add(listener);\n 41 |   return () => { listeners.delete(listener); };\n 44 | }\n\n// src/lib/ai/apiKey.ts:3,6,30-34 — the identical three declarations",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F12",
+      "category": "type-assertion-as-T",
+      "severity": "Low",
+      "file": "src/components/ui/useFocusTrap.ts",
+      "line": 25,
+      "title": "`document.activeElement as HTMLElement | null` asserts a `.focus()` method onto a base `Element`",
+      "description": "`document.activeElement` is `Element | null`. `Element` has no `focus()` — the cast is what makes `restoreTo?.focus()` on line 29 compile, and the `?.` guards only nullness, not the method's existence. In practice most focusable nodes are `HTMLElement` or `SVGElement` (both of which implement `focus()`), so this is Low rather than a live crash; the concrete risk is that the assertion is the only thing standing between the cleanup path and a `restoreTo.focus is not a function` TypeError thrown from an effect teardown — i.e. during unmount, where React surfaces it as an app-level error rather than a dismissible one. Fix shape: narrow with `instanceof HTMLElement` (or feature-test `'focus' in el`) instead of asserting; that also documents the intent. Same blast radius as L12-F07 (every modal in the app).",
+      "evidence": " 22 |   useEffect(() => {\n 23 |     if (!active) return;\n 24 |\n 25 |     const restoreTo = document.activeElement as HTMLElement | null;   // actually Element | null\n 26 |     focusable()[0]?.focus();\n 27 |\n 28 |     return () => {\n 29 |       restoreTo?.focus();   // ?. guards null, not \"has focus()\"\n 30 |     };\n 31 |   }, [active, focusable]);",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F13",
+      "category": "non-null-assertion",
+      "severity": "Low",
+      "file": "src/components/ui/useFocusTrap.ts",
+      "line": 47,
+      "title": "Two non-null assertions on array indexing that are no-ops today and would become the only unguarded spots if `noUncheckedIndexedAccess` were enabled",
+      "description": "`items` is `HTMLElement[]` from `Array.from`, and with `noUncheckedIndexedAccess: false` (tsconfig.json has `strict: true` but not this flag) `items[0]` is already typed `HTMLElement` — so both `!` are currently no-ops that the compiler ignores. They are still worth recording for two reasons. First, they are inconsistent with line 26 of the same file, which handles the identical \"first focusable element\" access with `?.` instead — two idioms for one question in twelve lines. Second, they are pre-emptive: if the project later enables `noUncheckedIndexedAccess` (the single highest-value remaining strictness flag for this codebase — L12-F04's out-of-bounds quiz index and L12-F14's Record access are both instances of what it catches), these two lines will keep compiling silently while every other array access in the repo is forced to prove itself. The guard on line 45 does make them true today, so this is Low with no runtime failure. Fix shape: destructure with a length check, or use `at(0)`/`at(-1)` and handle `undefined`, so no assertion is needed either before or after the flag flips.",
+      "evidence": " 44 |       const items = focusable();\n 45 |       if (items.length === 0) return;\n 46 |\n 47 |       const first = items[0]!;                    // ! is a no-op while noUncheckedIndexedAccess is off\n 48 |       const last = items[items.length - 1]!;\n 49 |       const active = document.activeElement;\n\n// contrast, same file:\n 26 |     focusable()[0]?.focus();                     // same access, opposite idiom",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F14",
+      "category": "tsconfig-strictness-gap",
+      "severity": "Low",
+      "file": "src/components/StatsView.tsx",
+      "line": 23,
+      "title": "`Record<string, number>` claims total key coverage; only a `|| 0` coercion saves the read of a key that does not exist yet",
+      "description": "`Record<string, number>` asserts that *every* string key yields a `number`. With `noUncheckedIndexedAccess` off, `categoryMap[b.category]` on line 25 is typed `number` while returning `undefined` on the first occurrence of each category — `undefined + 1` would be `NaN`, and the only thing preventing a row of \"NaN book(s)\" in the Category Breakdown is the `|| 0` fallback. The code is correct today; the *type* is not, and the correctness depends on a coercion the compiler cannot see. This is the clearest small illustration of what enabling `noUncheckedIndexedAccess` would buy: it would type this access `number | undefined` and force the fallback to be visible in the type, and it would simultaneously flag the genuinely dangerous accesses (L12-F04's `options[correctAnswerIndex]`, L12-F13's `items[0]!`). Cost is not a switch flip — every array index and `Record` read in the repo would need review — but the repo is small and already clean under `strict: true`, so it is achievable. Fix shape: either `Map<string, number>` (whose `get` honestly returns `| undefined`) or enable the flag.",
+      "evidence": " 23 |     const categoryMap: Record<string, number> = {};\n 24 |     books.forEach((b) => {\n 25 |       categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;   // typed number, actually undefined\n 26 |     });\n 27 |\n 28 |     const categoryData = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);\n\n// tsconfig.json:8-11 — strict: true, but no noUncheckedIndexedAccess / exactOptionalPropertyTypes",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F15",
+      "category": "boundary-without-validation",
+      "severity": "Low",
+      "file": "src/components/AudioPlayer.tsx",
+      "line": 64,
+      "title": "`HTMLMediaElement.duration` enters state as a plain `number` that can be `NaN` or `Infinity`, and is then both formatted and truthiness-tested",
+      "description": "`duration` is media metadata decoded by the browser — external data crossing into typed code with no validation. `HTMLMediaElement.duration` is `NaN` when unknown and `Infinity` for streams or containers without a duration header, and `number` claims neither is possible. Two consequences downstream: `formatTime(duration)` (line 217) computes `Math.floor(Infinity / 60)` and `Infinity % 60`, rendering the literal string \"Infinity:NaN\" in the transport bar (and \"NaN:NaN\" for NaN); and `max={duration || 100}` (line 212) uses a truthiness test on a number, which cannot distinguish \"duration is genuinely 0\" from \"duration is unknown\" — both silently become a 100-second scrubber whose thumb position is meaningless. Severity is Low because the app's only audio source is a locally generated WAV blob, whose header carries a finite duration, so the bad values are not reachable on the current happy path. Fix shape: validate at the assignment — `Number.isFinite(d) ? d : 0` — and use an explicit `duration: number | null` so \"unknown\" is a state the renderer must handle rather than a magic falsy number. Adjacent observation, filed here only for context because rejection handling belongs to the error-recovery audit: `togglePlay` (line 50) discards the `Promise<void>` from `.play()`, and `setIsPlaying(!isPlaying)` on line 52 flips the UI optimistically — if `play()` rejects (autoplay policy, or an AbortError when `src` changes), neither a `play` nor a `pause` event fires, so the button shows Pause over silent audio until the user clicks twice.",
+      "evidence": " 62 |   const handleLoadedMetadata = () => {\n 63 |     if (audioRef.current) {\n 64 |       setDuration(audioRef.current.duration);   // NaN when unknown, Infinity for stream-like media\n 65 |     }\n 66 |   };\n ...\n212 |               max={duration || 100}            // truthiness on a number: 0 and NaN are indistinguishable\n217 |             <span className=\"min-w-[40px]\">{formatTime(duration)}</span>   // -> \"Infinity:NaN\"",
+      "confidence": "medium"
+    },
+    {
+      "id": "L12-F16",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/components/ui/Dialog.tsx",
+      "line": 12,
+      "title": "`Dialog`'s `size` prop is a bare `string` where only a handful of Tailwind max-width classes are valid",
+      "description": "`size?: string` accepts any string, but the only values that do anything are Tailwind max-width utilities — and Tailwind's JIT compiler only emits classes it finds in the source, so a typo (`max-w-mdd`), a runtime-computed value, or a plausible-looking alternative (`w-96`) compiles cleanly, passes lint, and produces a dialog with no width constraint at all: the panel stretches to the full flex container. Nothing fails; the layout is just silently wrong, and only on the one screen that used the bad value. The existing call sites pass `\"max-w-md\"` (ConfirmDialog.tsx:42) and `\"max-w-lg\"` (ApiKeyDialog.tsx:38) with the `\"max-w-xl\"` default (line 15), so a three-member literal union — or a `'sm' | 'md' | 'lg'` token mapped to classes inside Dialog — would cover every use and make the invalid states unrepresentable. Fix shape: replace `string` with a literal union; trivial effort, 3 call sites.",
+      "evidence": "  6 | interface DialogProps {\n  7 |   open: boolean;\n  8 |   title: string;\n  9 |   onClose: () => void;\n 10 |   children: ReactNode;\n 11 |   /** Tailwind max-width class for the panel. */\n 12 |   size?: string;                    // any string compiles; only 3 values are ever valid\n 13 | }\n 15 | export function Dialog({ open, title, onClose, children, size = 'max-w-xl' }: DialogProps) {",
+      "confidence": "high"
+    },
+    {
+      "id": "L12-F17",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/components/DailyWisdomModal.tsx",
+      "line": 71,
+      "title": "`coverImageUrl: string` doubles as a \"no cover\" sentinel that only BookCard knows about; DailyWisdomModal renders it raw",
+      "description": "`Book.coverImageUrl` is typed `string` but carries out-of-band sentinel values for \"no cover\": the empty string, produced by the legacy migration (`legacy.coverImageUrl ?? ''`, migrate.ts:114), and — per BookCard's defensive check — the literal text `'null'`. BookCard is the only consumer that knows this: it substitutes a generated placeholder for both and installs an `onError` handler (BookCard.tsx:17-23, 57). DailyWisdomModal renders the value straight into `<img src>` with neither guard, so a migrated book with an empty cover produces `<img src=\"\">`, which browsers resolve to the current document URL — a request for the SPA's own HTML, decoded as an image, yielding a broken-image glyph inside the daily-wisdom card. BookDetail.tsx:241 has the same raw usage. The type is doing double duty (a URL *or* one of two absence markers) with no discriminator, which is why the knowledge of the sentinels lives in one component's `if` instead of in the type. Fix shape: make absence explicit — `coverImageUrl?: string` with a single shared `coverSrc(book)` helper that applies `placeholderCover` — so no consumer can forget. Blast radius: 3 render sites, 1 of which handles it.",
+      "evidence": "// src/components/DailyWisdomModal.tsx\n 69 |             <div className=\"w-12 h-16 flex-shrink-0 shadow-sm rounded-md overflow-hidden relative\">\n 70 |               <img\n 71 |                 src={book.coverImageUrl}     // no '' / 'null' guard, no onError\n 72 |                 alt={book.title}\n 73 |                 className=\"w-full h-full object-cover\"\n 74 |               />\n\n// the sentinel, known only to BookCard.tsx:17\n 17 |     if (!book.coverImageUrl || book.coverImageUrl === 'null') {\n 18 |       setImgSrc(placeholderCover(book.title));",
+      "confidence": "high"
+    }
+  ]
+}

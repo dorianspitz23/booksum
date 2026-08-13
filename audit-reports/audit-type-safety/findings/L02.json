@@ -1,0 +1,152 @@
+{
+  "lotId": "L02",
+  "auditType": "type-safety",
+  "completedAt": "2026-08-12T16:07:40+02:00",
+  "filesScanned": 2,
+  "findingCount": 13,
+  "findings": [
+    {
+      "id": "L02-F01",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/types.ts",
+      "line": 98,
+      "title": "LibraryExport declares a fully-formed backup shape but is only ever produced by an unchecked cast of a user-supplied file",
+      "description": "`LibraryExport` is the declared shape of a backup file the user picks off disk. The only place it is constructed from external data is `src/components/ProfileView.tsx:117`, which does `JSON.parse(content) as LibraryExport` with no validation beyond a shallow `Array.isArray(data.books)` check on line 119. Every `Book` and `Summary` inside is then trusted as fully-formed and written straight into IndexedDB by `src/features/library/useLibrary.tsx:111` (`bookRepo.create({ ...book, profileId: profile.id })`). The type claims `books: Book[]` and `summaries: Summary[]` are non-optional and that each element has every required `Book` field; the runtime guarantees neither. The author evidently knew this: `useLibrary.tsx:109` and `:114` write `payload.books ?? []` and `payload.summaries ?? []` — nullish-coalescing fallbacks on two fields the type declares non-optional, which TypeScript considers unreachable dead code. That defensive `??` is the tell that the declared type and the real runtime shape have already diverged. Concrete failure: a hand-edited or truncated backup whose books lack `readingTimeMinutes` is written to the `books` store, then `src/components/StatsView.tsx:17` computes `finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0)` and the whole total-reading-time stat becomes `NaN`, while `src/components/BookCard.tsx:95` renders the literal text `undefined min read`. The corruption is persistent — it survives reload because it went into IndexedDB. Correct behaviour: parse the file into `unknown` and run a real validator (a hand-written guard or a schema library) before anything reaches `bookRepo.create`, so `LibraryExport` is only ever obtained by proof rather than by assertion.",
+      "evidence": "src/types.ts\n 97 /** Shape of a library backup file. */\n 98 export interface LibraryExport {\n 99   version: 2;\n100   exportedAt: string;\n101   books: Book[];\n102   summaries: Summary[];\n103 }\n\nsrc/features/library/useLibrary.tsx (the `??` on a non-optional field proves the type lies)\n109       for (const book of payload.books ?? []) {\n111         await bookRepo.create({ ...book, profileId: profile.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F03",
+      "category": "discriminated-union-opportunity",
+      "severity": "High",
+      "file": "src/types.ts",
+      "line": 47,
+      "title": "Three independent Book fields encode the single fact \"is this book summarised\", and they disagree on how to spell \"no\"",
+      "description": "`readingTimeMinutes`, `oneSentenceTakeaway?` and `summaryId?` all encode one fact: whether a summary exists for this book. Three independently-mutable fields means 8 representable combinations where only 2 are valid, and the compiler cannot reject any of the 6 impossible ones. Worse, the three fields do not even agree on how absence is spelled: `oneSentenceTakeaway` and `summaryId` use `undefined`, but `readingTimeMinutes` is declared required and uses a magic `0` sentinel — `src/features/library/useLibrary.tsx:157` writes `readingTimeMinutes: 0` for every Goodreads-imported book. The visible consequence is on one card: `src/components/BookCard.tsx:89` correctly narrows the optional and prints 'Not summarised yet', while `src/components/BookCard.tsx:95` on the very next line prints '0 min read' for that same unsummarised book, because a required `number` has no absent state to narrow. `src/components/StatsView.tsx:17` then sums those zeroes into the reading-time stat as if they were real measurements. Because there is no type-level link between the three fields, no write path is forced to keep them consistent: `useLibrary.tsx:82-83` (`if (book && book.summaryId !== summary.id) await bookRepo.update({ ...book, summaryId: summary.id })`) updates exactly one of the three when a book gains a summary and leaves the other two stale, and the compiler is satisfied. Correct shape: make `Book` a discriminated union — an unsummarised arm with none of the three fields, and a summarised arm where `summaryId: string`, `readingTimeMinutes: number` and `oneSentenceTakeaway: string` are all required together. Then 'summarised' becomes one narrowable fact instead of three, and a partial update stops compiling.",
+      "evidence": "src/types.ts\n 41   /**\n 42    * Two fields denormalised from Summary onto Book, for one reason: list views\n 45    * generated, so Summary remains the source of truth for everything else.\n 46    */\n 47   readingTimeMinutes: number;\n 48   oneSentenceTakeaway?: string;\n 49   /** Absent until an AI summary has been generated for this book. */\n 50   summaryId?: string;\n\nsrc/components/BookCard.tsx (both branches render for the same unsummarised book)\n 89   {book.oneSentenceTakeaway ? `\"${book.oneSentenceTakeaway}\"` : 'Not summarised yet'}\n 95   <span>{book.readingTimeMinutes} min read</span>",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F04",
+      "category": "boundary-without-validation",
+      "severity": "High",
+      "file": "src/types.ts",
+      "line": 105,
+      "title": "QuizQuestion declares every field required but is populated by an unchecked cast of an LLM response",
+      "description": "`QuizQuestion` declares all four fields as required. Its only producer is `src/lib/ai/quiz.ts:16`: `const data = JSON.parse(response.text || '{}') as { questions?: QuizQuestion[] }` followed by `return data.questions ?? []` — raw Gemini output, asserted into the domain type with no per-element validation. A responseSchema is passed to the model (`src/lib/ai/schemas.ts:55-83`) but that is a generation hint, not an enforced contract, and it does not run on the client. The codebase already knows this rule and applied it correctly one file over: `src/lib/ai/schemas.ts:85-97` declares `RawBookResponse` with every field optional and the explicit comment 'Every field is optional because a model can always omit one, schema or not'. `QuizQuestion` is the same class of data and did not get the same treatment, so the two AI response types apply opposite discipline to identical risk. Concrete failure: the model omits `options` for one question, `data.questions` still passes the `?? []` guard, and `src/components/QuizModal.tsx:183` maps over `undefined` and throws a TypeError that takes down the quiz modal; if it instead omits `explanation`, the UI renders the string 'undefined' to the user. Correct behaviour: mirror `RawBookResponse` — declare a `RawQuizQuestion` with all fields optional, validate/normalise each element (drop malformed questions, backfill defaults) at the `quiz.ts` boundary, and only then hand out a `QuizQuestion` whose required fields are actually guaranteed.",
+      "evidence": "src/types.ts\n105 export interface QuizQuestion {\n106   question: string;\n107   options: string[];\n108   correctAnswerIndex: number;\n109   explanation: string;\n110 }\n\nsrc/lib/ai/quiz.ts (the only producer — an assertion over LLM JSON)\n 16     const data = JSON.parse(response.text || '{}') as { questions?: QuizQuestion[] };\n 17     return data.questions ?? [];",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F05",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 88,
+      "title": "ReviewCard.correctAnswerIndex has no type-level relation to options, and out-of-range LLM values are persisted permanently",
+      "description": "`options: string[]` and `correctAnswerIndex: number` sit adjacent with no expressed relationship, so `correctAnswerIndex` may legally be any number including one outside the array. The value originates from Gemini (`src/lib/ai/schemas.ts:69-72`, where 'Index (0-3) of the correct answer' is only a natural-language description in the prompt schema, not a checked constraint), enters via the `QuizQuestion` cast in `src/lib/ai/quiz.ts:16`, and is copied verbatim with no bounds check by `src/lib/srs.ts:29` (`correctAnswerIndex: input.correctAnswerIndex`) into a `ReviewCard` that is then written to IndexedDB. Unlike a transient render bug this corruption is durable. Concrete failure: the model returns `correctAnswerIndex: 4` for a 4-element `options` array; `src/features/review/ReviewPage.tsx:76` evaluates `selected === current.correctAnswerIndex` which can never be true for any of the four rendered buttons, and `:94` (`index === current.correctAnswerIndex`) never highlights a correct answer either. The user cannot pass the card, so `scheduleCard` keeps failing it, the SRS interval resets to 1 day (`src/lib/srs.ts:46`), and the broken card resurfaces in the due queue every single day forever with no way to fix it from the UI. Correct behaviour: validate `correctAnswerIndex` against `options.length` at the `quiz.ts` boundary before a card is ever created, and drop or repair questions that fail. The type itself cannot express the bound, which is exactly why the runtime check has to exist.",
+      "evidence": "src/types.ts\n 86   question: string;\n 87   options: string[];\n 88   correctAnswerIndex: number;\n 89   explanation: string;\n\nsrc/lib/srs.ts (copied through with no bounds check, then persisted)\n 28     options: input.options,\n 29     correctAnswerIndex: input.correctAnswerIndex,\n\nsrc/features/review/ReviewPage.tsx\n 76   const isCorrect = selected === current.correctAnswerIndex;",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F12",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/lib/storage/db.ts",
+      "line": 9,
+      "title": "DBSchema value types promise every read row is a valid domain object, but IndexedDB validates nothing on the way out",
+      "description": "`BookSumDB` declares `books: { value: Book }`, `summaries: { value: Summary }` and so on, which makes `idb` type every read as `Book | undefined`, `Summary | undefined` etc. That is a guarantee IndexedDB structurally cannot provide: `db.get('books', id)` returns whatever object was structured-cloned in, by whatever code version wrote it, with zero shape checking. Today this is not merely theoretical — it is the read side of L02-F01. `src/features/library/useLibrary.tsx:111` writes unvalidated objects from a user-supplied backup file into the `books` store, so the store genuinely can contain rows that are not `Book`s, and every subsequent `books.get` / `books.listByProfile` (`src/lib/storage/repo.ts:44,47`) hands them to callers stamped as valid. Note the compounding factor: `DB_VERSION` is 1 and the `upgrade` handler (db.ts:24-39) only ever runs the create-store path — it ignores the `oldVersion` argument `idb` supplies and contains no row-reshaping step, so there is no mechanism by which a malformed or older-shaped row would ever be repaired. The declared types are the app's only defence and they are compile-time only. Correct shape: keep the `DBSchema` value types as the intended shape, but treat `repo.ts` as the trust boundary — validate (or at least normalise required fields on) rows entering the store from any external source, so the type on the way out is earned rather than asserted.",
+      "evidence": "src/lib/storage/db.ts\n  7 export interface BookSumDB extends DBSchema {\n  8   profiles: { key: string; value: Profile };\n  9   books: { key: string; value: Book; indexes: { 'by-profile': string } };\n 10   summaries: { key: string; value: Summary; indexes: { 'by-book': string } };\n 11   blobs: { key: string; value: StoredBlob; indexes: { 'by-book': string } };\n\nsrc/lib/storage/db.ts (upgrade discards oldVersion; no reshaping path exists)\n 24       upgrade(db) {\n 25         db.createObjectStore('profiles', { keyPath: 'id' });",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F13",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 51,
+      "title": "Book.hasPdf is a denormalised copy of blob-store existence that the caller must state twice, unchecked",
+      "description": "`hasPdf: boolean` duplicates a fact that already lives in the `blobs` store (is there a row keyed `${id}:pdf`). Because the two are unrelated at the type level, the `addBook` API forces the caller to assert the same fact twice in two different arguments and never checks that they agree: `src/features/library/useLibrary.tsx:50-51` stores the blob if `options.pdf` is set, while `hasPdf` arrives independently on the draft. `src/components/AddBookModal.tsx:76` happens to derive both from the same local (`hasPdf: Boolean(pdf)` on line 76, `pdf` passed in options on line 78), so the two agree by convention rather than by construction — and the test suite shows how awkward this is, with `src/features/library/useLibrary.test.tsx:109` having to hand-write `api.addBook({ ...draft(), hasPdf: true }, { pdf: new Blob(['x']) })`. Concrete failure: `addBook({ ...draft, hasPdf: false }, { pdf: someBlob })` compiles cleanly and produces a book whose PDF bytes are sitting in IndexedDB but are permanently unreachable, because `src/components/BookDetail.tsx:196` returns early on `if (!book.hasPdf) return;` and `:402` gates the reader entry point on `{book.hasPdf && ...}`. The user sees no PDF, no error, and the orphaned bytes keep consuming quota. Correct shape: model the PDF-bearing case as a union arm (or drop the boolean and derive it from the blob store at read time), so the flag and the blob cannot be supplied independently.",
+      "evidence": "src/types.ts\n 50   summaryId?: string;\n 51   hasPdf: boolean;\n\nsrc/features/library/useLibrary.tsx (blob written from options.pdf; hasPdf arrives separately on draft)\n 50       if (options.pdf) {\n 51         await blobs.put(book.id, 'pdf', options.pdf);\n 52       }\n\nsrc/components/BookDetail.tsx (reader gated on the flag, not the blob)\n196     if (!book.hasPdf) return;\n402                 {book.hasPdf && (",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F06",
+      "category": "branded-type-opportunity",
+      "severity": "Medium",
+      "file": "src/lib/storage/db.ts",
+      "line": 11,
+      "title": "blobs store key is a composite `${bookId}:${kind}` but is declared plain string, identical to the by-book index key",
+      "description": "The `blobs` store's primary key is not an id — it is a composite built by `src/lib/storage/repo.ts:126` (`const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}``). The schema declares it as bare `string`, and the same store's `by-book` index key is also `string` but holds a raw `bookId`. Two structurally different key spaces are therefore the same type inside one store declaration, so `db.get('blobs', someBookId)` type-checks perfectly and simply returns `undefined` — a silent miss indistinguishable from 'no PDF stored', which in this app means the reader renders nothing rather than reporting an error. No current call site is wrong (repo.ts consistently routes through `blobKey`, and repo.ts:149-150 correctly feeds `getAllKeysFromIndex` results back to `delete`), so this is a latent footgun rather than a live bug — but it is a cheap one to close. Correct shape: `key: `${string}:${BlobKind}`` (a template-literal type, no runtime branding needed) — `blobKey()` already produces exactly that, so the only change is the declaration, and passing a bare bookId stops compiling. Two related observations from checking this store: `StoredBlob` (src/types.ts:67-80) also lets `key`, `bookId` and `kind` disagree with one another even though `repo.ts:133-139` always derives `key` from the other two; and every other declared index key type in this schema was verified correct against its `keyPath` (`by-profile` -> `profileId`, `by-book` -> `bookId`, `by-profile-due` -> `['profileId','dueAt']`), though `by-profile-due` is never actually queried since repo.ts:79 and :95 both do a full-store `getAll` and filter in memory.",
+      "evidence": "src/lib/storage/db.ts\n 11   blobs: { key: string; value: StoredBlob; indexes: { 'by-book': string } };\n\nsrc/lib/storage/repo.ts (the real key space — composite, not an id)\n126 const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}`;\n143     const record = await (await getDb()).get('blobs', blobKey(bookId, kind));\n144     return record ? new Blob([record.bytes], { type: record.type }) : undefined;",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F07",
+      "category": "branded-type-opportunity",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 29,
+      "title": "Book/Summary/Profile/ReviewCard ids are all bare string, and one adjacent-line call site would silently swallow a swap",
+      "description": "Every entity id in the domain model is `string`: `Book.id`/`Book.profileId`/`Book.summaryId`, `Summary.id`/`Summary.bookId`, `Profile.id`, `ReviewCard.id`/`profileId`/`bookId`. The repo signatures are correspondingly indistinguishable — `books.get(id: string)`, `books.remove(id: string)`, `summaries.remove(id: string)` (a summary id) and `profiles.get(id: string)` all accept any of them. The concrete swap-compiles site is `src/features/library/useLibrary.tsx:81-83`, where three different id kinds are juggled across three adjacent lines: `const book = await bookRepo.get(summary.bookId); if (book && book.summaryId !== summary.id) await bookRepo.update({ ...book, summaryId: summary.id })`. Writing `bookRepo.get(summary.id)` instead of `bookRepo.get(summary.bookId)` type-checks, returns `undefined`, and the very next line's `if (book && ...)` guard swallows it — the summary/book link is silently never written, with no throw and no log, and the book keeps rendering as unsummarised. `reviewCards.listByProfile(profileId: string)` and `reviewCards.listByBook(bookId: string)` (repo.ts:78, 94) likewise have identical signatures and different meanings. Correct shape: branded aliases (`type BookId = string & { readonly __brand: 'BookId' }`, etc.) applied at the `types.ts` declarations and threaded through the repo signatures; per the audit spec this is a retrofit cost, so prioritise `BookId` vs `SummaryId` (the pair with a demonstrated silent-failure path) over the rest.",
+      "evidence": "src/types.ts\n 28 export interface Book {\n 29   id: string;\n 30   profileId: string;\n ...\n 50   summaryId?: string;\n 55   id: string;\n 56   bookId: string;\n\nsrc/features/library/useLibrary.tsx (a get(summary.id) typo compiles and is swallowed by the guard)\n 81       const book = await bookRepo.get(summary.bookId);\n 82       if (book && book.summaryId !== summary.id) {\n 83         await bookRepo.update({ ...book, summaryId: summary.id });",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F10",
+      "category": "branded-type-opportunity",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 24,
+      "title": "ISO-8601 timestamps are bare strings whose format is load-bearing for sorting, and one is piped in unvalidated from localStorage",
+      "description": "`Profile.createdAt`, `Book.addedAt`, `Book.finishedAt`, `Summary.generatedAt` and `ReviewCard.dueAt` are all `string`, but their ISO-8601 format is load-bearing rather than cosmetic: `src/lib/storage/repo.ts:9` orders the profile list with `a.createdAt.localeCompare(b.createdAt)` and `repo.ts:88-89` selects the review queue with `card.dueAt <= cutoff` — lexicographic comparisons that are only correct because ISO-8601 happens to sort chronologically (the code comments say so at repo.ts:83). A bare `string` gives the compiler no way to enforce that. The live ingress is `src/lib/storage/migrate.ts:95`, which pipes `legacyProfile?.joinedAt` — an arbitrary string from `JSON.parse` of localStorage, obtained through the `readJson<T>` assertion at migrate.ts:54-62 — directly into `profiles.create({ createdAt })`, and `repo.ts:24` stores it verbatim (`input.createdAt ?? new Date().toISOString()`). A legacy profile carrying `joinedAt: 'March 3, 2024'` is therefore persisted as a `Profile.createdAt` that sorts before every ISO timestamp forever, silently reordering the profile picker with no error. A second symptom of the missing type: the same `dueAt` field is interpreted two different ways by two modules — `repo.ts:89` compares it as a string while `src/lib/srs.ts:58` does `Date.parse(card.dueAt) <= now.getTime()`. Correct shape: a branded `IsoDateString` produced by one factory that validates on construction, so the migration path is forced to parse-and-normalise `joinedAt` instead of passing it through.",
+      "evidence": "src/types.ts\n 24   createdAt: string;\n 39   addedAt: string;\n 93   dueAt: string;\n\nsrc/lib/storage/repo.ts (format is load-bearing for ordering)\n  9     return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));\n 89       .filter((card) => card.dueAt <= cutoff)\n\nsrc/lib/storage/migrate.ts (arbitrary localStorage string becomes createdAt)\n 95       createdAt: legacyProfile?.joinedAt,",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F08",
+      "category": "boundary-without-validation",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 33,
+      "title": "Book.category is an unconstrained string fed by the LLM, while the Category enum declared right above it is dead code",
+      "description": "`types.ts:6-15` exports a `Category` enum with eight members, and `types.ts:33` then declares `Book.category` as bare `string`. A search across `src/` finds no reference to the `Category` identifier anywhere outside its own declaration — the only other hits are unrelated JSX label text and `activeCategory` locals — so the enum is dead and the field it was written for is unconstrained. Producers write free-form strings: `'Other'` at `src/features/library/useLibrary.tsx:154`, `src/lib/storage/migrate.ts:109` and `src/lib/ai/summarize.ts:26`, and otherwise whatever Gemini returns, since `src/lib/ai/schemas.ts:8` declares `category: { type: Type.STRING }` with no enum constraint and `RawBookResponse.category?: string` is asserted straight out of `JSON.parse` at summarize.ts:52. Consumers then compare that string exactly: `src/features/library/LibraryPage.tsx:47` filters with `book.category === activeCategory`, and `src/components/StatsView.tsx:23-28` builds the entire Category Breakdown chart by grouping on the raw string. Concrete failure: the model returns 'Self-Help' for one book and 'self-help' for another; the stats chart shows them as two separate categories with a count of 1 each, and the library filter chip for one will never match the other. Correct behaviour: type `Book.category` as the `Category` enum (or a string-literal union) and normalise the AI-supplied value against that set at the `summarize.ts` boundary, falling back to `Other` — the enum to do it with already exists.",
+      "evidence": "src/types.ts\n  6 export enum Category {\n  7   PSYCHOLOGY = 'Psychology',\n ...\n 14   OTHER = 'Other',\n 15 }\n ...\n 33   category: string;\n\nsrc/lib/ai/schemas.ts (unconstrained at the AI boundary)\n  8     category: { type: Type.STRING },",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F02",
+      "category": "discriminated-union-opportunity",
+      "severity": "Medium",
+      "file": "src/types.ts",
+      "line": 99,
+      "title": "LibraryExport.version is a literal tag that no consumer ever narrows on, so older backups import as v2",
+      "description": "`version: 2` is a literal type, so from the compiler's point of view every `LibraryExport` in the program is definitionally version 2 and a version check would be flagged as a redundant comparison. That is only true for values the app itself produces (`src/features/library/useLibrary.tsx:94` writes `version: 2`). For values that come off disk it is fiction — `src/components/ProfileView.tsx:117` asserts an arbitrary parsed file into the type, and `importLibrary` (useLibrary.tsx:102-122) never reads `payload.version` at all. The one field explicitly designed as a schema discriminant is therefore load-bearing for nothing. Concrete failure: a user restores a version-1 backup produced by an older build (the `version: 2` literal and the interface name imply a v1 existed); it has a `books` array so it clears the `Array.isArray` check at ProfileView.tsx:119, and every row is merged into the library under v2 assumptions with no migration and no warning. Correct shape: make `LibraryExport` an actual discriminated union over `version` (or at minimum `version: number` plus an explicit runtime check that rejects or upgrades anything that is not 2) so the tag can narrow and unsupported versions fail loudly instead of importing silently.",
+      "evidence": "src/types.ts\n 98 export interface LibraryExport {\n 99   version: 2;\n100   exportedAt: string;\n101   books: Book[];\n102   summaries: Summary[];\n103 }\n\nsrc/features/library/useLibrary.tsx (importLibrary never reads payload.version)\n103     async (payload: LibraryExport): Promise<number> => {\n104       if (!profile) return 0;\n109       for (const book of payload.books ?? []) {",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F09",
+      "category": "branded-type-opportunity",
+      "severity": "Low",
+      "file": "src/types.ts",
+      "line": 64,
+      "title": "Summary.model is a bare string, so nothing type-checks that a persisted model id is a real one",
+      "description": "`model: string` records which Gemini model produced a summary, with `'legacy'` as a documented sentinel for migrated rows. `src/lib/ai/models.ts` already declares `MODELS` with `as const`, so the exact union `(typeof MODELS)[keyof typeof MODELS] | 'legacy'` is available at zero cost. As typed, any string is accepted: a typo'd or hand-edited model id round-trips through the store unnoticed, and — relevant to the project's stated invariant that model IDs live only in `src/lib/ai/models.ts` — nothing stops a literal model id being written from elsewhere, which is exactly what `src/lib/storage/migrate.ts:131` does with `model: 'legacy'`. Impact is low today because the field is currently only recorded, not dispatched on; it becomes a real problem the moment any code branches on it or a model is renamed and stale ids need finding. Correct shape: narrow the field to the union derived from `MODELS` plus the `'legacy'` sentinel, which makes a Google model rename a compile error at every stale write site rather than a silent data inconsistency.",
+      "evidence": "src/types.ts\n 63   /** Model ID that produced this, or 'legacy' for migrated records. */\n 64   model: string;\n\nsrc/lib/ai/models.ts (the exact union already exists, as const)\n  2 export const MODELS = {\n  3   summary: 'gemini-3-flash-preview',\n  9 } as const;",
+      "confidence": "high"
+    },
+    {
+      "id": "L02-F11",
+      "category": "generic-opportunity",
+      "severity": "Low",
+      "file": "src/types.ts",
+      "line": 105,
+      "title": "The quiz-question shape is declared three separate times across types.ts and srs.ts",
+      "description": "`QuizQuestion` (types.ts:105-110) declares `question`, `options`, `correctAnswerIndex`, `explanation`. `ReviewCard` (types.ts:86-89) re-declares the identical four fields inline alongside its id and SRS fields. `NewCardInput` (src/lib/srs.ts:13-20) declares them a third time alongside `profileId`/`bookId`, and `src/lib/srs.ts:26-30` then copies them across field-by-field. One shape, three declarations, one hand-written copy loop. Adding or renaming a quiz field means editing three types and the copy loop, and the compiler only flags a subset of those — a field added to `QuizQuestion` alone silently fails to reach `ReviewCard`, which is how quiz data would quietly stop being persisted. Correct shape: define the four fields once and compose — `interface ReviewCard extends QuizQuestion { id; profileId; bookId; ease; intervalDays; dueAt; reviewCount }` and `type NewCardInput = QuizQuestion & { profileId: string; bookId: string }` — which also collapses the copy loop in `newCard` to a spread.",
+      "evidence": "src/types.ts (declaration 1 of 3, inline on ReviewCard)\n 86   question: string;\n 87   options: string[];\n 88   correctAnswerIndex: number;\n 89   explanation: string;\n\nsrc/types.ts (declaration 2 of 3)\n105 export interface QuizQuestion {\n106   question: string;\n107   options: string[];\n108   correctAnswerIndex: number;\n109   explanation: string;\n110 }",
+      "confidence": "high"
+    }
+  ]
+}

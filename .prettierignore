@@ -1,3 +1,7 @@
 dist
 node_modules
 package-lock.json
+
+# Generated audit output — machine-written artefacts, not source. Formatting
+# them would reflow generated report tables for no benefit.
+audit-reports
