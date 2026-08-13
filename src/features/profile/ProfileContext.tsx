@@ -28,17 +28,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     void (async () => {
-      await migrateLegacyData();
-      const list = await profileRepo.list();
-      if (cancelled) return;
+      try {
+        // The migration reads data this app did not write. A throw here used to
+        // skip setIsLoading(false) entirely, pinning the app on the loading
+        // spinner forever, on every reload, with no way out from inside the app.
+        await migrateLegacyData();
+      } catch (error) {
+        console.error('Legacy migration failed; continuing without it', error);
+      }
 
-      setAllProfiles(list);
+      try {
+        const list = await profileRepo.list();
+        if (cancelled) return;
 
-      const storedId = localStorage.getItem(ACTIVE_PROFILE_KEY);
-      const restored = storedId ? (list.find((p) => p.id === storedId) ?? null) : null;
-      if (!restored && storedId) localStorage.removeItem(ACTIVE_PROFILE_KEY);
-      setProfile(restored);
-      setIsLoading(false);
+        setAllProfiles(list);
+
+        const storedId = localStorage.getItem(ACTIVE_PROFILE_KEY);
+        const restored = storedId ? (list.find((p) => p.id === storedId) ?? null) : null;
+        if (!restored && storedId) localStorage.removeItem(ACTIVE_PROFILE_KEY);
+        setProfile(restored);
+      } catch (error) {
+        console.error('Could not load profiles', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     })();
 
     return () => {
