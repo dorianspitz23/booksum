@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from '../../lib/storage/db';
 import { books as bookRepo, profiles, reviewCards } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
-import { useReviewQueue } from './useReviewQueue';
+import { ReviewQueueProvider, useReviewQueue } from './useReviewQueue';
 import { newCard } from '../../lib/srs';
 import type { Profile } from '../../types';
 
@@ -35,7 +35,9 @@ async function renderQueue() {
 function mount() {
   render(
     <ProfileProvider>
-      <Probe />
+      <ReviewQueueProvider>
+        <Probe />
+      </ReviewQueueProvider>
     </ProfileProvider>,
   );
 }

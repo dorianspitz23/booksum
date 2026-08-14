@@ -34,7 +34,7 @@ const GRADES: { value: Grade; label: string; hint: string; className: string }[]
 ];
 
 export function ReviewPage() {
-  const { current, remaining, isLoading, grade } = useReviewQueue();
+  const { current, remaining, isLoading, isGrading, grade } = useReviewQueue();
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
@@ -132,7 +132,8 @@ export function ReviewPage() {
               <button
                 key={value}
                 onClick={() => void grade(value)}
-                className={`p-4 rounded-2xl font-bold transition-all ${className}`}
+                disabled={isGrading}
+                className={`p-4 rounded-2xl font-bold transition-all disabled:opacity-50 ${className}`}
               >
                 {label}
                 <span className="block text-[10px] font-semibold uppercase tracking-widest opacity-70">

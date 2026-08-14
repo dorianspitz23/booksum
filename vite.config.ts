@@ -23,6 +23,13 @@ export default defineConfig({
     // project path contains a space ("Timeout waiting for worker to respond").
     // Threads are unaffected and measurably faster to boot here.
     pool: 'threads',
+    // Each worker builds a full jsdom window plus fake-indexeddb, which costs
+    // seconds and a lot of memory. Uncapped, the pool spawns one per core and the
+    // resulting contention pushed Testing Library's waitFor budgets past their
+    // limit intermittently -- a test that runs in 143ms alone was observed taking
+    // 19s and failing. Half the cores keeps the suite parallel without the
+    // thrash, and makes the run deterministic.
+    maxWorkers: 4,
     // jsdom + fake-indexeddb setup costs several seconds per file on a cold
     // cache, which pushed genuine passes past the 5s default on a first run.
     testTimeout: 20_000,

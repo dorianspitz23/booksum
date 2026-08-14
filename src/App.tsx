@@ -3,6 +3,7 @@ import { AppRoutes } from './app/routes';
 import { useProfile } from './features/profile/ProfileContext';
 import { ProfilePicker } from './features/profile/ProfilePicker';
 import { LibraryProvider } from './features/library/useLibrary';
+import { ReviewQueueProvider } from './features/review/useReviewQueue';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
 import { ToastHost } from './components/ui/Toast';
 
@@ -25,7 +26,9 @@ export default function App() {
     <ConfirmProvider>
       {profile ? (
         <LibraryProvider>
-          <AppRoutes />
+          <ReviewQueueProvider>
+            <AppRoutes />
+          </ReviewQueueProvider>
         </LibraryProvider>
       ) : (
         // The picker deliberately renders outside the router: with no profile

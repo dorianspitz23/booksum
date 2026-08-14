@@ -9,6 +9,7 @@ import { ApiKeyDialog } from '../features/settings/ApiKeyDialog';
 import { useProfile } from '../features/profile/ProfileContext';
 import { useTheme } from '../features/settings/useTheme';
 import { useLibrary } from '../features/library/useLibrary';
+import { useReviewQueue } from '../features/review/useReviewQueue';
 import { ShellContext } from './ShellContext';
 import type { ShellApi } from './ShellContext';
 import { toAiError } from '../lib/ai/errors';
@@ -22,9 +23,26 @@ const NAV_ITEMS = [
   { to: '/profile', label: 'My Profile', icon: UserIcon, end: false },
 ];
 
+/**
+ * The due count was computed inside the review queue and never left it, so the
+ * only way to discover that anything was due was to visit the Review tab — which
+ * is the opposite of how spaced repetition is meant to work.
+ */
+function DueBadge({ count }: { count: number }) {
+  return (
+    <span
+      aria-label={`${count} card${count === 1 ? '' : 's'} due`}
+      className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-600 text-white text-[10px] font-black flex items-center justify-center shadow"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 export function AppShell() {
   const { profile, signOut } = useProfile();
   const { books, addBook, getSummary } = useLibrary();
+  const { remaining: dueCount } = useReviewQueue();
 
   // Applied here so the theme holds on every route, not only where the toggle
   // happens to be mounted.
@@ -33,6 +51,27 @@ export function AppShell() {
   const navigate = useNavigate();
 
   const [activeAudioTrack, setActiveAudioTrack] = useState<AudioTrack | null>(null);
+
+  /**
+   * Every narration created a blob URL that nothing ever revoked, so each play
+   * pinned another full WAV in memory for the life of the page. This is the only
+   * place that owns a track's lifetime, so it is the only place that can free it.
+   */
+  const playAudio = useCallback((track: AudioTrack) => {
+    setActiveAudioTrack((previous) => {
+      if (previous && previous.src !== track.src && previous.src.startsWith('blob:')) {
+        URL.revokeObjectURL(previous.src);
+      }
+      return track;
+    });
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    setActiveAudioTrack((previous) => {
+      if (previous?.src.startsWith('blob:')) URL.revokeObjectURL(previous.src);
+      return null;
+    });
+  }, []);
   const [showAddBook, setShowAddBook] = useState(false);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
 
@@ -79,12 +118,12 @@ export function AppShell() {
 
   const shellApi = useMemo<ShellApi>(
     () => ({
-      playAudio: setActiveAudioTrack,
+      playAudio,
       hasAudioPlayer: activeAudioTrack !== null,
       openAddBook: () => setShowAddBook(true),
       handleAiError,
     }),
-    [activeAudioTrack, handleAiError],
+    [activeAudioTrack, handleAiError, playAudio],
   );
 
   const closeWisdom = () => {
@@ -127,7 +166,10 @@ export function AppShell() {
                     }`
                   }
                 >
-                  <Icon size={24} />
+                  <span className="relative shrink-0">
+                    <Icon size={24} />
+                    {to === '/review' && dueCount > 0 && <DueBadge count={dueCount} />}
+                  </span>
                   <span className="font-semibold hidden md:block">{label}</span>
                 </NavLink>
               ))}
@@ -169,18 +211,52 @@ export function AppShell() {
         )}
 
         <main
-          className={`${isReader ? '' : 'sm:ml-20 md:ml-64'} min-h-screen p-6 sm:p-10 lg:p-16 ${
+          className={`${isReader ? '' : 'sm:ml-20 md:ml-64 pb-24 sm:pb-0'} min-h-screen p-6 sm:p-10 lg:p-16 ${
             activeAudioTrack ? 'pb-32' : ''
           }`}
         >
           <Outlet />
         </main>
 
+        {/*
+          Below sm the sidebar is hidden and, until this existed, nothing replaced
+          it: /review, /stats and /profile were simply unreachable on a phone,
+          along with switching profiles. The whole spaced-repetition feature did
+          not exist on mobile.
+        */}
+        {!isReader && (
+          <nav
+            aria-label="Main"
+            className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-stretch pb-[env(safe-area-inset-bottom)]"
+          >
+            {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold transition-colors ${
+                    isActive
+                      ? 'text-orange-700 dark:text-orange-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                  }`
+                }
+              >
+                <span className="relative">
+                  <Icon size={22} />
+                  {to === '/review' && dueCount > 0 && <DueBadge count={dueCount} />}
+                </span>
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
+
         {!isReader && (
           <button
             onClick={() => setShowAddBook(true)}
             aria-label="Add book"
-            className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-orange-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 active:scale-90 transition-transform"
+            className="sm:hidden fixed bottom-20 right-6 w-14 h-14 bg-orange-600 rounded-full flex items-center justify-center text-white shadow-2xl z-50 active:scale-90 transition-transform"
           >
             <Plus size={28} />
           </button>
@@ -197,9 +273,7 @@ export function AppShell() {
           />
         )}
 
-        {activeAudioTrack && (
-          <AudioPlayer track={activeAudioTrack} onClose={() => setActiveAudioTrack(null)} />
-        )}
+        {activeAudioTrack && <AudioPlayer track={activeAudioTrack} onClose={stopAudio} />}
 
         {showKeyDialog && <ApiKeyDialog onClose={() => setShowKeyDialog(false)} />}
 

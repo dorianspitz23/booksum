@@ -19,7 +19,7 @@ import {
   PenTool,
   BrainCircuit,
 } from 'lucide-react';
-import { generateAudioSummary } from '../lib/ai/tts';
+import { getOrCreateNarration, clearNarration } from '../lib/ai/narration';
 import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
 import { toast } from './ui/toastStore';
@@ -164,6 +164,9 @@ export const BookDetail: React.FC<BookDetailProps> = ({
     setIsSummarising(true);
     try {
       await onSummarise();
+      // The narration script is built from the summary, so any cached audio for
+      // this book is now describing text that no longer exists.
+      await clearNarration(book.id);
     } catch (error) {
       toast.error(onAiError(error));
     } finally {
@@ -177,20 +180,21 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   }, [book.personalNotes]);
 
   const handlePlayAudio = async (type: 'short' | 'long') => {
+    if (!summary) return;
+    setIsGeneratingAudio(true);
     try {
-      setIsGeneratingAudio(true);
-      if (!summary) return;
-      const wavBlob = await generateAudioSummary(book, summary, type, voice);
-      const audioUrl = URL.createObjectURL(wavBlob);
+      // Cached after the first generation: this used to re-bill a TTS call on
+      // every single play of the same summary.
+      const wavBlob = await getOrCreateNarration(book, summary, type, voice);
 
       onPlayAudio({
-        src: audioUrl,
+        src: URL.createObjectURL(wavBlob),
         title: book.title,
         author: book.author,
         coverUrl: book.coverImageUrl,
       });
     } catch (error) {
-      toast.error(toAiError(error).message);
+      toast.error(onAiError(error));
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -219,9 +223,17 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   const handleOpenPdf = async () => {
     if (!book.hasPdf) return;
     const pdf = await blobs.get(book.id, 'pdf');
-    if (!pdf) return;
+    if (!pdf) {
+      toast.error('That PDF is no longer stored on this device.');
+      return;
+    }
+
     const url = URL.createObjectURL(pdf);
     window.open(url, '_blank');
+    // The new tab has read the URL by the time it is open; revoking in the same
+    // task can cancel the load, so this defers by a tick. Without it every click
+    // pinned the whole PDF in memory until the page was reloaded.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   const updateRating = (newRating: number) => {

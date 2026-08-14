@@ -10,7 +10,7 @@ import {
   Sun,
   Book as BookIcon,
 } from 'lucide-react';
-import { generateAudioSummary } from '../lib/ai/tts';
+import { getOrCreateNarration } from '../lib/ai/narration';
 import { toast } from './ui/toastStore';
 import { toAiError } from '../lib/ai/errors';
 import type { AudioTrack } from './AudioPlayer';
@@ -197,14 +197,13 @@ export const EReader: React.FC<EReaderProps> = ({
   }, [currentPage]);
 
   const handlePlayAudio = async () => {
+    if (!summary) return;
+    setIsGeneratingAudio(true);
     try {
-      setIsGeneratingAudio(true);
-      if (!summary) return;
-      const wavBlob = await generateAudioSummary(book, summary, 'long', voice);
-      const audioUrl = URL.createObjectURL(wavBlob);
+      const wavBlob = await getOrCreateNarration(book, summary, 'long', voice);
 
       onPlayAudio({
-        src: audioUrl,
+        src: URL.createObjectURL(wavBlob),
         title: book.title,
         author: book.author,
         coverUrl: book.coverImageUrl,

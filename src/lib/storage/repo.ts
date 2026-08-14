@@ -155,6 +155,10 @@ export const blobs = {
     return record ? new Blob([record.bytes], { type: record.type }) : undefined;
   },
 
+  async remove(bookId: string, kind: BlobKind): Promise<void> {
+    await (await getDb()).delete('blobs', blobKey(bookId, kind));
+  },
+
   async removeByBook(bookId: string): Promise<void> {
     const db = await getDb();
     const keys = await db.getAllKeysFromIndex('blobs', 'by-book', bookId);
