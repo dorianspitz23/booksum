@@ -381,18 +381,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <ShieldAlert size={20} />
-              </div>
-              <div>
-                <p className="font-bold text-gray-900 dark:text-gray-100">Privacy Mode</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Local storage encryption</p>
-              </div>
+          {/*
+            This card used to be a "Privacy Mode — Local storage encryption"
+            toggle: a styled div, permanently in the on position, wired to
+            nothing, advertising encryption the app has never implemented. It is
+            now a plain statement of what is actually true.
+          */}
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-start gap-4">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <ShieldAlert size={20} />
             </div>
-            <div className="w-12 h-6 bg-orange-600 rounded-full p-1 cursor-pointer">
-              <div className="w-4 h-4 bg-white dark:bg-gray-900 rounded-full ml-auto shadow-sm" />
+            <div>
+              <p className="font-bold text-gray-900 dark:text-gray-100">Where your data lives</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-1">
+                Books, summaries and notes are stored unencrypted in this browser and never leave
+                it. Your Gemini key is kept in this browser too and is sent only to Google, and only
+                when you use an AI feature. Anyone with access to this device and browser profile
+                can read all of it.
+              </p>
             </div>
           </div>
 

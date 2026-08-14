@@ -25,9 +25,17 @@ export const routeTable = [
   },
 ];
 
+/**
+ * Vite's BASE_URL, minus its trailing slash, is exactly what react-router wants
+ * as a basename. Without it a project-page deploy (served from /<repo>/) resolves
+ * every route against the domain root instead, so the app builds and deploys and
+ * then 404s on load. Defaults to '' at the domain root, which is a no-op.
+ */
+export const basename = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
 export function AppRoutes() {
   // Built per mount rather than at module scope: a module-level router keeps its
   // own history, so it ignores the current URL on a remount.
-  const router = useMemo(() => createBrowserRouter(routeTable), []);
+  const router = useMemo(() => createBrowserRouter(routeTable, { basename }), []);
   return <RouterProvider router={router} />;
 }

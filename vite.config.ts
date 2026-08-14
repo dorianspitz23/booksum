@@ -6,7 +6,15 @@ import tailwindcss from '@tailwindcss/vite';
 // The Gemini API key is supplied by the user at runtime (see src/lib/ai/apiKey.ts)
 // and must never be inlined into the bundle — a build-time key is readable by
 // anyone who loads the site. See docs/superpowers/specs/.
+// A GitHub Pages project site is served from /<repo>/, not from the domain root,
+// so both the asset base and the router's basename have to know about it. The
+// router reads import.meta.env.BASE_URL, which Vite derives from this value, so
+// setting BASE_PATH at build time is enough to move the whole app.
+//   BASE_PATH=/booksum/ npm run build
+const base = process.env.BASE_PATH || '/';
+
 export default defineConfig({
+  base,
   plugins: [react(), tailwindcss()],
   test: {
     globals: true,
