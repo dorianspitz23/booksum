@@ -1,3 +1,9 @@
+/**
+ * @vitest-environment node
+ *
+ * No DOM here, so this suite skips the jsdom window the default environment
+ * builds. See src/test/setup.ts.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetDb } from '../storage/db';
 import { blobs, books, profiles } from '../storage/repo';

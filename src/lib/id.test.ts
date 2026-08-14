@@ -1,3 +1,9 @@
+/**
+ * @vitest-environment node
+ *
+ * No DOM here, so this suite skips the jsdom window the default environment
+ * builds. See src/test/setup.ts.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { newId } from './id';
 

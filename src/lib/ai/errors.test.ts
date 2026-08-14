@@ -1,3 +1,9 @@
+/**
+ * @vitest-environment node
+ *
+ * No DOM here, so this suite skips the jsdom window the default environment
+ * builds. See src/test/setup.ts.
+ */
 import { describe, expect, it } from 'vitest';
 import { AiError, MissingKeyError, toAiError } from './errors';
 

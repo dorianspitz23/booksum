@@ -9,7 +9,7 @@ import {
   FileText,
   Star,
 } from 'lucide-react';
-import { summarizeBook, summarizePdf } from '../lib/ai/summarize';
+import { MAX_PDF_BYTES, summarizeBook, summarizePdf } from '../lib/ai/summarize';
 import type { GeneratedBook } from '../lib/ai/summarize';
 import type { AddBookOptions, BookDraft } from '../features/library/useLibrary';
 import { Dialog } from './ui/Dialog';
@@ -90,12 +90,29 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected && selected.type === 'application/pdf') {
-      setFile(selected);
-      setError(null);
-    } else {
-      setError('Please select a valid PDF file.');
+    // Reset the input so picking the same file again after an error still fires
+    // a change event, and clear any previously accepted file: rejecting a second
+    // pick used to leave the first one selected and silently submittable.
+    e.target.value = '';
+    setFile(null);
+
+    if (!selected) return;
+
+    const looksLikePdf =
+      selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf');
+    if (!looksLikePdf) {
+      setError('Please select a PDF file.');
+      return;
     }
+
+    if (selected.size > MAX_PDF_BYTES) {
+      const mb = (selected.size / 1024 / 1024).toFixed(1);
+      setError(`That PDF is ${mb}MB. The limit is 10MB.`);
+      return;
+    }
+
+    setFile(selected);
+    setError(null);
   };
 
   return (
@@ -220,39 +237,46 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
               </div>
             </>
           ) : (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${
-                file
-                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
-            >
+            <>
+              {/* A button, not a div: this was a bare <div onClick> wrapping a
+                  hidden input, so uploading a PDF was impossible with a keyboard.
+                  The input is a sibling rather than a child — an <input> inside a
+                  <button> is invalid HTML. */}
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf"
+                accept=".pdf,application/pdf"
                 ref={fileInputRef}
                 onChange={handleFileChange}
               />
-              {file ? (
-                <>
-                  <FileText size={48} className="text-orange-700 dark:text-orange-400 mb-4" />
-                  <p className="font-bold text-orange-900">{file.name}</p>
-                  <p className="text-xs text-orange-700 dark:text-orange-400">
-                    Click to change file
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                    <FileUp size={32} className="text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <p className="font-bold text-gray-900 dark:text-gray-100">Choose a PDF file</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Maximum size: 10MB</p>
-                </>
-              )}
-            </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                  file
+                    ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                {file ? (
+                  <>
+                    <FileText size={48} className="text-orange-700 dark:text-orange-400 mb-4" />
+                    <p className="font-bold text-orange-900 dark:text-orange-200">{file.name}</p>
+                    <p className="text-xs text-orange-700 dark:text-orange-400">
+                      Click to change file
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                      <FileUp size={32} className="text-gray-400 dark:text-gray-500" />
+                    </span>
+                    <p className="font-bold text-gray-900 dark:text-gray-100">Choose a PDF file</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Maximum size: 10MB</p>
+                  </>
+                )}
+              </button>
+            </>
           )}
 
           {error && (

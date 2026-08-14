@@ -3,7 +3,7 @@ import { toAiError } from './errors';
 import { MODELS } from './models';
 import { RECOMMENDATION_SCHEMA } from './schemas';
 import { recommendationsPrompt } from './prompts';
-import { fetchCover } from '../covers';
+import { fetchCover, placeholderCover } from '../covers';
 import type { Book } from '../../types';
 
 export interface Recommendation {
@@ -27,16 +27,32 @@ export async function getAIRecommendations(userBooks: Book[]): Promise<Recommend
       config: { responseMimeType: 'application/json', responseSchema: RECOMMENDATION_SCHEMA },
     });
 
-    const data = JSON.parse(response.text || '{}') as {
-      recommendations?: Omit<Recommendation, 'coverUrl'>[];
+    if (!response.text?.trim()) return [];
+
+    const data = JSON.parse(response.text) as {
+      recommendations?: Partial<Omit<Recommendation, 'coverUrl'>>[];
     };
 
-    return Promise.all(
-      (data.recommendations ?? []).map(async (rec) => ({
-        ...rec,
-        coverUrl: await fetchCover(rec.title, rec.author),
-      })),
+    const usable = (data.recommendations ?? []).filter(
+      (rec): rec is Omit<Recommendation, 'coverUrl'> =>
+        typeof rec?.title === 'string' &&
+        rec.title.trim().length > 0 &&
+        typeof rec.author === 'string',
     );
+
+    // allSettled, not all: one cover lookup throwing used to reject the whole
+    // batch and discard all six recommendations from a call that had already
+    // been paid for. A recommendation with no cover is still a recommendation.
+    const settled = await Promise.allSettled(
+      usable.map(async (rec) => ({ ...rec, coverUrl: await fetchCover(rec.title, rec.author) })),
+    );
+
+    return settled.map((result, index) => {
+      const rec = usable[index]!;
+      return result.status === 'fulfilled'
+        ? result.value
+        : { ...rec, description: rec.description ?? '', coverUrl: placeholderCover(rec.title) };
+    });
   } catch (error) {
     throw toAiError(error);
   }
