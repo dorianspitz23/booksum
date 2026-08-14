@@ -44,7 +44,32 @@ Gate: typecheck clean · lint clean · **217 tests passing** · build clean.
 - Bonus fix from a new test: `ProfilePicker` snapshotted `isCreating` from an
   empty profile list, hiding every existing profile if it mounted before load.
 
-## Waves 2-4 — not started
+## Wave 2 — high (102): in progress, ~21 closed
+
+**AI layer, closed:** S141-S144 (schema constraints stated as constraints, not
+prose) · S062/S106/S032 (runtime validation before persistence) ·
+S003/S004/S005/S139 (error mapper: status before message) · S016 (timeouts) ·
+S015 (key check no longer costs an inference) · S034/S035 (no more success-typed
+failure sentinels) · S033 (one bad cover no longer discards six recommendations)
+· S064/S065/S066/S071 (PDF limit enforced, drop zone keyboard-reachable).
+
+**test-efficiency F001, closed** — and it mattered more than it looked:
+
+> `setup.ts` imported jest-dom and testing-library at module scope, so every one
+> of 29 suites built a jsdom window, including the 13 that touch no DOM. On a
+> loaded machine (100% CPU, ~1GB free) **11 of 29 files failed to start their
+> worker and never ran.** Vitest *does* exit non-zero in that state, so it is not
+> a silent-green CI hazard — but the summary line reads `Test Files 18 passed
+> (18)`, counting only what ran, so the shortfall is easy to miss at a glance.
+> After guarding the setup imports and marking the pure suites
+> `@vitest-environment node`: all 29 run, 2514s → 126s under the same load.
+
+**Verification caveat:** any green result recorded before commit `eec30d2` was
+taken with this hazard present. Reruns since show `29 passed (29)`, which does
+mean all 29 ran — the parenthesised total counts files that started, so a
+shortfall would have shown as a smaller number plus an `Errors` line.
+
+## Waves 2 (remaining) - 4
 
 438 findings. Wave 2 (high, 102) is dominated by three clusters:
 
