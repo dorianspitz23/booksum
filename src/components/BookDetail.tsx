@@ -126,6 +126,8 @@ interface BookDetailProps {
   isPreview?: boolean;
   onAdd?: () => void;
   onPlayAudio: (track: AudioTrack) => void;
+  /** Generates and saves a summary for a book that has none. */
+  onSummarise: () => Promise<void>;
   /** Surfaces an AI failure and opens the key dialog when the key is the problem. */
   onAiError: (error: unknown) => string;
 }
@@ -142,13 +144,32 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   isPreview,
   onAdd,
   onPlayAudio,
+  onSummarise,
   onAiError,
 }) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
+  const [isSummarising, setIsSummarising] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [notes, setNotes] = useState(book.personalNotes || '');
+
+  /**
+   * Without this there was no route from an unsummarised book to a summarised
+   * one, so every Goodreads import — the whole point of which is that it makes
+   * no AI call — was a permanent dead end, and chat, quiz, audio, deep dive and
+   * the review deck were all unreachable for it.
+   */
+  const handleSummarise = async () => {
+    setIsSummarising(true);
+    try {
+      await onSummarise();
+    } catch (error) {
+      toast.error(onAiError(error));
+    } finally {
+      setIsSummarising(false);
+    }
+  };
 
   // Sync notes local state if book prop changes (e.g. initial load)
   useEffect(() => {
@@ -383,31 +404,53 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
                 <div className="h-px bg-gray-100 dark:bg-gray-800 my-2" />
 
-                <button
-                  onClick={() => handlePlayAudio('short')}
-                  disabled={isGeneratingAudio}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 text-sm"
-                >
-                  {isGeneratingAudio ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Headphones size={16} />
-                  )}
-                  {isGeneratingAudio ? 'Generating Audio...' : 'Quick Listen'}
-                </button>
+                {/* Audio and the deep dive both read the summary. They used to
+                    render regardless, set their spinner, then hit an early
+                    `if (!summary) return` — so they flashed and did nothing. */}
+                {!isPreview && !summary && (
+                  <button
+                    onClick={() => void handleSummarise()}
+                    disabled={isSummarising}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 text-sm shadow-lg shadow-orange-100 active:scale-95"
+                  >
+                    {isSummarising ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {isSummarising ? 'Summarising…' : 'Summarise this book'}
+                  </button>
+                )}
 
-                <button
-                  onClick={handleMasterclassClick}
-                  disabled={isGeneratingDeepDive}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 active:scale-95"
-                >
-                  {isGeneratingDeepDive ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Sparkles size={16} />
-                  )}
-                  {isGeneratingDeepDive ? 'Synthesizing...' : 'Read Full Summary'}
-                </button>
+                {summary && (
+                  <>
+                    <button
+                      onClick={() => handlePlayAudio('short')}
+                      disabled={isGeneratingAudio}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 text-sm"
+                    >
+                      {isGeneratingAudio ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Headphones size={16} />
+                      )}
+                      {isGeneratingAudio ? 'Generating Audio...' : 'Quick Listen'}
+                    </button>
+
+                    <button
+                      onClick={handleMasterclassClick}
+                      disabled={isGeneratingDeepDive}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 active:scale-95"
+                    >
+                      {isGeneratingDeepDive ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Sparkles size={16} />
+                      )}
+                      {isGeneratingDeepDive ? 'Synthesizing...' : 'Read Full Summary'}
+                    </button>
+                  </>
+                )}
 
                 {book.hasPdf && (
                   <button
@@ -453,22 +496,50 @@ export const BookDetail: React.FC<BookDetailProps> = ({
             <p className="text-xl text-gray-500 dark:text-gray-400 font-medium">By {book.author}</p>
           </header>
 
-          <section className="bg-orange-50 dark:bg-orange-950/50 p-8 rounded-2xl border border-orange-100 relative overflow-hidden">
-            <Zap className="absolute top-4 right-4 text-orange-200" size={40} />
-            <h2 className="text-lg font-bold text-orange-800 mb-2 flex items-center gap-2">
-              The One Sentence Takeaway
-            </h2>
-            <p className="text-xl font-serif text-orange-900 italic leading-relaxed">
-              {summary ? `"${summary.oneSentenceTakeaway}"` : ''}
-            </p>
-          </section>
+          {summary && (
+            <section className="bg-orange-50 dark:bg-orange-950/50 p-8 rounded-2xl border border-orange-100 dark:border-orange-900 relative overflow-hidden">
+              <Zap
+                className="absolute top-4 right-4 text-orange-200 dark:text-orange-800"
+                size={40}
+              />
+              <h2 className="text-lg font-bold text-orange-800 dark:text-orange-300 mb-2 flex items-center gap-2">
+                The One Sentence Takeaway
+              </h2>
+              <p className="text-xl font-serif text-orange-900 dark:text-orange-100 italic leading-relaxed">
+                &ldquo;{summary.oneSentenceTakeaway}&rdquo;
+              </p>
+            </section>
+          )}
 
           <section>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
               <BookOpen size={24} className="text-orange-700 dark:text-orange-400" />
               Summary
             </h2>
-            <SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />
+            {summary ? (
+              <SummaryRenderer text={summary.summary} />
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 p-10 text-center">
+                <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6 leading-relaxed">
+                  This book has no summary yet. Generating one also unlocks chat, the quiz, audio
+                  narration and the review deck for it.
+                </p>
+                {!isPreview && (
+                  <button
+                    onClick={() => void handleSummarise()}
+                    disabled={isSummarising}
+                    className="inline-flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-orange-100 active:scale-95"
+                  >
+                    {isSummarising ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {isSummarising ? 'Summarising…' : 'Summarise this book'}
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           <section>

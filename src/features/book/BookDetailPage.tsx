@@ -6,7 +6,9 @@ import { useLibrary } from '../library/useLibrary';
 import { useProfile } from '../profile/ProfileContext';
 import { useShell } from '../../app/ShellContext';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
-import type { Book } from '../../types';
+import { summarizeBook } from '../../lib/ai/summarize';
+import { newId } from '../../lib/id';
+import type { Book, Summary } from '../../types';
 
 export function BookDetailPage() {
   const { book, summary, setSummary, isLoading } = useBookRoute();
@@ -23,6 +25,31 @@ export function BookDetailPage() {
       </div>
     );
   }
+
+  /**
+   * The only path from an unsummarised book to a summarised one. Goodreads import
+   * deliberately creates books without summaries, and until this existed there
+   * was nothing anywhere that could give one to them.
+   */
+  const handleSummarise = async () => {
+    const generated = await summarizeBook(book.title, book.author);
+    const summaryId = newId();
+    const next: Summary = { ...generated.summary, id: summaryId, bookId: book.id };
+
+    await saveSummary(next);
+    await updateBook({
+      ...book,
+      summaryId,
+      // Denormalised onto Book so list views can render without loading summaries.
+      oneSentenceTakeaway: next.oneSentenceTakeaway,
+      readingTimeMinutes: generated.book.readingTimeMinutes,
+      // Only fill in what the book does not already have: an imported book's own
+      // category and cover are the user's, not the model's, to overwrite.
+      category: book.category === 'Other' ? generated.book.category : book.category,
+      coverImageUrl: book.coverImageUrl || generated.book.coverImageUrl,
+    });
+    setSummary(next);
+  };
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
@@ -50,6 +77,7 @@ export function BookDetailPage() {
       onUpdate={(next: Book) => void updateBook(next)}
       onOpenReader={() => void navigate(`/book/${book.id}/read`)}
       onPlayAudio={playAudio}
+      onSummarise={handleSummarise}
       onAiError={handleAiError}
     />
   );

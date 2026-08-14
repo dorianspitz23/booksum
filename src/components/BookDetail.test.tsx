@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BookDetail } from './BookDetail';
 import type { Book, Summary } from '../types';
@@ -34,8 +35,8 @@ const summary: Summary = {
   model: 'test',
 };
 
-function renderDetail(summaryProp: Summary | undefined) {
-  return render(
+function renderDetail(summaryProp: Summary | undefined, onSummarise = vi.fn(async () => {})) {
+  render(
     <BookDetail
       book={book}
       summary={summaryProp}
@@ -46,9 +47,11 @@ function renderDetail(summaryProp: Summary | undefined) {
       onUpdate={vi.fn()}
       onOpenReader={vi.fn()}
       onPlayAudio={vi.fn()}
+      onSummarise={onSummarise}
       onAiError={vi.fn(() => 'ai error')}
     />,
   );
+  return onSummarise;
 }
 
 describe('BookDetail AI affordances', () => {
@@ -75,5 +78,62 @@ describe('BookDetail AI affordances', () => {
     renderDetail(undefined);
 
     expect(screen.getByText('Atomic Habits')).toBeInTheDocument();
+  });
+
+  it('hides Quick Listen and Read Full Summary when there is no summary', () => {
+    // Both handlers set a spinner and then hit `if (!summary) return`, so the
+    // buttons used to render, flash, and do nothing at all.
+    renderDetail(undefined);
+
+    expect(screen.queryByRole('button', { name: /quick listen/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /read full summary/i })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Goodreads import creates every book without a summary so that importing a
+ * large library costs nothing. Until this existed there was no action anywhere
+ * that could give one to those books, so the entire import was a dead end.
+ */
+describe('BookDetail summarise action', () => {
+  it('offers a way to summarise a book that has none', () => {
+    renderDetail(undefined);
+
+    expect(screen.getAllByRole('button', { name: /summarise this book/i }).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('does not offer it once the book has a summary', () => {
+    renderDetail(summary);
+
+    expect(screen.queryByRole('button', { name: /summarise this book/i })).not.toBeInTheDocument();
+  });
+
+  it('explains what generating a summary unlocks', () => {
+    renderDetail(undefined);
+
+    expect(screen.getByText(/unlocks chat, the quiz, audio narration/i)).toBeInTheDocument();
+  });
+
+  it('calls back when pressed and shows progress', async () => {
+    const onSummarise = renderDetail(undefined);
+
+    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]!);
+
+    expect(onSummarise).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces a failure instead of leaving the button spinning', async () => {
+    const failing = vi.fn(async () => {
+      throw new Error('nope');
+    });
+    renderDetail(undefined, failing);
+
+    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]!);
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /summarise this book/i })[0]).toBeEnabled(),
+    );
   });
 });
