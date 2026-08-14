@@ -10,6 +10,16 @@
   "source": "session"
  },
  {
+  "id": "S151",
+  "sev": "critical",
+  "lens": "46 devops",
+  "file": "src/app/routes.tsx",
+  "line": 31,
+  "title": "The documented GitHub Pages deployment cannot work — no Vite base and no router basename",
+  "detail": "A project page is served from /<repo>/, which needs vite.config.ts `base` for assets AND react-router `basename` for routes. Neither is set. Assets 404 and every route below / resolves against the wrong path, so the 'live demo' the README leads with would be a blank page. This is the one finding that blocks the actual goal of the project — publishing it — and it pairs with S129: there is no deploy workflow to run either.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F002",
   "sev": "critical",
   "lens": "type-safety",
@@ -67,6 +77,16 @@
   "line": 114,
   "title": "importLibrary overwrites existing summaries for books it skipped as duplicates",
   "detail": "Books dedupe on id and are skipped, but the summaries loop upserts unconditionally. Restoring an older backup silently replaces newer local summaries for every book you already have.",
+  "source": "session"
+ },
+ {
+  "id": "S160",
+  "sev": "critical",
+  "lens": "29 data-integrity",
+  "file": "src/features/profile/ProfilePicker.tsx",
+  "line": 59,
+  "title": "Deleting a profile destroys its entire library in one unguarded click",
+  "detail": "The trash icon calls deleteProfile directly. profiles.remove cascades to every book, summary, blob and review card owned by that profile. No confirmation, no undo, no toast — one misclick on the profile picker permanently erases someone's whole library. The structural reason it is unguarded is that App.tsx renders ProfilePicker outside ConfirmProvider, so useConfirm would throw here. Meanwhile the much less destructive Reset All inside the app is properly confirmed with danger styling.",
   "source": "session"
  },
  {
@@ -140,6 +160,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S178",
+  "sev": "high",
+  "lens": "14 privacy-pii-handling",
+  "file": "index.html",
+  "line": 12,
+  "title": "Every page load fetches fonts from Google's CDN, contradicting the app's central privacy claim",
+  "detail": "index.html preconnects to fonts.googleapis.com and fonts.gstatic.com and pulls Inter and Playfair Display on load. The README and the profile picker both tell the user 'everything stays in this browser'. In fact every visit announces itself to Google's font CDN before any AI feature is touched, including for users who never enter a key. Together with the quiz texture CDN (S056) that is two third-party requests in an app that markets itself as local-first. Self-hosting the two font families removes both the claim conflict and the render-blocking round trip.",
+  "source": "session"
+ },
+ {
   "id": "S125",
   "sev": "high",
   "lens": "46 devops",
@@ -147,6 +177,16 @@
   "line": 7,
   "title": "The declared Node engine is one the dependencies disclaim",
   "detail": "engines.node says >=20.19, jsdom@30 requires ^22.22.2 || ^24.15.0 || >=26, and CI pins 22. A contributor who trusts package.json and installs on Node 20.19 gets an EBADENGINE warning and an unsupported test environment. The CI file even carries a comment explaining the real constraint — it just never made it into engines.",
+  "source": "session"
+ },
+ {
+  "id": "S170",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/App.tsx",
+  "line": 22,
+  "title": "The first screen a user ever sees ignores dark mode entirely",
+  "detail": "useTheme is called only inside AppShell, but ProfilePicker renders outside the router and outside AppShell. Nothing sets the `dark` class on <html> on that screen, so its dark:bg-night and dark:text-* classes never activate — the 'Who's reading?' screen is always light, including for a user whose system and stored preference are both dark.",
   "source": "session"
  },
  {
@@ -237,6 +277,16 @@
   "line": 188,
   "title": "Play/pause icon is invisible in dark mode",
   "detail": "`bg-white dark:bg-gray-900 text-black` — the surface flips to near-black but the glyph stays text-black. The primary control of the audio player disappears.",
+  "source": "session"
+ },
+ {
+  "id": "S161",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/BookCard.tsx",
+  "line": 43,
+  "title": "The library grid is mouse-only — book cards are divs",
+  "detail": "BookCard is a <div onClick> with no role, tabIndex or key handler, and it is the sole means of opening a book from the library and from the stats drill-down. A keyboard or screen-reader user can search and filter their library but cannot open anything in it. Same defect as the stats cards (S112) and the PDF drop zone (S065), but on the app's primary navigation path.",
   "source": "session"
  },
  {
@@ -500,6 +550,46 @@
   "source": "session"
  },
  {
+  "id": "S145",
+  "sev": "high",
+  "lens": "33 race-condition",
+  "file": "src/components/ui/ConfirmDialog.tsx",
+  "line": 21,
+  "title": "A second confirm() before the first settles strands the first promise forever",
+  "detail": "resolverRef.current is overwritten without settling the previous resolver, so the earlier `await confirm(...)` never resolves and its calling function never continues — no error, no timeout, just a dead async call. Double-clicking a delete control, or any two code paths racing to confirm, reproduces it.",
+  "source": "session"
+ },
+ {
+  "id": "S146",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/ui/useFocusTrap.ts",
+  "line": 13,
+  "title": "The focus trap traps Tab but leaves the background readable to screen readers",
+  "detail": "Nothing sets inert or aria-hidden on the content behind the panel. Keyboard Tab cycling is handled correctly, but a screen-reader user in browse mode walks straight out of the dialog into the library underneath it, which is the failure mode aria-modal alone does not prevent in practice.",
+  "source": "session"
+ },
+ {
+  "id": "S154",
+  "sev": "high",
+  "lens": "39 cost-resource-optimization",
+  "file": "src/features/book/useBookRoute.ts",
+  "line": 21,
+  "title": "Every library mutation hands BookDetail a brand-new Summary object, which is what makes the quiz and chat re-fire",
+  "detail": "listByProfile returns freshly deserialised objects, so `book` changes identity on every reload; the effect re-runs and setSummary stores another new Summary. QuizModal and ChatModal both depend on that object identity (S057, S116), so an unrelated library change re-generates a paid quiz and silently resets a chat session. This is the upstream cause of both — fixing it here fixes both consumers.",
+  "source": "session"
+ },
+ {
+  "id": "S194",
+  "sev": "high",
+  "lens": "04 test-hardening",
+  "file": "src/features/library/goodreadsImport.test.tsx",
+  "line": 93,
+  "title": "All three 'never calls Gemini' tests pass when the spy is never called at all",
+  "detail": "smoke.test.tsx:58, goodreadsImport.test.tsx:93 and covers/index.test.ts:72 each iterate fetchSpy.mock.calls and assert no URL contains 'generativelanguage'. An empty array runs zero assertions, so the test is green whether the invariant holds or the code path was never reached. The Goodreads case is the clearest: importGoodreadsRows uses coverForIsbn, a pure URL builder, so it issues no fetch at all and the loop body never executes. 'Import costs nothing' is the project's headline promise and it is protected by three tests that cannot fail. Each needs a positive control — assert the spy WAS called for a known path, or assert calls.length and filter.",
+  "source": "session"
+ },
+ {
   "id": "S120",
   "sev": "high",
   "lens": "30 error-recovery",
@@ -570,6 +660,26 @@
   "source": "nightytidy"
  },
  {
+  "id": "S152",
+  "sev": "high",
+  "lens": "38 performance",
+  "file": "src/features/profile/ProfilePage.tsx",
+  "line": 24,
+  "title": "Resetting the library fires one full library reload per book, concurrently",
+  "detail": "Promise.all(books.map(removeBook)) and every removeBook ends in reload(), which re-runs listByProfile over the whole store. Deleting 300 books issues 300 concurrent reads of a shrinking library plus 1,200 cascade transactions. Promise.all also means one rejection leaves the library half-deleted with no record of where it stopped.",
+  "source": "session"
+ },
+ {
+  "id": "S153",
+  "sev": "high",
+  "lens": "26 default-values-magic-constants",
+  "file": "src/features/profile/ProfilePage.tsx",
+  "line": 25,
+  "title": "Reset hardcodes a cache key that is exported as a constant and used that way elsewhere",
+  "detail": "LibraryPage builds the recommendations key from RECS_CACHE_KEY; ProfilePage writes the literal 'booksum.recs.'. Changing the constant silently stops reset from clearing the cache, leaving stale recommendations attached to a library that no longer exists. The daily-wisdom key is a bare literal in both places it appears.",
+  "source": "session"
+ },
+ {
   "id": "S106",
   "sev": "high",
   "lens": "29 data-integrity",
@@ -598,6 +708,16 @@
   "title": "A persisted ReviewCard with an empty options array permanently deadlocks the review session",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S183",
+  "sev": "high",
+  "lens": "07 test-quality",
+  "file": "src/features/review/reviewQueue.test.tsx",
+  "line": 149,
+  "title": "The suite builds the exact input that deadlocks the review queue, then asserts something else",
+  "detail": "Line 149 seeds a card with `options: []` — precisely the state that permanently jams ReviewPage (S106) — and the test only checks that the card is deleted along with its book. The fixture for the worst bug in the feature already exists in the test file; nobody ever asserted what the UI does with it. One `render(<ReviewPage/>)` and one assertion away.",
+  "source": "session"
  },
  {
   "id": "S104",
@@ -630,6 +750,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S171",
+  "sev": "high",
+  "lens": "43 perceived-performance",
+  "file": "src/features/settings/useTheme.ts",
+  "line": 29,
+  "title": "Dark mode is applied in an effect, so dark-mode users get a white flash on every load",
+  "detail": "The `dark` class is toggled after React mounts and after the profile resolves from IndexedDB — which means a full paint of the light theme first. The stored preference lives on the profile record in IndexedDB, so it cannot be read synchronously; without an inline pre-hydration script keyed off a mirrored localStorage value, the flash is unavoidable.",
+  "source": "session"
+ },
+ {
   "id": "S124",
   "sev": "high",
   "lens": "03 test-coverage",
@@ -637,6 +767,16 @@
   "line": 1,
   "title": "The entire AI layer is untested — 8 modules, and the ones carrying the most findings",
   "detail": "summarize, quiz, chat, tts, recommend, client, schemas and prompts have no colocated tests. Only errors.ts and apiKey.ts do. Every unvalidated-model-JSON defect (S032, S062, F005, F030, F034, F035) lives in exactly the files with no test to catch a regression. 44 of 65 source files have no colocated test; the AI layer is the part where that matters most.",
+  "source": "session"
+ },
+ {
+  "id": "S184",
+  "sev": "high",
+  "lens": "09 integration-boundary-testing",
+  "file": "src/lib/ai",
+  "line": 1,
+  "title": "The seam carrying the most defects has no integration test at all",
+  "detail": "Nothing anywhere mocks @google/genai and asserts what the app does with a malformed response, a 429, a safety block, or an empty response.text. errors.test.ts unit-tests toAiError in isolation, which is the mapping — not the seam. Every 'unvalidated model JSON reaches IndexedDB' finding (S032, S062, S141-S144, F005, F030, F034, F035) lives on a boundary that no test crosses, so all of them can regress silently.",
   "source": "session"
  },
  {
@@ -680,6 +820,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S195",
+  "sev": "high",
+  "lens": "15 dependency-health",
+  "file": "src/lib/ai/models.ts",
+  "line": 3,
+  "title": "Every model ID is a preview build, in a repo people will clone months from now",
+  "detail": "gemini-3-flash-preview, gemini-3-pro-preview and gemini-2.5-flash-preview-tts are all preview identifiers. Preview models are retired on Google's schedule, not the project's, so a clone made after any of them is withdrawn fails on every AI action with a 404 that the error mapper reports as an invalid key (S005). The file's own comment says a rename is a one-line change — which is true and is exactly why it needs a stable alias plus a documented fallback.",
+  "source": "session"
+ },
+ {
   "id": "feature-discovery/F015",
   "sev": "high",
   "lens": "feature-discovery",
@@ -708,6 +858,36 @@
   "title": "Recommendations cast to a required-field type with no guard; a missing title throws inside the cover fallback and loses all six results",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S141",
+  "sev": "high",
+  "lens": "11 contract-schema-drift",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 64,
+  "title": "QUIZ_SCHEMA expresses 'exactly 4 options' as prose, not as a constraint",
+  "detail": "options is an unbounded STRING array whose only statement of intent is description: 'Array of 4 possible answers.' Gemini's schema dialect supports minItems/maxItems and neither is used, so zero options is a schema-valid response. This is the root cause of S106 — a card with no options permanently deadlocks the review queue — and it is fixable at the declaration rather than defended against at every consumer.",
+  "source": "session"
+ },
+ {
+  "id": "S142",
+  "sev": "high",
+  "lens": "11 contract-schema-drift",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 69,
+  "title": "correctAnswerIndex is an unbounded NUMBER where it should be a bounded INTEGER",
+  "detail": "The description says 'Index (0-3)' but the declared type is Type.NUMBER with no minimum or maximum, so -1, 99 and 3.7 all satisfy the schema. Type.INTEGER exists in the SDK and is not used. options[3.7] is undefined, which is exactly how a user answers correctly and still scores zero (S062).",
+  "source": "session"
+ },
+ {
+  "id": "S143",
+  "sev": "high",
+  "lens": "11 contract-schema-drift",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 23,
+  "title": "The schema marks nine fields required while the TypeScript type marks all nine optional",
+  "detail": "GENERIC_BOOK_SCHEMA.required lists every field; RawBookResponse declares every field optional, with a comment conceding 'a model can always omit one, schema or not'. Both cannot be the contract. The comment is right and the optional type is the safer choice — but that makes `required` decorative, and nothing anywhere reconciles the two or fails loudly when the model does omit one.",
+  "source": "session"
  },
  {
   "id": "type-safety/F031",
@@ -1040,6 +1220,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S180",
+  "sev": "medium",
+  "lens": "46 devops",
+  "file": "index.html",
+  "line": 10,
+  "title": "The favicon is an absolute path that breaks under a project-page base",
+  "detail": "href=\"/favicon.svg\" resolves to the domain root, not to /<repo>/. Consistent with S151 — the deployment target the README promises has not been exercised.",
+  "source": "session"
+ },
+ {
   "id": "S131",
   "sev": "medium",
   "lens": "15 dependency-health",
@@ -1047,6 +1237,26 @@
   "line": 28,
   "title": "Pinning strategy is inconsistent and nothing checks for advisories",
   "detail": "react-router, eslint, prettier, globals, typescript-eslint and @eslint/js are pinned exactly while everything else floats on a caret, with no comment explaining the split. CI runs no npm audit and there is no Dependabot config, so a published advisory in any of 288 packages surfaces to nobody.",
+  "source": "session"
+ },
+ {
+  "id": "S193",
+  "sev": "medium",
+  "lens": "25 universal-feature-compliance",
+  "file": "src",
+  "line": 1,
+  "title": "Compliance summary: theme fails, mobile fails, security claim fails, cost passes",
+  "detail": "Reading the contract as it applies to a standalone app — THEME: fails, ~40 sites render wrong in one mode including four primary buttons that vanish (S039-S041, S046-S050, S058, S086, S100, S174). MOBILE: fails, no navigation below 640px (S091). SECURITY: fails, an inoperative encryption toggle is displayed as active (S081). COST: passes — BYOK means the maintainer pays nothing, though quiz generation re-fires on object identity (S057). ACCESSIBILITY, if counted: fails, the library grid and stats filters are mouse-only (S161, S112).",
+  "source": "session"
+ },
+ {
+  "id": "S172",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/app/AppShell.tsx",
+  "line": 68,
+  "title": "Daily Wisdom can pick a book with no summary and show an empty quote",
+  "detail": "The pool is Finished books, falling back to all books, with no filter for having a summary. For a library built from Goodreads import — where nothing is summarised by design — the modal appears once a day to announce 'This book has no summary yet.'",
   "source": "session"
  },
  {
@@ -1080,6 +1290,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S155",
+  "sev": "medium",
+  "lens": "36 error-message-quality",
+  "file": "src/app/ErrorBoundary.tsx",
+  "line": 16,
+  "title": "The crash screen prints the raw error message to the user",
+  "detail": "`{message}` is whatever Error.message holds — SDK internals, IndexedDB detail, or a bundler path. It is shown verbatim with no framing, and there is no copy-to-clipboard so a user who wants to report it has to transcribe it by hand.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F054",
   "sev": "medium",
   "lens": "type-safety",
@@ -1088,6 +1308,16 @@
   "title": "useRouteError() is unknown but is narrowed only by `instanceof Error`, so every 404 renders a generic message",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S156",
+  "sev": "medium",
+  "lens": "50 product-polish",
+  "file": "src/app/routes.tsx",
+  "line": 12,
+  "title": "No catch-all route, so an unknown URL renders 'Something went wrong'",
+  "detail": "A mistyped or stale link falls through to the error element and is presented as a crash rather than as a missing page.",
+  "source": "session"
  },
  {
   "id": "type-safety/F055",
@@ -1250,6 +1480,36 @@
   "source": "nightytidy"
  },
  {
+  "id": "S163",
+  "sev": "medium",
+  "lens": "23 scar-tissue-analysis",
+  "file": "src/components/BookCard.tsx",
+  "line": 17,
+  "title": "CORRECTION to S136 — there IS scar tissue: a guard against the literal string 'null'",
+  "detail": "`book.coverImageUrl === 'null'` defends against a code path that stringified null into the field. Nothing in the current codebase writes that, so it is a healed wound from the original AI Studio export. My earlier negative result was wrong because it only searched for TODO/FIXME-style markers, not for defensive comparisons — the more common form of scar tissue.",
+  "source": "session"
+ },
+ {
+  "id": "S164",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/BookCard.tsx",
+  "line": 31,
+  "title": "Priority badges and the rating chip are light-only",
+  "detail": "getPriorityColor returns rose-100/700/200, amber-100/700/200 or blue-100/700/200 with no dark variants, and the Finished rating chip is bg-amber-50 / text-amber-700. On a dark card these render as pale blocks with mid-tone text.",
+  "source": "session"
+ },
+ {
+  "id": "S165",
+  "sev": "medium",
+  "lens": "50 product-polish",
+  "file": "src/components/BookCard.tsx",
+  "line": 61,
+  "title": "Every card promises 'Read Masterclass' on hover, including books with no summary",
+  "detail": "The hover overlay is unconditional, so an unsummarised Goodreads import advertises a masterclass that does not exist and cannot be generated (S135). The card body one line above correctly says 'Not summarised yet' — the two disagree on the same card.",
+  "source": "session"
+ },
+ {
   "id": "test-efficiency/F010",
   "sev": "medium",
   "lens": "test-efficiency",
@@ -1258,6 +1518,16 @@
   "title": "BookDetail.test.tsx boots the Google GenAI SDK through three independent import paths plus the IndexedDB repo, to assert which buttons render",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S162",
+  "sev": "medium",
+  "lens": "20 building-block-adoption",
+  "file": "src/components/BookDetail.tsx",
+  "line": 243,
+  "title": "BookCard already solves the broken-cover problem; BookDetail ignores the solution",
+  "detail": "BookCard handles an empty URL up front and falls back to placeholderCover on error. BookDetail renders a bare <img src={book.coverImageUrl}> with neither. The pattern exists in the codebase, is 4 lines, and is not adopted where it matters most — the full-width hero image.",
+  "source": "session"
  },
  {
   "id": "S041",
@@ -1377,6 +1647,16 @@
   "line": 83,
   "title": "Raw SDK errors are console-logged without scrubbing — PLAUSIBLE key exposure, needs verification",
   "detail": "Five call sites do console.error('...', err) with the untouched SDK error. Google client libraries sometimes embed the full request URL in error detail, and the Gemini REST endpoint carries the key as ?key=. If that holds for @google/genai 2.x, the user's key is printed to the console on every failure. I have not confirmed the SDK's error shape, so this is flagged rather than asserted.",
+  "source": "session"
+ },
+ {
+  "id": "S174",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/DailyWisdomModal.tsx",
+  "line": 90,
+  "title": "Daily Wisdom's primary button is dark-on-dark, and its close button is white-on-white",
+  "detail": "Line 90 is bg-gray-900 text-white with no dark variant on a dark:bg-gray-900 panel. Line 42 is the codemod casualty from S047 — bg-white with text-white — confirmed here by reading rather than by grep. Both controls on the modal are invisible in one theme or the other.",
   "source": "session"
  },
  {
@@ -1570,6 +1850,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S192",
+  "sev": "medium",
+  "lens": "28 logging-error-quality",
+  "file": "src/components/QuizModal.tsx",
+  "line": 64,
+  "title": "Logging is unstructured, unprefixed, and duplicated against the toast it accompanies",
+  "detail": "Nine console calls across seven files, each a bare string plus a raw error, with no shared prefix to filter on and no distinction between a handled failure and a real fault. Five of them log the error AND surface a toast for the same event, so the console double-reports. There is no way for a user reporting a bug to tell which console lines belong to BookSum.",
+  "source": "session"
+ },
+ {
   "id": "S059",
   "sev": "medium",
   "lens": "41 ui-ux",
@@ -1678,6 +1968,56 @@
   "title": "The \"Wisdom Milestone\" insight card is a hardcoded string chosen by `finished.length > 5`, sitting two lines below the real category data it pretends to describe",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S148",
+  "sev": "medium",
+  "lens": "50 product-polish",
+  "file": "src/components/ui/Dialog.tsx",
+  "line": 28,
+  "title": "Backdrop click discards a half-filled form with no warning",
+  "detail": "Every Dialog closes on any backdrop click. AddBookModal can hold a title, author, rating and a selected PDF; one stray click outside the panel throws all of it away with no confirmation and no restore.",
+  "source": "session"
+ },
+ {
+  "id": "S197",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/ui/Toast.tsx",
+  "line": 21,
+  "title": "Each new toast resets the dismissal countdown for every toast already on screen",
+  "detail": "The effect depends on [toasts] and rebuilds the whole timer array on every change, so a burst of notifications keeps the earliest ones alive indefinitely — each new arrival grants the existing ones another full six seconds. Timers should be per-toast and keyed to the toast's own id.",
+  "source": "session"
+ },
+ {
+  "id": "S198",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/ui/Toast.tsx",
+  "line": 9,
+  "title": "Error and success toasts are light-only; only the info variant was given dark variants",
+  "detail": "bg-red-50/border-red-100/text-red-700 and bg-emerald-50/border-emerald-100/text-emerald-700 have no dark pairing, while the info style does. Error toasts are the app's primary failure channel and they render as a pale card with mid-tone text on a dark page.",
+  "source": "session"
+ },
+ {
+  "id": "S149",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/ui/toastStore.ts",
+  "line": 17,
+  "title": "crypto.randomUUID() again — the third module that breaks outside a secure context",
+  "detail": "repo.ts, srs.ts and toastStore.ts all call it directly. On a plain-HTTP deploy the failure is not confined to storage: raising any toast, including the one reporting the original error, throws its own TypeError.",
+  "source": "session"
+ },
+ {
+  "id": "S147",
+  "sev": "medium",
+  "lens": "35 resource-lifecycle-cleanup",
+  "file": "src/components/ui/useFocusTrap.ts",
+  "line": 29,
+  "title": "Focus restoration silently drops to body when the trigger is gone",
+  "detail": "restoreTo?.focus() assumes the opening element still exists. Deleting a book from its detail page unmounts the trigger, so focus lands on <body> and a keyboard user restarts from the top of the document with no announcement.",
+  "source": "session"
  },
  {
   "id": "type-safety/F063",
@@ -1800,6 +2140,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S173",
+  "sev": "medium",
+  "lens": "20 building-block-adoption",
+  "file": "src/features/library/RecommendationCarousel.tsx",
+  "line": 85,
+  "title": "REFERENCE IMPLEMENTATION — the carousel does correctly what three other surfaces get wrong",
+  "detail": "It makes the card itself a <button> so it is keyboard reachable, marks the decorative hover panel aria-hidden, labels both scroll controls, adds a focus-visible ring, and gives every img an onError fallback. BookCard (S161), StatCard (S112) and the PDF drop zone (S065) each re-solve the same problem as a bare div, and BookDetail (S162) omits the cover fallback. The pattern to copy already exists in the repo.",
+  "source": "session"
+ },
+ {
   "id": "feature-discovery/F033",
   "sev": "medium",
   "lens": "feature-discovery",
@@ -1900,6 +2250,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S166",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/features/profile/ProfilePicker.tsx",
+  "line": 16,
+  "title": "A failed profile creation reports nothing",
+  "detail": "try/finally with no catch: the spinner stops, the form stays filled, no profile appears and no message is shown. Third instance of this exact shape after GoodreadsImport (S120) and the ProfileView exports (S085).",
+  "source": "session"
+ },
+ {
   "id": "S107",
   "sev": "medium",
   "lens": "37 bug-hunt",
@@ -1930,6 +2290,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S188",
+  "sev": "medium",
+  "lens": "05 test-architecture",
+  "file": "src/features/review/reviewQueue.test.tsx",
+  "line": 10,
+  "title": "The hook-probe pattern leaks state through a module-level binding",
+  "detail": "`let api` at module scope is reassigned on every render of every test in the file, and assertions read it after awaits. It works only because vitest runs tests in a file serially, and it makes each test's assertions depend on which render happened last rather than on an explicit handle. The same pattern is repeated in useLibrary.test.tsx.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F025",
   "sev": "medium",
   "lens": "type-safety",
@@ -1948,6 +2318,16 @@
   "title": "useReviewQueue has no return annotation, so `current` is inferred as a definite ReviewCard while the runtime returns undefined",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S168",
+  "sev": "medium",
+  "lens": "52 strategic-opportunities",
+  "file": "src/features/settings/ApiKeyDialog.tsx",
+  "line": 14,
+  "title": "The key dialog can only set a key, never inspect, replace or remove one",
+  "detail": "There is no way to tell whether a key is stored, no masked display of the current value, and no clear button — so a user with a revoked key has no path to remove it except clearing site data, which also destroys their library. This is the missing Settings surface that two error messages already point at (S139).",
+  "source": "session"
  },
  {
   "id": "feature-discovery/F036",
@@ -2050,6 +2430,26 @@
   "source": "nightytidy"
  },
  {
+  "id": "S196",
+  "sev": "medium",
+  "lens": "17 cross-cutting-concerns",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 12,
+  "title": "The category list exists three times: a dead enum, a prompt string, and free-text on Book",
+  "detail": "types.ts declares a Category enum that nothing imports (S018); summarizeBookPrompt enumerates the same eight values as prose inside a template literal; Book.category is typed plain string and Goodreads import hardcodes 'Other'. Three representations of one vocabulary, none of them authoritative, and the only one the model actually sees is the prose copy.",
+  "source": "session"
+ },
+ {
+  "id": "S199",
+  "sev": "medium",
+  "lens": "39 cost-resource-optimization",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 81,
+  "title": "'Quick Listen' narrates the entire 350-500 word summary",
+  "detail": "audioScript's short branch is takeaway plus the full summary text; the long branch is insights plus steps. The short option is therefore not short, and since audio is never cached (F004) every replay re-bills the full narration. The two variants also overlap in content rather than being a genuine short/long pair.",
+  "source": "session"
+ },
+ {
   "id": "feature-discovery/F038",
   "sev": "medium",
   "lens": "feature-discovery",
@@ -2077,6 +2477,16 @@
   "line": 34,
   "title": "One failing cover lookup discards all six recommendations",
   "detail": "Promise.all rejects as a whole, losing the entire paid response.",
+  "source": "session"
+ },
+ {
+  "id": "S144",
+  "sev": "medium",
+  "lens": "11 contract-schema-drift",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 18,
+  "title": "rating and readingTimeMinutes are unbounded numbers described in prose as bounded",
+  "detail": "rating says 'from 1 to 5' and readingTimeMinutes implies a positive duration; neither declares minimum or maximum. A rating of 40 is persisted and rendered as stars, and a negative reading time flows straight into the Total Learning figure on the stats page.",
   "source": "session"
  },
  {
@@ -2350,6 +2760,16 @@
   "source": "session"
  },
  {
+  "id": "S187",
+  "sev": "medium",
+  "lens": "03 test-coverage",
+  "file": "src/lib/storage/migrate.test.ts",
+  "line": 107,
+  "title": "The migration test file has eleven tests and none touches the field the known migration bug is in",
+  "detail": "It asserts summaryId is set (line 107) but never asserts Book.oneSentenceTakeaway, which migration does not populate — so every migrated book renders 'Not summarised yet' despite having a summary. Also untested: a legacy book with no summary data at all (which still gets a summaryId and an empty Summary, S013), and more than one legacy user, even though legacyUserIds() loops.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F006",
   "sev": "medium",
   "lens": "type-safety",
@@ -2408,6 +2828,16 @@
   "title": "base64ToBytes is handed a value only declared to be a string, on the unguarded boot path",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S189",
+  "sev": "medium",
+  "lens": "03 test-coverage",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 65,
+  "title": "Cascade tests cover the happy path only, and reviewCards has no direct tests",
+  "detail": "Both cascade tests assert successful deletion; neither exercises a mid-cascade failure, which is exactly the non-atomic gap in S006/S007. The reviewCards module — listDue, listByProfile, listByBook, removeByBook — has no test file of its own and is covered only incidentally through the review-queue hook. No test asserts that deleting a profile removes its review cards.",
+  "source": "session"
  },
  {
   "id": "type-safety/F045",
@@ -2500,6 +2930,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S179",
+  "sev": "medium",
+  "lens": "48 observability",
+  "file": "src/main.tsx",
+  "line": 1,
+  "title": "No global handler for unhandled promise rejections",
+  "detail": "At least four findings (S085 exports, S120 Goodreads import, S166 profile creation, S158 summary lookup) manifest as a promise that rejects into nothing. A single window unhandledrejection listener routing to the existing toast store would turn every one of them from silent into visible, without touching the individual call sites.",
+  "source": "session"
+ },
+ {
   "id": "test-efficiency/F004",
   "sev": "medium",
   "lens": "test-efficiency",
@@ -2518,6 +2958,26 @@
   "title": "Shared setup file hard-requires DOM globals, blocking the documented `node` environment escape hatch for every pure-logic test",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S185",
+  "sev": "medium",
+  "lens": "04 test-hardening",
+  "file": "src/test/smoke.test.tsx",
+  "line": 58,
+  "title": "The 'no Gemini call on boot' test passes vacuously if fetch is never called",
+  "detail": "`for (const call of fetchSpy.mock.calls) expect(...)` runs zero assertions on an empty array, so the test is green whether the stub worked, whether the SDK bypassed global fetch, or whether the app genuinely made no call. It cannot distinguish 'correct' from 'not actually testing anything'. It needs a positive control — assert the spy was installed and that a deliberate AI action does hit it.",
+  "source": "session"
+ },
+ {
+  "id": "S186",
+  "sev": "medium",
+  "lens": "07 test-quality",
+  "file": "src/test/smoke.test.tsx",
+  "line": 85,
+  "title": "A tautological test asserts the test environment, not the app",
+  "detail": "`it('exposes indexedDB to tests')` checks that globalThis.indexedDB is defined — a property of vitest's setup file, not of BookSum. It can only fail if the harness is misconfigured, in which case every other test in the file fails first. It inflates the count by one and proves nothing.",
+  "source": "session"
  },
  {
   "id": "test-efficiency/F005",
@@ -2660,6 +3120,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S182",
+  "sev": "low",
+  "lens": "01 documentation",
+  "file": "index.html",
+  "line": 6,
+  "title": "No Open Graph or social preview metadata",
+  "detail": "For a project whose adoption depends on being shared, the page has title and description but no og:title, og:description, og:image or twitter:card, so every link posted anywhere renders as a bare URL.",
+  "source": "session"
+ },
+ {
   "id": "test-efficiency/F042",
   "sev": "low",
   "lens": "test-efficiency",
@@ -2727,6 +3197,16 @@
   "line": 1,
   "title": "Errors reaching the boundary are not recorded anywhere the user can retrieve",
   "detail": "For a local-first app with no server this is largely correct, but a user reporting a bug has nothing to send: no error detail surfaced in the UI, no copyable diagnostic, nine scattered console calls and no consistent prefix to grep for.",
+  "source": "session"
+ },
+ {
+  "id": "S159",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/app/ErrorBoundary.tsx",
+  "line": 10,
+  "title": "Crash screen icon chip is light-only",
+  "detail": "bg-red-50 with no dark variant on a dark:bg-night page.",
   "source": "session"
  },
  {
@@ -2930,6 +3410,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S175",
+  "sev": "low",
+  "lens": "40 frontend-quality",
+  "file": "src/components/DailyWisdomModal.tsx",
+  "line": 65,
+  "title": "The book row is a div onClick duplicating the button below it",
+  "detail": "Not keyboard reachable, but the 'Read Summary' button does the same thing, so it is redundant rather than blocking. It also renders an img with no onError fallback.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F119",
   "sev": "low",
   "lens": "type-safety",
@@ -3130,6 +3620,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S150",
+  "sev": "low",
+  "lens": "30 error-recovery",
+  "file": "src/components/ui/toastStore.ts",
+  "line": 9,
+  "title": "The toast queue is unbounded",
+  "detail": "Module-level array with no cap. A retry loop or a burst of failures stacks toasts indefinitely with nothing evicting the oldest.",
+  "source": "session"
+ },
+ {
   "id": "feature-discovery/F051",
   "sev": "low",
   "lens": "feature-discovery",
@@ -3148,6 +3648,26 @@
   "title": "`document.activeElement as HTMLElement | null` asserts a `.focus()` method onto a base `Element`",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S157",
+  "sev": "low",
+  "lens": "10 api-design-consistency",
+  "file": "src/features/book/BookDetailPage.tsx",
+  "line": 51,
+  "title": "onOpenReader declares a Book parameter its implementation ignores",
+  "detail": "BookDetail's prop type is (book: Book) => void; the page passes () => void navigate(...) and closes over `book` instead. Harmless today, misleading to the next caller.",
+  "source": "session"
+ },
+ {
+  "id": "S158",
+  "sev": "low",
+  "lens": "30 error-recovery",
+  "file": "src/features/book/useBookRoute.ts",
+  "line": 21,
+  "title": "A failed summary lookup is indistinguishable from having no summary",
+  "detail": "getSummary(...).then(setSummary) has no catch, so a repo error leaves summary undefined and the page renders its 'not summarised yet' state — telling the user the book has no summary when the read simply failed.",
+  "source": "session"
  },
  {
   "id": "type-safety/F064",
@@ -3250,6 +3770,26 @@
   "source": "nightytidy"
  },
  {
+  "id": "S176",
+  "sev": "low",
+  "lens": "26 default-values-magic-constants",
+  "file": "src/features/library/RecommendationCarousel.tsx",
+  "line": 36,
+  "title": "Carousel scrolls a hardcoded 340px against cards that are 280px or 320px wide",
+  "detail": "The scroll step matches neither breakpoint, so paging always lands mid-card. The card widths are themselves inline literals rather than shared constants.",
+  "source": "session"
+ },
+ {
+  "id": "S177",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/features/library/RecommendationCarousel.tsx",
+  "line": 81,
+  "title": "Recommendations are keyed by title",
+  "detail": "key={rec.title} collides if the model returns the same title twice in one batch, which is plausible given no dedup on the response.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F130",
   "sev": "low",
   "lens": "type-safety",
@@ -3297,6 +3837,16 @@
   "line": 62,
   "title": "selectProfile silently no-ops on an unknown id",
   "detail": "Returns without setting state or reporting anything, so a stale deep link to a deleted profile just does nothing.",
+  "source": "session"
+ },
+ {
+  "id": "S167",
+  "sev": "low",
+  "lens": "50 product-polish",
+  "file": "src/features/profile/ProfilePicker.tsx",
+  "line": 45,
+  "title": "Duplicate profile names are indistinguishable",
+  "detail": "Nothing prevents two profiles called the same thing, and the list shows only the first initial and the name, so the only way to tell them apart is to open one and look at the library.",
   "source": "session"
  },
  {
@@ -3348,6 +3898,16 @@
   "title": "Two tests in jsdom/Testing-Library files never render and never touch the hook under test — they are repo tests parked in the React tier",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S169",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/features/settings/ApiKeyDialog.tsx",
+  "line": 66,
+  "title": "Key-error banner is light-only",
+  "detail": "bg-red-50 / text-red-700 / border-red-100 with no dark variants, on a dialog that does flip to dark.",
+  "source": "session"
  },
  {
   "id": "type-safety/F132",
@@ -3427,6 +3987,16 @@
   "line": 30,
   "title": "Two error messages point at a Settings screen that does not exist",
   "detail": "invalid-key says 'Check it in Settings and try again' and there is no settings surface for the key — ApiKeyDialog is only reachable when the shell decides to open it, which four of six AI call sites never do (S092).",
+  "source": "session"
+ },
+ {
+  "id": "S200",
+  "sev": "low",
+  "lens": "11 contract-schema-drift",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 45,
+  "title": "Question count and option count are specified only in prose",
+  "detail": "quizPrompt asks for 3 questions and QUIZ_SCHEMA's description mentions 4 options; neither is expressed as a schema constraint, so the response length is entirely at the model's discretion while the code assumes both.",
   "source": "session"
  },
  {
@@ -3660,6 +4230,16 @@
   "source": "nightytidy"
  },
  {
+  "id": "S181",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/markdown.ts",
+  "line": 9,
+  "title": "Markdown export does not escape special characters in user or model text",
+  "detail": "A title containing a leading # or a pipe, or notes containing an unclosed code fence, produce structurally wrong markdown in the exported file. The export is the app's only data-portability path for prose.",
+  "source": "session"
+ },
+ {
   "id": "type-safety/F091",
   "sev": "low",
   "lens": "type-safety",
@@ -3738,6 +4318,26 @@
   "title": "Pure-function `libraryExport.test.ts` is forced through jsdom + fake-indexeddb + Testing Library boot it never uses",
   "detail": "",
   "source": "nightytidy"
+ },
+ {
+  "id": "S190",
+  "sev": "low",
+  "lens": "04 test-hardening",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 31,
+  "title": "The UUID assertion is unanchored",
+  "detail": "`toMatch(/[0-9a-f-]{36}/)` passes for any string that merely contains 36 such characters, so it would accept a malformed id with a prefix. Anchoring it costs two characters.",
+  "source": "session"
+ },
+ {
+  "id": "S191",
+  "sev": "low",
+  "lens": "06 test-consolidation",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 5,
+  "title": "Setup and fixtures are re-declared across roughly eight test files",
+  "detail": "`beforeEach(resetDb + localStorage.clear)` appears in most suites, and seedProfile / bookInput / renderQueue / mount are re-implemented per file with small variations. A shared test-utils module would remove around a hundred lines and make the variations deliberate rather than accidental.",
+  "source": "session"
  },
  {
   "id": "type-safety/F098",
