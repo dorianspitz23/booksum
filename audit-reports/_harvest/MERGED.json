@@ -1,0 +1,3932 @@
+[
+ {
+  "id": "S091",
+  "sev": "critical",
+  "lens": "40 frontend-quality",
+  "file": "src/app/AppShell.tsx",
+  "line": 105,
+  "title": "There is no navigation at all on phones — Review, Stats and Profile are unreachable",
+  "detail": "The sidebar is `hidden sm:flex`, and the only mobile affordance rendered is the floating Add Book button. Below the 640px breakpoint a user can see their library and add books, but has no route to /review, /stats or /profile, and no way to switch profiles or reach settings. Three of the four nav destinations, including the entire spaced-repetition feature, simply do not exist on mobile.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F002",
+  "sev": "critical",
+  "lens": "type-safety",
+  "file": "src/components/BookDetail.tsx",
+  "line": 534,
+  "title": "`summary!` on an optional prop crashes the app for every unsummarised book (2 sites: 534, 536)",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F001",
+  "sev": "critical",
+  "lens": "feature-discovery",
+  "file": "src/components/BookDetail.tsx",
+  "line": 461,
+  "title": "No \"Summarise this book\" action — every Goodreads-imported book is a permanent dead end",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F003",
+  "sev": "critical",
+  "lens": "type-safety",
+  "file": "src/components/ChatModal.tsx",
+  "line": 11,
+  "title": "ChatModal declares `summary: Summary` as required, forcing its only caller to pass `summary!` on a value that is genuinely `Summary | undefined`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S081",
+  "sev": "critical",
+  "lens": "13 security-sweep",
+  "file": "src/components/ProfileView.tsx",
+  "line": 386,
+  "title": "A fake 'Privacy Mode — Local storage encryption' toggle advertises a security feature that does not exist",
+  "detail": "The control is a styled div with no onClick, no state and no backing implementation, rendered permanently in the on position. Nothing in the codebase encrypts anything. In a public repo this reads as a deliberate false security claim, and it is the first thing anyone auditing the project will find. It is also not a button, not focusable, and has no role=switch.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F004",
+  "sev": "critical",
+  "lens": "type-safety",
+  "file": "src/components/ProfileView.tsx",
+  "line": 117,
+  "title": "Backup file JSON asserted straight to `LibraryExport` and written to IndexedDB with no validation",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S001",
+  "sev": "critical",
+  "lens": "29 data-integrity",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 114,
+  "title": "importLibrary overwrites existing summaries for books it skipped as duplicates",
+  "detail": "Books dedupe on id and are skipped, but the summaries loop upserts unconditionally. Restoring an older backup silently replaces newer local summaries for every book you already have.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F003",
+  "sev": "critical",
+  "lens": "feature-discovery",
+  "file": "src/features/review/useReviewQueue.ts",
+  "line": 44,
+  "title": "Due-card count is computed but never surfaced outside /review — the planned nav badge was never shipped",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F004",
+  "sev": "critical",
+  "lens": "feature-discovery",
+  "file": "src/lib/audio/wav.ts",
+  "line": 31,
+  "title": "Generated narration is never cached — every play re-bills a paid TTS call, and the audio blob kinds are write-only",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S010",
+  "sev": "critical",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/storage/repo.ts",
+  "line": 4,
+  "title": "crypto.randomUUID() is undefined outside a secure context — any plain-HTTP deploy throws on first write",
+  "detail": "randomUUID is gated on isSecureContext. GitHub Pages is HTTPS so the documented deploy is fine, but self-hosting on http:// or a LAN IP makes profile creation, add-book and summary save all throw TypeError with no fallback.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F005",
+  "sev": "critical",
+  "lens": "feature-discovery",
+  "file": "src/types.ts",
+  "line": 40,
+  "title": "Book.finishedAt is in the schema but never written — the monthly reading goal cannot be monthly without it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F001",
+  "sev": "critical",
+  "lens": "test-efficiency",
+  "file": "vite.config.ts",
+  "line": 13,
+  "title": "Framework boot is 98% of suite wall-clock — 2.53s of assertions inside a 140.53s run, because jsdom is built for every test file including the 12 that have no DOM",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F002",
+  "sev": "critical",
+  "lens": "test-efficiency",
+  "file": "vite.config.ts",
+  "line": 16,
+  "title": "Uncapped thread pool makes per-file boot ~98% of the run and silently drops the 7 heaviest test files, including both of this lot's",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F008",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "eslint.config.js",
+  "line": 9,
+  "title": "ESLint runs only the non-type-aware typescript-eslint tier — every type-checked rule is inert",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S125",
+  "sev": "high",
+  "lens": "46 devops",
+  "file": "package.json",
+  "line": 7,
+  "title": "The declared Node engine is one the dependencies disclaim",
+  "detail": "engines.node says >=20.19, jsdom@30 requires ^22.22.2 || ^24.15.0 || >=26, and CI pins 22. A contributor who trusts package.json and installs on Node 20.19 gets an EBADENGINE warning and an unsupported test environment. The CI file even carries a comment explaining the real constraint — it just never made it into engines.",
+  "source": "session"
+ },
+ {
+  "id": "S092",
+  "sev": "high",
+  "lens": "17 cross-cutting-concerns",
+  "file": "src/app/AppShell.tsx",
+  "line": 47,
+  "title": "Only two of six AI call sites can route the user to the key dialog",
+  "detail": "handleAiError opens ApiKeyDialog on missing/invalid-key, and only AddBookModal and ChatModal receive it. BookDetail (audio, deep dive), EReader (audio) and QuizModal all call toast.error(toAiError(e).message) directly, so an invalid key there produces a toast telling the user to 'check it in Settings' — a screen that does not exist (feature-discovery F013) — and no way to open the dialog.",
+  "source": "session"
+ },
+ {
+  "id": "S093",
+  "sev": "high",
+  "lens": "35 resource-lifecycle-cleanup",
+  "file": "src/app/AppShell.tsx",
+  "line": 201,
+  "title": "Closing the audio player is where the blob URL should be revoked, and is not",
+  "detail": "onClose drops the track reference but nothing calls URL.revokeObjectURL. This is the single owner of the track's lifetime, so the leaks created in BookDetail (S036) and EReader have no place to be released.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F009",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/app/AppShell.tsx",
+  "line": 49,
+  "title": "AiErrorKind narrowing is non-exhaustive and unguarded, so a referrer-blocked key never reaches the key dialog",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S064",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 250,
+  "title": "The 10MB PDF limit is advertised in the UI and never enforced anywhere",
+  "detail": "handleFileChange validates MIME type only. A 50MB PDF is accepted, base64-encoded on the main thread (freezing the tab), sent inline to Gemini, rejected with a 400, and then reported to the user as 'That API key was rejected' via the S005 mapping. Three defects chain into a message that sends the user off to regenerate a perfectly good key.",
+  "source": "session"
+ },
+ {
+  "id": "S065",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 221,
+  "title": "The PDF drop zone cannot be reached or activated by keyboard",
+  "detail": "It is a bare <div onClick> wrapping a hidden file input — no role, no tabIndex, no key handler. Keyboard and screen-reader users cannot upload a PDF at all.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F006",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 59,
+  "title": "Every add path except the Goodreads CSV tab requires a Gemini key, despite 'library CRUD' being promised keyless",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S046",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 244,
+  "title": "Dark-mode codemod stranded opacity modifiers on the dark half, making 5 light-mode surfaces fully opaque",
+  "detail": "`bg-white/10` was rewritten as `bg-white dark:bg-gray-900/10`. The light class lost its /10, so what was a subtle translucent divider or hover wash is now solid. Sites: AudioPlayer 244, BookCard 66, BookDetail 521, DailyWisdomModal 42, StatsView 215. Every one of them also renders backdrop-blur that is now pointless because the surface behind it is fully covered.",
+  "source": "session"
+ },
+ {
+  "id": "S048",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 215,
+  "title": "`dark:` appended after an arbitrary-variant selector retargets the wrong element",
+  "detail": "`[&::-webkit-slider-thumb]:bg-white dark:bg-gray-900` — the dark class is not scoped to the pseudo-element, so in dark mode it paints the input's own background gray-900 instead of the thumb, and the thumb loses its dark styling entirely. Both the seek bar (215) and the volume slider (239).",
+  "source": "session"
+ },
+ {
+  "id": "S049",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 188,
+  "title": "Play/pause icon is invisible in dark mode",
+  "detail": "`bg-white dark:bg-gray-900 text-black` — the surface flips to near-black but the glyph stays text-black. The primary control of the audio player disappears.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F011",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/components/BookCard.tsx",
+  "line": 89,
+  "title": "\"Is this book summarised?\" is encoded three independent ways on `Book`; BookCard renders two of them and visibly contradicts itself",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S036",
+  "sev": "high",
+  "lens": "35 resource-lifecycle-cleanup",
+  "file": "src/components/BookDetail.tsx",
+  "line": 163,
+  "title": "Every generated audio blob URL leaks for the life of the page",
+  "detail": "createObjectURL is handed to onPlayAudio and never revoked. Combined with the absence of audio caching, each Quick Listen both re-bills a TTS call and pins another full WAV in memory until reload.",
+  "source": "session"
+ },
+ {
+  "id": "S037",
+  "sev": "high",
+  "lens": "35 resource-lifecycle-cleanup",
+  "file": "src/components/BookDetail.tsx",
+  "line": 202,
+  "title": "handleOpenPdf leaks a blob URL per click",
+  "detail": "createObjectURL feeds window.open and is never revoked. PDFs are the largest objects the app holds, so repeatedly opening one walks memory up with no ceiling.",
+  "source": "session"
+ },
+ {
+  "id": "S038",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/components/BookDetail.tsx",
+  "line": 381,
+  "title": "Quick Listen and Read Full Summary render for unsummarised books and silently do nothing",
+  "detail": "Both handlers set their spinner, then hit `if (!summary) return`. Chat and Quiz are correctly gated behind `summary &&` at line 342, but these two are not — so the spinner flashes and nothing happens, with no explanation.",
+  "source": "session"
+ },
+ {
+  "id": "S039",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/components/BookDetail.tsx",
+  "line": 453,
+  "title": "The One Sentence Takeaway panel is unreadable in dark mode",
+  "detail": "The panel background flips (bg-orange-50 dark:bg-orange-950/50) but text-orange-800 and text-orange-900 carry no dark variant, leaving near-black text on a near-black panel.",
+  "source": "session"
+ },
+ {
+  "id": "S040",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/components/BookDetail.tsx",
+  "line": 64,
+  "title": "SummaryRenderer body text has no dark variant",
+  "detail": "The wrapper is text-gray-800 with no dark: pairing, so the entire rendered summary — the main content of the page — stays dark grey on a dark background. Same omission at lines 46, 483 and 501.",
+  "source": "session"
+ },
+ {
+  "id": "S042",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/components/BookDetail.tsx",
+  "line": 214,
+  "title": "Marking a book Finished never records finishedAt",
+  "detail": "toggleStatus writes status and rating only. This is the manual counterpart to the Goodreads gap in S024 — between them, nothing in the app ever populates finishedAt, so the monthly reading goal can never count anything.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F012",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/components/BookDetail.tsx",
+  "line": 337,
+  "title": "Four independent encodings of 'is this book summarised?' leave three dead buttons and one empty section",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F007",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/components/BookDetail.tsx",
+  "line": 253,
+  "title": "Preview-before-add mode is fully built inside BookDetail but no caller can reach it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S116",
+  "sev": "high",
+  "lens": "42 state-management",
+  "file": "src/components/ChatModal.tsx",
+  "line": 50,
+  "title": "The chat session is rebuilt on object identity, silently wiping the conversation mid-chat",
+  "detail": "The effect depends on [book, summary, onAiError]. summary is an object from BookDetail's props; generating a deep-dive calls onSummaryUpdate, which produces a new Summary reference, which recreates the Chat. The user's in-progress conversation context is discarded while the on-screen transcript stays, so subsequent replies answer as if the earlier turns never happened.",
+  "source": "session"
+ },
+ {
+  "id": "S047",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/components/DailyWisdomModal.tsx",
+  "line": 42,
+  "title": "Daily Wisdom close button is invisible in light mode",
+  "detail": "The codemod turned `bg-white/20` into `bg-white`, and the button keeps `text-white`. White glyph on a solid white circle — the only way to dismiss the modal cannot be seen.",
+  "source": "session"
+ },
+ {
+  "id": "S072",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/components/EReader.tsx",
+  "line": 393,
+  "title": "key={currentPage} was written inside the className string, so the page-turn animation never replays",
+  "detail": "`className=\"animate-in fade-in slide-in-from-bottom-4 duration-700 key={currentPage}\"` — the key is a literal substring of the class list, not a JSX prop. React therefore reuses the same element across page changes and the entrance animation runs exactly once, on first mount. The literal text is also emitted as two junk CSS classes.",
+  "source": "session"
+ },
+ {
+  "id": "S073",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/EReader.tsx",
+  "line": 253,
+  "title": "The reader is a full-screen overlay with no focus trap, no role, and no Escape handler",
+  "detail": "Every other overlay in the app went through useFocusTrap in Phase 2. This one did not: Tab walks out into the library behind it, Escape does nothing, and it announces as a plain div. It is the single most immersive surface in the product and the least accessible.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F008",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 173,
+  "title": "Reading position is computed and displayed as \"% Complete\" but never persisted — the reader always reopens at section 1",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S082",
+  "sev": "high",
+  "lens": "42 state-management",
+  "file": "src/components/ProfileView.tsx",
+  "line": 47,
+  "title": "editedProfile snapshots the profile once and never resyncs, so saving reverts concurrent changes",
+  "detail": "useState(profile) captures the value at mount. ThemeToggle writes the theme straight to the profile, so if the user changes theme while Edit Profile is open, pressing Save writes the stale snapshot back and silently reverts it. Switching profiles while editing has the same effect.",
+  "source": "session"
+ },
+ {
+  "id": "S083",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/components/ProfileView.tsx",
+  "line": 54,
+  "title": "The 'Monthly Goal' card measures lifetime totals, not the month",
+  "detail": "finishedCount counts every Finished book in the library with no date filter, so the ring only ever climbs and hits 100% permanently. Nothing writes finishedAt (S024, S042), so there is currently no data with which to make it monthly even if the filter existed.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F014",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/components/ProfileView.tsx",
+  "line": 46,
+  "title": "Stale edit-draft is typed identically to the live Profile, so saving silently reverts the theme",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F009",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 96,
+  "title": "The JSON backup drops the profile record and every review card, so a device move silently loses settings and all spaced-repetition progress",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S056",
+  "sev": "high",
+  "lens": "14 privacy-pii-handling",
+  "file": "src/components/QuizModal.tsx",
+  "line": 140,
+  "title": "Quiz results screen loads a background texture from a third-party CDN",
+  "detail": "`bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]` issues a request to transparenttextures.com, leaking a referrer at the exact moment the user finishes a quiz. It also contradicts the README's claim that data never leaves the browser, and renders as a flat gradient whenever the user is offline or blocking third parties.",
+  "source": "session"
+ },
+ {
+  "id": "S057",
+  "sev": "high",
+  "lens": "39 cost-resource-optimization",
+  "file": "src/components/QuizModal.tsx",
+  "line": 71,
+  "title": "Quiz generation re-fires whenever the book or summary object identity changes",
+  "detail": "The effect depends on `[book, summary]` — objects, not ids. Any parent re-render that produces a fresh Summary reference triggers another paid generateContent call. React StrictMode double-invokes it in development, so every dev quiz costs two calls.",
+  "source": "session"
+ },
+ {
+  "id": "S058",
+  "sev": "high",
+  "lens": "41 ui-ux",
+  "file": "src/components/QuizModal.tsx",
+  "line": 243,
+  "title": "The Next Question button is a dark button on a dark footer in dark mode",
+  "detail": "The footer is `bg-white dark:bg-gray-900` but the button is a hardcoded `bg-gray-900 text-white` with no dark variant, so the primary control of the quiz nearly vanishes against its own container.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F015",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/components/QuizModal.tsx",
+  "line": 23,
+  "title": "QuizModal repeats the same required-`summary` lie; the `!` at the call site turns a missing summary into a bogus \"AI error\" toast",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F016",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/components/QuizModal.tsx",
+  "line": 52,
+  "title": "Unvalidated model JSON is persisted straight into IndexedDB as `ReviewCard`s, permanently poisoning the spaced-repetition queue",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F010",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/components/QuizModal.tsx",
+  "line": 47,
+  "title": "A general SM-2 scheduler whose only card source is an AI quiz — so the review deck cannot be filled without an API key",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S111",
+  "sev": "high",
+  "lens": "50 product-polish",
+  "file": "src/components/StatsView.tsx",
+  "line": 174,
+  "title": "The 'Wisdom Milestone' card states a fabricated insight about the user's reading",
+  "detail": "`stats.finished.length > 5 ? ' Your focus is shifting towards more productivity-centric topics recently.'` is a hardcoded sentence with no connection to the user's actual categories. Anyone who has read six horror novels is told their focus is shifting toward productivity. The 'Continuous Learner' badge below it is likewise unconditional. A dashboard that invents observations is worse than one that omits them.",
+  "source": "session"
+ },
+ {
+  "id": "S112",
+  "sev": "high",
+  "lens": "40 frontend-quality",
+  "file": "src/components/StatsView.tsx",
+  "line": 203,
+  "title": "The interactive stat cards are divs, so the dashboard filters are mouse-only",
+  "detail": "StatCard renders <div onClick> with no role, tabIndex or key handler. Two of the four cards are the page's only filtering control, and neither can be reached or activated from the keyboard.",
+  "source": "session"
+ },
+ {
+  "id": "S120",
+  "sev": "high",
+  "lens": "30 error-recovery",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 38,
+  "title": "A failed Goodreads import reports nothing at all",
+  "detail": "handleImport has try/finally with no catch, and is invoked as void handleImport(). If importGoodreadsRows rejects — a quota-exceeded IndexedDB write on a 300-book import is the obvious case — the spinner stops, the modal stays open, no toast appears and no books are added. The user has no way to tell success from failure.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F019",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 24,
+  "title": "CSV file boundary trusts any user-picked bytes: no MIME, size, or header-shape gate before persisting rows",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S097",
+  "sev": "high",
+  "lens": "43 perceived-performance",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 188,
+  "title": "The empty state flashes on every load because isLoading is never consulted",
+  "detail": "useLibrary exposes isLoading and LibraryPage ignores it, rendering `filteredBooks.length > 0 ? grid : 'Your library is quiet'`. Until IndexedDB resolves, books is [], so every visit to the home route paints a full empty-state screen with an 'Add Your First Book' call to action before the real library replaces it.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F011",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 44,
+  "title": "`summaryId` is stored on every book but there is no way to filter or count unsummarised books",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F012",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 188,
+  "title": "Library grid has no multi-select, so bulk re-categorise / re-status / delete is impossible",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S002",
+  "sev": "high",
+  "lens": "31 idempotency-safe-retry",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 109,
+  "title": "importLibrary is not idempotent",
+  "detail": "Running the same import twice reports added=0 but rewrites every summary again. A retry after a partial failure is not safe.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F022",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 102,
+  "title": "importLibrary declares `payload: LibraryExport` for an unvalidated user JSON file and persists each element unchecked",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S106",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 93,
+  "title": "A card with an empty options array deadlocks the review session permanently",
+  "detail": "No option buttons render, so `selected` stays null, `isAnswered` stays false, and the grade buttons never appear. The card sits at the head of the queue with no skip, no dismiss and no way past it — every future review session opens on the same dead card.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F072",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 76,
+  "title": "correctAnswerIndex is never bounds-checked against options.length, so a card can be silently impossible to answer correctly",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F024",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 93,
+  "title": "A persisted ReviewCard with an empty options array permanently deadlocks the review session",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S104",
+  "sev": "high",
+  "lens": "33 race-condition",
+  "file": "src/features/review/useReviewQueue.ts",
+  "line": 33,
+  "title": "Double-clicking a grade button drops the next card without ever grading it",
+  "detail": "grade() closes over `queue` and reads queue[0]. Two clicks landing before the re-render both resolve `current` to the same card, upsert it twice, and each call setQueue(rest => rest.slice(1)) — so two cards leave the session while only the first is scheduled. The second is silently skipped and will not reappear until it happens to come due again. The grade buttons have no disabled state during the await.",
+  "source": "session"
+ },
+ {
+  "id": "S105",
+  "sev": "high",
+  "lens": "30 error-recovery",
+  "file": "src/features/review/useReviewQueue.ts",
+  "line": 20,
+  "title": "A repo failure pins the page on its loading spinner forever",
+  "detail": "reload() has no try/catch, so a rejection from listDue skips setIsLoading(false) entirely. The identical pattern exists in useLibrary.reload (line 32) — any IndexedDB error leaves the library permanently in its loading state with no message and no retry.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F013",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/features/settings/ApiKeyDialog.tsx",
+  "line": 14,
+  "title": "Key-management API is fully built but the settings surface for it was never made — no way to see, replace or remove the Gemini key",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S124",
+  "sev": "high",
+  "lens": "03 test-coverage",
+  "file": "src/lib/ai",
+  "line": 1,
+  "title": "The entire AI layer is untested — 8 modules, and the ones carrying the most findings",
+  "detail": "summarize, quiz, chat, tts, recommend, client, schemas and prompts have no colocated tests. Only errors.ts and apiKey.ts do. Every unvalidated-model-JSON defect (S032, S062, F005, F030, F034, F035) lives in exactly the files with no test to catch a regression. 44 of 65 source files have no colocated test; the AI layer is the part where that matters most.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F014",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/chat.ts",
+  "line": 11,
+  "title": "Chat conversations are discarded on close — the SDK's `history` resume parameter is never used",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S003",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/ai/errors.ts",
+  "line": 53,
+  "title": "'quota' substring is tested before HTTP status, so 429 rate-limits are reported as exhausted quota",
+  "detail": "Gemini's 429 body reads 'You exceeded your current quota'. The includes('quota') branch wins before status===429 is ever reached, so a transient rate-limit tells the user their quota is used up and to check AI Studio.",
+  "source": "session"
+ },
+ {
+  "id": "S004",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/ai/errors.ts",
+  "line": 40,
+  "title": "statusOf() dereferences error without a null guard; toAiError(null) throws inside the error handler",
+  "detail": "(error as {status?:unknown}).status on null/undefined raises TypeError, so the normaliser itself crashes on the exact inputs it exists to tame.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F029",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/errors.ts",
+  "line": 53,
+  "title": "AiErrorKind is discriminated by substring-searching the SDK's opaque JSON error body, so key-restriction 403s are reported as content-safety blocks and rate limits as exhausted quota",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F015",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 55,
+  "title": "Chat is per-book only — no assistant that can see the whole library",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F005",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/quiz.ts",
+  "line": 16,
+  "title": "Quiz JSON is cast to QuizQuestion[] with no runtime guard, then persisted to IndexedDB as ReviewCards",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F030",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/recommend.ts",
+  "line": 30,
+  "title": "Recommendations cast to a required-field type with no guard; a missing title throws inside the cover fallback and loses all six results",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F031",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 3,
+  "title": "The Gemini responseSchema objects are the only shape enforcement and receive zero compile-time checking",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S016",
+  "sev": "high",
+  "lens": "32 external-integration-reliability",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 46,
+  "title": "No timeout or AbortSignal on any Gemini call",
+  "detail": "summarize, chat, quiz, tts and recommend all await the SDK with no deadline and no cancel path. A hung request leaves the UI spinning forever with no way to back out.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F034",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 52,
+  "title": "`response.text || '{}'` erases a blocked or truncated completion, fabricating a complete-looking Book that gets persisted",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F035",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 99,
+  "title": "generateDetailedSummary returns a failure sentinel typed as `string`, which callers persist as a real summary",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F037",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/base64.ts",
+  "line": 5,
+  "title": "base64ToBytes declares a total (string) => Uint8Array but atob throws on any non-base64 input, and it is fed unvalidated localStorage JSON",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S027",
+  "sev": "high",
+  "lens": "32 external-integration-reliability",
+  "file": "src/lib/covers/googleBooks.ts",
+  "line": 9,
+  "title": "No timeout on any cover fetch",
+  "detail": "Both providers await bare fetch with no AbortSignal. A hung request stalls fetchCover, which sits in the critical path of summarizeBook, so a slow third party blocks book creation indefinitely.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F017",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/lib/covers/index.ts",
+  "line": 12,
+  "title": "The keyless cover provider chain is reachable only from AI code paths, so Goodreads imports and no-key users never use it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S024",
+  "sev": "high",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/goodreads.ts",
+  "line": 113,
+  "title": "dateRead is parsed from the CSV and then thrown away",
+  "detail": "GoodreadsRow carries dateRead, but importGoodreadsRows never maps it to Book.finishedAt. Every imported Finished book therefore has no completion date, which is exactly what the monthly reading goal needs.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F018",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/lib/goodreads.ts",
+  "line": 88,
+  "title": "Goodreads `Bookshelves` column is never parsed, so every imported book lands as category 'Other' and collapses three live category surfaces",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S021",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/lib/srs.ts",
+  "line": 58,
+  "title": "isDue() and repo.listDue() implement due-ness two different ways",
+  "detail": "srs.isDue parses the timestamp; repo.listDue string-compares ISO text. They agree only while every dueAt is UTC Z-format. Two sources of truth for the single question the whole review feature turns on.",
+  "source": "session"
+ },
+ {
+  "id": "S022",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/lib/srs.ts",
+  "line": 58,
+  "title": "A card with an unparseable dueAt is invisible forever",
+  "detail": "Date.parse returns NaN and NaN <= now is false, so the card is never due, never surfaces, and is never cleaned up — it just sits in the store inflating counts.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F040",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/srs.ts",
+  "line": 18,
+  "title": "correctAnswerIndex is a bare number taken straight from unvalidated LLM JSON and persisted forever",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S126",
+  "sev": "high",
+  "lens": "49 backup-check",
+  "file": "src/lib/storage/libraryExport.ts",
+  "line": 98,
+  "title": "The backup format silently omits the profile and every review card",
+  "detail": "LibraryExport carries books and summaries only. Moving to a new device therefore loses the reading goal, bio, chosen voice, theme, and the entire spaced-repetition schedule — the one dataset in the app that cannot be regenerated, because rebuilding it means paying for every quiz again. Nothing in the export UI says so.",
+  "source": "session"
+ },
+ {
+  "id": "S013",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 147,
+  "title": "Migration gives every legacy book a summaryId and an empty Summary row",
+  "detail": "summaryId is assigned unconditionally, so a legacy 'Want to Read' book that never had a summary gets one made of empty strings. Downstream 'is this summarised?' checks that key off summaryId then disagree with the ones that key off oneSentenceTakeaway.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F007",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 58,
+  "title": "JSON.parse(raw) as T types arbitrary localStorage content as LegacyBook[] on the app-boot path",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F043",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 105,
+  "title": "Migration sets summaryId without the denormalised oneSentenceTakeaway, so every migrated book shows 'Not summarised yet'",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F044",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 110,
+  "title": "Legacy book fields are defaulted with ?? which guards nullish only, never type, then persisted as a typed Book",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S006",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/lib/storage/repo.ts",
+  "line": 68,
+  "title": "books.remove spans four independent transactions with no atomicity",
+  "detail": "summary, blobs, review cards and the book are deleted in separate transactions. A failure midway leaves orphaned rows that nothing ever collects.",
+  "source": "session"
+ },
+ {
+  "id": "S007",
+  "sev": "high",
+  "lens": "29 data-integrity",
+  "file": "src/lib/storage/repo.ts",
+  "line": 35,
+  "title": "profiles.remove is non-atomic; partial failure orphans an entire library",
+  "detail": "Books are removed via Promise.all then the profile row is deleted. If any book removal rejects, the profile is still deleted and its books become unreachable rows keyed to a profileId that no longer exists.",
+  "source": "session"
+ },
+ {
+  "id": "S008",
+  "sev": "high",
+  "lens": "38 performance",
+  "file": "src/lib/storage/repo.ts",
+  "line": 78,
+  "title": "reviewCards.listByProfile full-scans every card of every profile",
+  "detail": "getAll() then an in-memory profileId filter, despite the by-profile-due index existing in the v1 schema. listDue() inherits it, so the Review page cost grows with total cards across all profiles.",
+  "source": "session"
+ },
+ {
+  "id": "S009",
+  "sev": "high",
+  "lens": "38 performance",
+  "file": "src/lib/storage/repo.ts",
+  "line": 94,
+  "title": "reviewCards.listByBook full-scans the card store, and books.remove calls it per book",
+  "detail": "Deleting N books performs N full scans of reviewCards. Deleting a 300-book Goodreads import is 300 full table scans.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F048",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 52,
+  "title": "books.create and summaries.upsert persist caller objects with no validation, and the backup-import path feeds them a user-picked file",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F050",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 47,
+  "title": "Three independent Book fields encode the single fact \"is this book summarised\", and they disagree on how to spell \"no\"",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F107",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 88,
+  "title": "ReviewCard.correctAnswerIndex has no type-level relation to options, and out-of-range LLM values are persisted permanently",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F051",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 98,
+  "title": "LibraryExport declares a fully-formed backup shape but is only ever produced by an unchecked cast of a user-supplied file",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F052",
+  "sev": "high",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 105,
+  "title": "QuizQuestion declares every field required but is populated by an unchecked cast of an LLM response",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F020",
+  "sev": "high",
+  "lens": "feature-discovery",
+  "file": "src/types.ts",
+  "line": 91,
+  "title": "Every grade writes ease / intervalDays / reviewCount and no surface in the app ever reads them back",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F032",
+  "sev": "high",
+  "lens": "test-efficiency",
+  "file": "vite.config.ts",
+  "line": 17,
+  "title": "jsdom window + fake-indexeddb install + jest-dom registration are rebuilt once per test file (24x, ~29s of worker time each) because `isolate` is left at its default and `poolOptions.threads` is unset",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S129",
+  "sev": "medium",
+  "lens": "46 devops",
+  "file": ".github/workflows/ci.yml",
+  "line": 3,
+  "title": "No deploy workflow exists despite the README pointing at a hosted demo",
+  "detail": "Only ci.yml is present. The Pages deployment the plan and README describe was never written, so the 'live demo' link the project is meant to lead with has nothing behind it. CI also has no concurrency group, so rapid pushes queue redundant full runs.",
+  "source": "session"
+ },
+ {
+  "id": "test-efficiency/F007",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": ".github/workflows/ci.yml",
+  "line": 9,
+  "title": "No `timeout-minutes` on the only job, so this suite's documented hang mode can occupy a runner for GitHub's 360-minute default",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F024",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": ".github/workflows/ci.yml",
+  "line": 20,
+  "title": "Six serial steps in one job with no `if: always()` — the first failing check hides every later result, costing an extra full pipeline per hidden failure",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S132",
+  "sev": "medium",
+  "lens": "02 contract-fidelity",
+  "file": "CLAUDE.md",
+  "line": 1,
+  "title": "CLAUDE.md documents a NightyTidy run date and nothing about the project",
+  "detail": "The file a future agent loads first says only 'NightyTidy — Last Run: 2026-05-07'. None of the invariants this codebase actually depends on are written down anywhere it will be read: no key in the bundle, no binary data in book records, lib/ stays framework-free, ArrayBuffer not Blob in IndexedDB, threads pool on Windows. Each of those was learned the hard way and each is one careless edit from being undone.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F053",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "eslint.config.js",
+  "line": 17,
+  "title": "no-non-null-assertion is not enabled — 12 unguarded `!` assertions, and nothing stops more being added",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S131",
+  "sev": "medium",
+  "lens": "15 dependency-health",
+  "file": "package.json",
+  "line": 28,
+  "title": "Pinning strategy is inconsistent and nothing checks for advisories",
+  "detail": "react-router, eslint, prettier, globals, typescript-eslint and @eslint/js are pinned exactly while everything else floats on a caret, with no comment explaining the split. CI runs no npm audit and there is no Dependabot config, so a published advisory in any of 288 packages surfaces to nobody.",
+  "source": "session"
+ },
+ {
+  "id": "S094",
+  "sev": "medium",
+  "lens": "27 datetime-handling",
+  "file": "src/app/AppShell.tsx",
+  "line": 63,
+  "title": "Daily-wisdom dedup key uses toDateString(), a locale- and timezone-dependent string",
+  "detail": "The stored marker is a local-time, locale-formatted date. Travelling across a timezone, or a browser locale change, can re-show or suppress the modal for a day. Every other timestamp in the app is stored as ISO UTC.",
+  "source": "session"
+ },
+ {
+  "id": "S095",
+  "sev": "medium",
+  "lens": "40 frontend-quality",
+  "file": "src/app/AppShell.tsx",
+  "line": 171,
+  "title": "No skip-to-content link ahead of a 4-item persistent nav",
+  "detail": "Keyboard users tab through the logo, four nav links, the profile card, switch-profile and add-book on every route change before reaching page content.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F045",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/app/AppShell.tsx",
+  "line": 58,
+  "title": "Daily Wisdom is a hardcoded one-item resurfacing engine that can only ever show a takeaway",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F054",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/app/ErrorBoundary.tsx",
+  "line": 6,
+  "title": "useRouteError() is unknown but is narrowed only by `instanceof Error`, so every 404 renders a generic message",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F055",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/app/routes.tsx",
+  "line": 12,
+  "title": "routeTable is exported with no RouteObject[] annotation, which disables excess-property checking on the whole route tree",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F001",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/app/routing.test.tsx",
+  "line": 47,
+  "title": "Routing test drives an unsummarised book to its detail page and stops one click short of the summary! crash",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F010",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/app/routing.test.tsx",
+  "line": 94,
+  "title": "No test navigates to an unmatched URL, so useRouteError()'s unnarrowed unknown silently turns every 404 into a generic error",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F003",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/app/routing.test.tsx",
+  "line": 9,
+  "title": "routing.test.tsx is the #2 most expensive file (4,285 ms, 24% of suite test-body time): every one of its 6 tests re-seeds IndexedDB and boots the whole app",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F009",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/app/routing.test.tsx",
+  "line": 56,
+  "title": "The back-button test (1,837 ms, #2 in the suite) re-executes the entire forward-navigation test above it before it does anything of its own",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F056",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/app/ShellContext.ts",
+  "line": 9,
+  "title": "handleAiError is typed total over `unknown` but throws on a null or undefined throwable",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S066",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 94,
+  "title": "Rejecting a file leaves the previous valid file selected and submittable",
+  "detail": "The else branch sets an error but never clears `file`. Pick a good PDF, then pick a .docx: the error says the file is invalid while the submit button stays enabled and uploads the earlier PDF.",
+  "source": "session"
+ },
+ {
+  "id": "S067",
+  "sev": "medium",
+  "lens": "29 data-integrity",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 162,
+  "title": "Rating input accepts any number despite min/max",
+  "detail": "onChange does Number(e.target.value) with no clamp. Browsers do not block out-of-range typing on number inputs, and an emptied field yields 0, so ratings of 0 or 99 are persisted and rendered as stars.",
+  "source": "session"
+ },
+ {
+  "id": "S068",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 42,
+  "title": "convertFileToBase64 assumes a well-formed data URL",
+  "detail": "`(reader.result as string).split(',')[1]` yields undefined if the read produces null or a non-data-URL, and that undefined is passed straight into the Gemini request as inline data.",
+  "source": "session"
+ },
+ {
+  "id": "S069",
+  "sev": "medium",
+  "lens": "38 performance",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 64,
+  "title": "A PDF is held three times over during upload",
+  "detail": "The File, its base64 string (~1.37x), and later the stored ArrayBuffer all coexist. At the advertised 10MB that is roughly 34MB of peak memory for one add.",
+  "source": "session"
+ },
+ {
+  "id": "S050",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 135,
+  "title": "Codemod darkened text that already sits on a permanently dark surface",
+  "detail": "The player chrome is bg-gray-900/95 in both themes, so `text-gray-400 dark:text-gray-500` makes contrast worse in dark mode rather than better. Seven sites: 135, 179, 199, 207, 226, 250, 257.",
+  "source": "session"
+ },
+ {
+  "id": "S051",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 29,
+  "title": "A rejected play() leaves the UI claiming it is playing",
+  "detail": "Autoplay is blocked by default in most browsers until the user interacts. The catch logs and returns without setting isPlaying back to false, so the pause icon shows while nothing is audible. togglePlay at line 50 does not handle the rejection at all.",
+  "source": "session"
+ },
+ {
+  "id": "S052",
+  "sev": "medium",
+  "lens": "42 state-management",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 52,
+  "title": "isPlaying has two independent writers",
+  "detail": "togglePlay sets it optimistically while onPlay/onPause set it from the element's real state. They race whenever play() is slow or rejected.",
+  "source": "session"
+ },
+ {
+  "id": "S054",
+  "sev": "medium",
+  "lens": "40 frontend-quality",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 187,
+  "title": "Play/pause and speed buttons have no accessible name",
+  "detail": "Rewind and forward carry aria-label; the primary play/pause control has none, and the speed toggle relies on title alone. A screen reader announces them as unlabelled buttons.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F021",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 56,
+  "title": "Playback position is tracked every timeupdate and discarded — no resume, and AudioTrack carries no book identity to resume against",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F046",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 45,
+  "title": "Full transport UI never registers with the Media Session API — no OS media keys, no metadata in the browser media hub",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F010",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/components/BookDetail.test.tsx",
+  "line": 3,
+  "title": "BookDetail.test.tsx boots the Google GenAI SDK through three independent import paths plus the IndexedDB repo, to assert which buttons render",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S041",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/BookDetail.tsx",
+  "line": 528,
+  "title": "Deep-dive loading panel and the Move back to Queue button are light-only",
+  "detail": "bg-stone-50 / text-stone-900 / text-stone-500 and bg-stone-100 / text-stone-600 have no dark variants. The Phase 3 dark-mode pass covered gray-* and white but missed stone-* and amber-* entirely.",
+  "source": "session"
+ },
+ {
+  "id": "S043",
+  "sev": "medium",
+  "lens": "29 data-integrity",
+  "file": "src/components/BookDetail.tsx",
+  "line": 517,
+  "title": "Personal notes save on blur only, so unmounting mid-edit loses them",
+  "detail": "Browser back, a keyboard route change, or closing the tab unmounts the textarea without firing onBlur. The 'Auto-saves when you click away' label overstates what is actually guaranteed.",
+  "source": "session"
+ },
+ {
+  "id": "S044",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/BookDetail.tsx",
+  "line": 243,
+  "title": "Cover image has no onError fallback",
+  "detail": "A dead cover URL — which S025 makes likely for every Goodreads import — renders the browser's broken-image glyph instead of falling back to placeholderCover.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F059",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/components/BookDetail.tsx",
+  "line": 452,
+  "title": "BookDetail reads the Summary's takeaway while BookCard reads the denormalised copy, and they visibly disagree",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F047",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/BookDetail.tsx",
+  "line": 346,
+  "title": "Per-book retention state is written on every quiz but never shown on the book's own page",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F048",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/BookDetail.tsx",
+  "line": 490,
+  "title": "Actionable Steps are generated for every book and rendered inert — no completion state, no cross-book action list",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F001",
+  "sev": "medium",
+  "lens": "file-decomposition",
+  "file": "src/components/BookDetail.tsx",
+  "line": 33,
+  "title": "BookDetail.tsx (539 lines, repo's largest) bundles a self-contained markdown-to-JSX renderer with the book detail screen",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F026",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/components/ChatModal.test.tsx",
+  "line": 51,
+  "title": "ChatModal > 'stays open and shows the reason' costs 1036 ms because it is the file's FIRST *ByRole query, not because of its own work [IMPORT]",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S117",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/components/ChatModal.tsx",
+  "line": 87,
+  "title": "A stream that fails after emitting text shows a truncated reply and no error",
+  "detail": "The catch only rewrites the last message when entry.text === ''. If the model streamed a partial answer and then the connection dropped, the condition is false, the error message is discarded, and the user is left with a sentence that stops mid-thought and no indication anything went wrong.",
+  "source": "session"
+ },
+ {
+  "id": "S118",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/ChatModal.tsx",
+  "line": 155,
+  "title": "User message bubbles are unreadable in dark mode",
+  "detail": "The bubble flips to dark:bg-gray-900 but the text stays text-gray-800 with no dark pairing. The avatar chip beside it (bg-gray-200, line 146) is also light-only.",
+  "source": "session"
+ },
+ {
+  "id": "S119",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/components/ChatModal.tsx",
+  "line": 73,
+  "title": "Closing the drawer mid-stream does not cancel the request",
+  "detail": "There is no AbortController and no unmount guard, so a closed chat keeps consuming the stream and calling setState on a dead component.",
+  "source": "session"
+ },
+ {
+  "id": "S130",
+  "sev": "medium",
+  "lens": "13 security-sweep",
+  "file": "src/components/ChatModal.tsx",
+  "line": 83,
+  "title": "Raw SDK errors are console-logged without scrubbing — PLAUSIBLE key exposure, needs verification",
+  "detail": "Five call sites do console.error('...', err) with the untouched SDK error. Google client libraries sometimes embed the full request URL in error detail, and the Gemini REST endpoint carries the key as ?key=. If that holds for @google/genai 2.x, the user's key is printed to the console on every failure. I have not confirmed the SDK's error shape, so this is flagged rather than asserted.",
+  "source": "session"
+ },
+ {
+  "id": "S074",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/EReader.tsx",
+  "line": 174,
+  "title": "The reader always opens in light theme even when the app is in dark mode",
+  "detail": "useState<Theme>('light') ignores the app-level theme entirely, so a user reading at night gets a full-screen white page. The reader keeping its own light/sepia/dark control is a reasonable decision; defaulting it against the user's stated preference is not.",
+  "source": "session"
+ },
+ {
+  "id": "S075",
+  "sev": "medium",
+  "lens": "42 state-management",
+  "file": "src/components/EReader.tsx",
+  "line": 173,
+  "title": "Reading position, theme and font size all reset on every open",
+  "detail": "All three are local component state with no persistence. Closing and reopening a long summary returns you to page 1 at the default size — the '% Complete' indicator is computed and displayed but never stored.",
+  "source": "session"
+ },
+ {
+  "id": "S076",
+  "sev": "medium",
+  "lens": "40 frontend-quality",
+  "file": "src/components/EReader.tsx",
+  "line": 320,
+  "title": "Theme and font-size controls are icon-only with no accessible name or pressed state",
+  "detail": "Six toggle buttons carry no aria-label and no aria-pressed, so a screen reader announces six unlabelled buttons with no indication of which is active. The theme swatches also set colours via inline style, bypassing the design tokens used everywhere else.",
+  "source": "session"
+ },
+ {
+  "id": "S077",
+  "sev": "medium",
+  "lens": "19 function-centralization-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 33,
+  "title": "formatInline is duplicated verbatim between EReader and BookDetail",
+  "detail": "Two copies of the same inline-markdown splitter, neither in lib/, neither tested. They have already drifted — BookDetail's applies text colours, EReader's uses inherit/opacity.",
+  "source": "session"
+ },
+ {
+  "id": "S078",
+  "sev": "medium",
+  "lens": "17 cross-cutting-concerns",
+  "file": "src/components/EReader.tsx",
+  "line": 53,
+  "title": "Two different markdown renderers produce different output for the same content",
+  "detail": "RenderFormattedContent supports blockquotes, numbered lists and drop caps; BookDetail's SummaryRenderer supports none of them but does support paragraph grouping on blank lines, which this one does not. The same summary text renders differently depending on which screen you are on.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F013",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/components/EReader.tsx",
+  "line": 395,
+  "title": "`pages[currentPage]` is typed `string` but can be `undefined`, crashing the reader on a whitespace-only deep dive",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F022",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 174,
+  "title": "Reader theme and font size reset to light/text-lg on every open, ignoring the profile the app already persists",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F023",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 219,
+  "title": "Full-screen reader has no keyboard paging and no Escape-to-close — paging is mouse-only",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F024",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 421,
+  "title": "Reaching the end of a summary offers only \"Close Reader\" — the app's one inferable status transition is dropped, and `Book.finishedAt` has never had a writer",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F049",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/EReader.tsx",
+  "line": 224,
+  "title": "Text selection is styled in all three reader themes but selecting a passage does nothing — no way to capture a quote while reading",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S084",
+  "sev": "medium",
+  "lens": "20 building-block-adoption",
+  "file": "src/components/ProfileView.tsx",
+  "line": 97,
+  "title": "handleExport hand-rolls the download helper the file already imports",
+  "detail": "downloadText is imported and used at line 93, then lines 99-107 re-implement it — createObjectURL, anchor, append, click, remove, revoke — just to change the MIME type. downloadText already takes a mimeType argument.",
+  "source": "session"
+ },
+ {
+  "id": "S085",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 87,
+  "title": "Both export paths swallow failures silently",
+  "detail": "handleExportMarkdown is invoked as void handleExportMarkdown() and neither it nor handleExport has a try/catch. A rejection from buildExport produces an unhandled rejection and no user-facing feedback — the button simply does nothing.",
+  "source": "session"
+ },
+ {
+  "id": "S086",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/ProfileView.tsx",
+  "line": 291,
+  "title": "The selected voice chip is invisible in dark mode",
+  "detail": "bg-stone-900 text-white sits on a dark:bg-gray-900 card, so the active selection is a near-black chip on a near-black surface. The unselected chips are legible, which makes the active one look missing rather than selected.",
+  "source": "session"
+ },
+ {
+  "id": "S087",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/ProfileView.tsx",
+  "line": 399,
+  "title": "Danger Zone, Privacy card, export buttons and the goal ring track are all light-only",
+  "detail": "bg-rose-50/border-rose-100/text-rose-900/text-rose-700, bg-blue-50/text-blue-600, bg-stone-100/text-stone-700 (x2), stroke-gray-50 on the progress ring, border-orange-100 on the bio quote, and both import status states carry no dark variants. Twelve sites in this file alone.",
+  "source": "session"
+ },
+ {
+  "id": "S088",
+  "sev": "medium",
+  "lens": "26 default-values-magic-constants",
+  "file": "src/components/ProfileView.tsx",
+  "line": 11,
+  "title": "VOICES duplicates the VoiceName union and can drift from it silently",
+  "detail": "A hand-maintained array that must match the type declared in types.ts. Adding a voice to the union compiles fine and simply never appears in the picker.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F025",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 53,
+  "title": "Monthly goal has no month scoping and no history because Book.finishedAt is declared in the schema and never written",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F026",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 156,
+  "title": "'Edit Profile' cannot edit the profile name — the field is captured at creation and then permanently fixed",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F027",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 275,
+  "title": "The five-voice narration picker gives no way to hear any voice before choosing",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F002",
+  "sev": "medium",
+  "lens": "file-decomposition",
+  "file": "src/components/ProfileView.tsx",
+  "line": 28,
+  "title": "ProfileView mixes profile identity/preference editing with the app's entire library backup-restore-reset surface",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S059",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/components/QuizModal.tsx",
+  "line": 191,
+  "title": "Answer feedback colours have no dark variants",
+  "detail": "Correct (emerald-100/800), wrong (red-100/800), selected (text-orange-800) and the explanation panel (bg-blue-50 / text-blue-800) are all light-only. In dark mode the answer states render as pale blocks with dark text against a dark modal.",
+  "source": "session"
+ },
+ {
+  "id": "S060",
+  "sev": "medium",
+  "lens": "40 frontend-quality",
+  "file": "src/components/QuizModal.tsx",
+  "line": 167,
+  "title": "Close button has no accessible name and answer feedback is not announced",
+  "detail": "The icon-only X carries no aria-label, and the explanation panel that appears after answering has no aria-live region, so a screen-reader user gets no notification that feedback appeared.",
+  "source": "session"
+ },
+ {
+  "id": "S061",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/components/QuizModal.tsx",
+  "line": 41,
+  "title": "Quiz generation has no cancellation path",
+  "detail": "Closing the modal mid-generation leaves the request running and still writes review cards afterwards. There is no AbortController and no unmount guard.",
+  "source": "session"
+ },
+ {
+  "id": "S062",
+  "sev": "medium",
+  "lens": "29 data-integrity",
+  "file": "src/components/QuizModal.tsx",
+  "line": 78,
+  "title": "An out-of-range correctAnswerIndex silently scores every answer wrong",
+  "detail": "correctAnswerIndex comes straight from unvalidated model JSON. If it exceeds options.length no option ever matches, so the user answers correctly and still scores 0, with no indication anything is wrong. The same unvalidated value is persisted into the review deck at line 58.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F017",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/components/QuizModal.tsx",
+  "line": 183,
+  "title": "`correctAnswerIndex` is used as an index into `options` with no bounds relationship in the type; an out-of-range index silently makes the quiz unwinnable",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S113",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/StatsView.tsx",
+  "line": 17,
+  "title": "Total Learning reads 0m for any imported library",
+  "detail": "totalTime sums readingTimeMinutes, which importGoodreadsRows sets to 0 for every row. A 300-book import therefore reports zero learning time, and the milestone card renders 'enough knowledge to discuss deep concepts for over 0 hours straight'.",
+  "source": "session"
+ },
+ {
+  "id": "S114",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/components/StatsView.tsx",
+  "line": 18,
+  "title": "Average rating counts unrated books as zero",
+  "detail": "The mean is taken over every Finished book including those with rating 0, so importing finished-but-unrated books drives the headline average toward 0.0 rather than excluding them.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F061",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/components/StatsView.tsx",
+  "line": 20,
+  "title": "`Book.rating: number` conflates \"unrated\" with \"rated 0\", so the average-rating stat is silently wrong for imported libraries",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F002",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/StatsView.tsx",
+  "line": 14,
+  "title": "The dashboard titled \"Your Progress\" has no time axis, though `Book.addedAt` is written on every book and charted nowhere",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F029",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/StatsView.tsx",
+  "line": 30,
+  "title": "No view of the user's own AI history: `Summary.generatedAt` and `Summary.model` are written on every summary and read by no production code",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F030",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/components/StatsView.tsx",
+  "line": 167,
+  "title": "The \"Wisdom Milestone\" insight card is a hardcoded string chosen by `finished.length > 5`, sitting two lines below the real category data it pretends to describe",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F063",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/components/ui/useFocusTrap.ts",
+  "line": 18,
+  "title": "`querySelectorAll<HTMLElement>` is an unchecked assertion over a runtime selector string in the app's shared focus trap",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F018",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/goodreadsImport.test.tsx",
+  "line": 9,
+  "title": "The only CSV fixture is a canonical Goodreads header, so the parser's silent-coercion path for foreign CSVs is untested",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F013",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/features/library/goodreadsImport.test.tsx",
+  "line": 22,
+  "title": "Two library test files carry a byte-identical jsdom+IndexedDB harness, paying two full runner boots for 0.99s of assertions",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S121",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 19,
+  "title": "Re-selecting the same file after an error does nothing",
+  "detail": "The input's value is never reset, so choosing the identical file a second time fires no change event. After a parse failure the obvious recovery — pick the file again — is silently inert.",
+  "source": "session"
+ },
+ {
+  "id": "S098",
+  "sev": "medium",
+  "lens": "50 product-polish",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 207,
+  "title": "Filtering to an empty result offers 'Add Your First Book' instead of clearing the filter",
+  "detail": "The CTA is gated only on !searchQuery, so a user with 200 books who selects 'Finished' and has none is told to add their first book. The obvious action — reset the filter — is not offered.",
+  "source": "session"
+ },
+ {
+  "id": "S099",
+  "sev": "medium",
+  "lens": "50 product-polish",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 25,
+  "title": "An empty library shows hardcoded recommendations with a refresh button that silently does nothing",
+  "detail": "recommendations defaults to RECOMMENDED_BOOKS so the carousel always renders, but refreshRecommendations returns immediately when books.length === 0. The user sees a Refresh control that never changes anything and no explanation.",
+  "source": "session"
+ },
+ {
+  "id": "S100",
+  "sev": "medium",
+  "lens": "41 ui-ux",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 178,
+  "title": "The active category chip is near-invisible in dark mode",
+  "detail": "bg-gray-900 text-white with no dark variant on a dark:bg-night page. Same defect class as the quiz's Next button (S058) and the voice chip (S086) — a hardcoded dark surface used as a selected state.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F067",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 35,
+  "title": "localStorage recommendation cache is cast to a concrete shape and rendered without validation",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F068",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 188,
+  "title": "LibraryPage renders the zero-books empty state during the initial load because it never reads `isLoading`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F031",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 22,
+  "title": "react-router is a production dep used only as a path->component map; library filter state never reaches the URL",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F032",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 54,
+  "title": "One hardcoded sort order for the library, with no user control and no persisted view state",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F052",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 86,
+  "title": "`previewRecommendation` does not preview — it spends an AI call and permanently adds the book; the preview UI it was named for is dead code",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F033",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/library/recommendationDefaults.ts",
+  "line": 7,
+  "title": "Recommendation seed list is a fixed six-book array never deduped against the user's own library",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F020",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.test.tsx",
+  "line": 11,
+  "title": "The isLoading flag is only ever waited through, never asserted, so the false empty state on cold load is invisible",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F021",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.test.tsx",
+  "line": 84,
+  "title": "saveSummary is called by zero tests and the one summary test never asserts the denormalised Book fields",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S138",
+  "sev": "medium",
+  "lens": "31 idempotency-safe-retry",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 102,
+  "title": "No import path is safe to retry after a partial failure",
+  "detail": "Both importLibrary and importGoodreadsRows write row by row with no transaction and no resume marker. A failure at book 200 of 300 leaves 199 written; the user's only recourse is to run it again, which re-walks the whole file and — for the JSON path — rewrites every summary (S001).",
+  "source": "session"
+ },
+ {
+  "id": "S019",
+  "sev": "medium",
+  "lens": "29 data-integrity",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 111,
+  "title": "importLibrary preserves the source book id and put()s it",
+  "detail": "books.create honours input.id, and put overwrites. A backup carrying an id that already exists under a different profile silently reassigns that book instead of importing a copy.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F023",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 170,
+  "title": "useLibrary returns an untagged `{ books, isLoading }` bag, so `Book[]` cannot distinguish 'empty' from 'not loaded yet'",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F069",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 185,
+  "title": "The feature's entire public contract is inferred: `LibraryApi = ReturnType<typeof useLibraryState>`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F070",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/profile/ProfileContext.test.tsx",
+  "line": 16,
+  "title": "selectProfile is wired behind a non-null assertion that would throw, and no test ever clicks it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S128",
+  "sev": "medium",
+  "lens": "34 implicit-ordering-hidden-dependencies",
+  "file": "src/features/profile/ProfileContext.tsx",
+  "line": 35,
+  "title": "Migration-before-read is a load-bearing ordering enforced only by statement order in one effect",
+  "detail": "migrateLegacyData() must complete before profileRepo.list() or a legacy user sees an empty profile picker and can create a duplicate. Nothing encodes that dependency — no guard, no marker check at the repo layer, just two awaits in sequence inside a component. Any future caller that reads profiles earlier reintroduces the bug.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F071",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/profile/ProfileContext.tsx",
+  "line": 10,
+  "title": "ProfileContextValue models loading and profile as independent fields, so the type permits acting on a null profile mid-load",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S107",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 98,
+  "title": "Options are keyed by their own text",
+  "detail": "key={option} collides whenever the model emits two identical options, which produces React key warnings and can attach the wrong selection state to a button.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F034",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 7,
+  "title": "Grade buttons show hardcoded interval hints when the exact next interval is one pure-function call away",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F035",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 130,
+  "title": "No keyboard shortcuts in the review session, the app's only high-repetition surface",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F025",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/review/reviewQueue.test.tsx",
+  "line": 144,
+  "title": "The suite's only options: [] card is built to be cascade-deleted, never mounted in the queue",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F074",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/features/review/useReviewQueue.ts",
+  "line": 46,
+  "title": "useReviewQueue has no return annotation, so `current` is inferred as a definite ReviewCard while the runtime returns undefined",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F036",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/features/settings/useTheme.ts",
+  "line": 33,
+  "title": "The per-profile preference mechanism exists but persists exactly one preference; reader theme and font size reset on every open",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F026",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/apiKey.test.ts",
+  "line": 1,
+  "title": "src/lib/ai ships 11 modules and 2 test files; every JSON.parse-as-T boundary is in the untested nine",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S034",
+  "sev": "medium",
+  "lens": "42 state-management",
+  "file": "src/lib/ai/apiKey.ts",
+  "line": 30,
+  "title": "API key changes in another tab are never observed",
+  "detail": "The module keeps its own listener set but never subscribes to the window storage event, so a key added in a second tab leaves the first tab still gating AI actions.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F076",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/chat.ts",
+  "line": 35,
+  "title": "sendMessageStream returns `Promise<string>` that is silently empty on a blocked completion, leaving a permanently blank chat bubble",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S015",
+  "sev": "medium",
+  "lens": "39 cost-resource-optimization",
+  "file": "src/lib/ai/client.ts",
+  "line": 24,
+  "title": "testApiKey burns a full generateContent call on the summary model",
+  "detail": "Key validation costs a real inference on every save. A models.list call would validate credentials for free.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F027",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/errors.test.ts",
+  "line": 4,
+  "title": "apiError fixture defaults its message to 'boom', so the 403 -> invalid-key assertion proves nothing",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F077",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/errors.test.ts",
+  "line": 4,
+  "title": "No fixture passes a non-object to toAiError(error: unknown), which throws on null/undefined via an unguarded as-cast",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S005",
+  "sev": "medium",
+  "lens": "36 error-message-quality",
+  "file": "src/lib/ai/errors.ts",
+  "line": 59,
+  "title": "HTTP 400 mapped to 'invalid-key'",
+  "detail": "400 is usually a malformed or oversized request, not a bad key. An over-limit PDF upload tells the user their API key was rejected.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F028",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/errors.ts",
+  "line": 40,
+  "title": "statusOf asserts an `unknown` caught value into an object and dereferences it, so toAiError throws a TypeError instead of returning an AiError for null/undefined",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F037",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/models.ts",
+  "line": 2,
+  "title": "One fixed quality tier and no regenerate — the pro model is already wired but unreachable for summaries, and `Summary.model` is recorded and never read",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F038",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 39,
+  "title": "Ratings, status, priority, personal notes and the deep-dive are collected but never reach any prompt",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S032",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/lib/ai/quiz.ts",
+  "line": 17,
+  "title": "Malformed quiz JSON silently yields zero questions",
+  "detail": "data.questions ?? [] turns a shape failure into an empty quiz. The user sees an empty modal rather than an explanation, and zero review cards are created.",
+  "source": "session"
+ },
+ {
+  "id": "S033",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/lib/ai/recommend.ts",
+  "line": 34,
+  "title": "One failing cover lookup discards all six recommendations",
+  "detail": "Promise.all rejects as a whole, losing the entire paid response.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F079",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 8,
+  "title": "`category` is an unconstrained STRING in the schema, a plain `string` in TS, and the allowed list exists only in prompt prose",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F080",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 18,
+  "title": "`rating` and `readingTimeMinutes` carry their ranges only in description text and are persisted unvalidated",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F032",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/schemas.ts",
+  "line": 69,
+  "title": "QUIZ_SCHEMA leaves correctAnswerIndex as NUMBER and options unbounded, so the only enforcement layer permits ungradeable quizzes",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S017",
+  "sev": "medium",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 60,
+  "title": "summarizePdf inlines the whole PDF with no size check",
+  "detail": "Gemini's inline-data limit is ~20MB. A larger upload 400s, and per S005 that 400 is then reported as an invalid API key — two bugs chaining into a completely misleading message.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F033",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 36,
+  "title": "`?? []` / `|| 'fallback'` in toGenerated guard only nullish values, so a wrong-typed field is persisted and crashes every later read",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F039",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/summarize.ts",
+  "line": 52,
+  "title": "Token usage is returned on every AI response and thrown away — no cost visibility in a bring-your-own-key product",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F081",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/ai/tts.ts",
+  "line": 27,
+  "title": "The audio part's mimeType is discarded and the PCM format is hardcoded, so a format change produces silently corrupt WAV",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F015",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/lib/audio/wav.test.ts",
+  "line": 1,
+  "title": "Two WAV-header assertions (16.1 ms) pay a jsdom boot; `Blob`/`DataView` are Node globals",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F036",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/base64.test.ts",
+  "line": 4,
+  "title": "base64 suite has two happy-path tests only; base64ToBytes is total in its type but throws on the one input path it serves",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F016",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/lib/base64.test.ts",
+  "line": 1,
+  "title": "Two pure base64 assertions (10.2 ms) pay a full jsdom + fake-IndexedDB + React Testing Library boot (~7.3 s)",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S029",
+  "sev": "medium",
+  "lens": "38 performance",
+  "file": "src/lib/base64.ts",
+  "line": 14,
+  "title": "bytesToBase64 converts a whole PDF on the main thread",
+  "detail": "A per-byte loop plus btoa over a multi-megabyte buffer blocks rendering for seconds with no chunking and no yield.",
+  "source": "session"
+ },
+ {
+  "id": "test-efficiency/F017",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/lib/contrast.test.ts",
+  "line": 2,
+  "title": "All 4 pure-logic lib tests (50 tests, 143.6 ms of assertions) are booted through jsdom + the React/fake-indexeddb setup graph they never touch",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F085",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/covers/googleBooks.ts",
+  "line": 12,
+  "title": "Google Books HTTP response asserted into a shape with zero runtime validation",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F040",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/covers/googleBooks.ts",
+  "line": 8,
+  "title": "Three cover candidates are fetched and two thrown away, and a book's cover can never be changed after it is created",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F016",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/covers/googleBooks.ts",
+  "line": 12,
+  "title": "Both providers parse a rich metadata response down to a single image URL, discarding page counts and subjects that Book already has fields for",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F018",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/lib/covers/index.test.ts",
+  "line": 1,
+  "title": "Cover-lookup tests (43 ms, fetch fully stubbed) pay a full jsdom + fake-IndexedDB + RTL boot they never use",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S028",
+  "sev": "medium",
+  "lens": "38 performance",
+  "file": "src/lib/covers/index.ts",
+  "line": 12,
+  "title": "Cover lookups are uncached and cost up to 3 network round trips each",
+  "detail": "fetchGoogleBooksCover alone issues two sequential queries. getAIRecommendations Promise.all's six of these, so one refresh can fire eighteen requests, repeated for the same titles on every refresh.",
+  "source": "session"
+ },
+ {
+  "id": "feature-discovery/F041",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/covers/index.ts",
+  "line": 12,
+  "title": "fetchCover accepts only title and author, forcing a second unvalidated ISBN cover path to live outside the chain",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F086",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/covers/openLibrary.ts",
+  "line": 6,
+  "title": "OpenLibrary search response asserted to `{ docs?: { cover_i?: number }[] }` without validation",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S030",
+  "sev": "medium",
+  "lens": "35 resource-lifecycle-cleanup",
+  "file": "src/lib/download.ts",
+  "line": 11,
+  "title": "revokeObjectURL runs synchronously after click(), which can cancel the download",
+  "detail": "Firefox in particular has not necessarily begun reading the blob when the same task revokes the URL. The usual fix is to defer the revoke a tick.",
+  "source": "session"
+ },
+ {
+  "id": "S025",
+  "sev": "medium",
+  "lens": "32 external-integration-reliability",
+  "file": "src/lib/goodreads.ts",
+  "line": 122,
+  "title": "coverForIsbn omits ?default=false, so unknown ISBNs render a blank image",
+  "detail": "OpenLibrary serves a 1x1 transparent placeholder rather than a 404 for ISBNs it does not hold. Without default=false the URL always looks valid, so the local placeholder fallback is never reached and imported books show an empty cover.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F089",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.ts",
+  "line": 96,
+  "title": "Every CSV indexed access is typed as a definite value; the runtime guards are invisible to the compiler",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F090",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.ts",
+  "line": 104,
+  "title": "CSV `My Rating` coerced with parseInt and stored unvalidated as an unbounded `number`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F042",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/goodreads.ts",
+  "line": 90,
+  "title": "Goodreads `My Review` and `Private Notes` columns are never parsed, though `Book.personalNotes` is a first-class edited-and-exported field",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F054",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/goodreads.ts",
+  "line": 113,
+  "title": "`Date Read` is parsed into `GoodreadsRow.dateRead` then silently discarded; `Book.finishedAt` exists in the schema but is never written or read anywhere",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S011",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/lib/storage/db.ts",
+  "line": 21,
+  "title": "getDb() has no failure path",
+  "detail": "If IndexedDB is unavailable (Firefox private browsing, blocked site data, storage pressure) openDB rejects and the rejection surfaces as an unhandled boot error rather than an explanation.",
+  "source": "session"
+ },
+ {
+  "id": "S012",
+  "sev": "medium",
+  "lens": "30 error-recovery",
+  "file": "src/lib/storage/db.ts",
+  "line": 23,
+  "title": "openDB registers no blocked/blocking/terminated handlers",
+  "detail": "With DB_VERSION at 1 nothing upgrades yet, but the first version bump will deadlock silently for any user with a second tab open.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F006",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.test.ts",
+  "line": 8,
+  "title": "Migration fixtures are always well-formed, so a throwing migration that permanently hangs boot is green",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F041",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.test.ts",
+  "line": 96,
+  "title": "Migration test asserts summaryId but never the denormalised oneSentenceTakeaway it must move with",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S014",
+  "sev": "medium",
+  "lens": "29 data-integrity",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 140,
+  "title": "finishedAt is never populated for migrated 'Finished' books",
+  "detail": "The legacy record has no equivalent and none is synthesised, so migrated books cannot count toward any month and the monthly goal under-reports permanently.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F042",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 94,
+  "title": "LegacyProfile declares current-app union types for unvalidated JSON, and those values are persisted as a typed Profile",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F096",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 127,
+  "title": "keyInsights/actionableSteps defaulted with ?? [] are declared string[] but a non-array legacy value survives",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F097",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/migrate.ts",
+  "line": 136,
+  "title": "base64ToBytes is handed a value only declared to be a string, on the unguarded boot path",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F045",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 13,
+  "title": "The only books.create fixture cannot produce a fat record, so the 'no binary data in records' invariant is unguarded",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S127",
+  "sev": "medium",
+  "lens": "10 api-design-consistency",
+  "file": "src/lib/storage/repo.ts",
+  "line": 42,
+  "title": "The repo modules disagree with each other about cascading and about what they accept",
+  "detail": "books.remove and profiles.remove cascade; summaries.remove does not. create takes a partial input object, update takes a whole entity, upsert takes a whole entity — three conventions across five modules. listByProfile uses an index, listByBook full-scans. A caller cannot predict any of it from the shape.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F046",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 8,
+  "title": "profiles.list() types getAll output from the DBSchema declaration and immediately calls a string method on it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F047",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 44,
+  "title": "books read path returns DBSchema-declared Book[] with no runtime guard; numeric fields are consumed in arithmetic downstream",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F049",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 143,
+  "title": "blobs.get trusts record.bytes and record.type verbatim; a non-ArrayBuffer silently produces a corrupt Blob instead of an error",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F113",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 113,
+  "title": "summaries.getByBook returns an unverified index hit typed Summary, whose array fields are consumed without guards",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F114",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 138,
+  "title": "The stored MIME type is an unconstrained string, uncoupled from BlobKind, and is replayed into a same-origin blob: URL",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F043",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/storage/repo.ts",
+  "line": 92,
+  "title": "The card store has no browse or management surface — listByBook exists purely for dedup and cards can only be removed by deleting the book",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F019",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/lib/storage/repo.ts",
+  "line": 129,
+  "title": "PDFs can only be attached when a book is created, so every Goodreads-imported book is permanently PDF-less",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F004",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/test/setup.ts",
+  "line": 2,
+  "title": "The single global setup file installs a full IndexedDB implementation and the jest-dom matcher set into all 24 test files — 167.15s of cumulative setup time, most of it for files that use neither",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F021",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/test/setup.ts",
+  "line": 13,
+  "title": "Shared setup file hard-requires DOM globals, blocking the documented `node` environment escape hatch for every pure-logic test",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F005",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/test/smoke.test.tsx",
+  "line": 8,
+  "title": "smoke.test.tsx is the single most expensive file in the suite (4,328 ms, 24% of all test-body time) because 4 of its 5 tests boot the whole app",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F006",
+  "sev": "medium",
+  "lens": "test-efficiency",
+  "file": "src/test/smoke.test.tsx",
+  "line": 64,
+  "title": "The slowest single test in the whole 176-test suite (2,183 ms) sits in the smoke tier and is 8 UI steps deep, 3 of them re-doing the previous test's flow",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S018",
+  "sev": "medium",
+  "lens": "16 codebase-cleanup",
+  "file": "src/types.ts",
+  "line": 6,
+  "title": "Category enum is exported but nothing consumes it",
+  "detail": "Book.category is typed `string`. The enum is dead weight that reads like a constraint the code does not actually enforce.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F103",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 24,
+  "title": "ISO-8601 timestamps are bare strings whose format is load-bearing for sorting, and one is piped in unvalidated from localStorage",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F106",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 51,
+  "title": "Book.hasPdf is a denormalised copy of blob-store existence that the caller must state twice, unchecked",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F108",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 99,
+  "title": "LibraryExport.version is a literal tag that no consumer ever narrows on, so older backups import as v2",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F044",
+  "sev": "medium",
+  "lens": "feature-discovery",
+  "file": "src/types.ts",
+  "line": 6,
+  "title": "The Category enum is dead code; the real taxonomy is prose in an AI prompt and the user can never set a category",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F109",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 8,
+  "title": "noUncheckedIndexedAccess is off — 10 real unchecked-index sites, several on rendered UI paths",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F110",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 8,
+  "title": "exactOptionalPropertyTypes is off — 9 sites write explicit `undefined` into `?:` fields persisted to IndexedDB",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F111",
+  "sev": "medium",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 8,
+  "title": "noPropertyAccessFromIndexSignature is off, masking a lying `Record<string, string>` on the Google Books boundary",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S133",
+  "sev": "medium",
+  "lens": "05 test-architecture",
+  "file": "vite.config.ts",
+  "line": 17,
+  "title": "Suite wall-clock is dominated by environment construction, not by tests",
+  "detail": "176 tests take 126s, of which the reported environment time is 430s of worker time across the pool. jsdom plus fake-indexeddb plus jest-dom is rebuilt for all 24 files including the twelve that touch no DOM at all. Splitting node-environment tests from jsdom ones via environmentMatchGlobs would cut the common case substantially.",
+  "source": "session"
+ },
+ {
+  "id": "test-efficiency/F033",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": ".github/workflows/ci.yml",
+  "line": 3,
+  "title": "No `concurrency` group — superseded runs are never cancelled, so a rapid push sequence runs N full pipelines to completion",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F034",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": ".github/workflows/ci.yml",
+  "line": 24,
+  "title": "`tsc --noEmit` runs twice per CI run — line 20 explicitly, then again inside `npm run build` at line 24",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F025",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": ".github/workflows/ci.yml",
+  "line": 23,
+  "title": "CI preserves no test-run manifest and no per-test timing, so neither a slowest-decile baseline nor a short collection is detectable from a CI run",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F042",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "package.json",
+  "line": 14,
+  "title": "No fast-tier test script: `npm test` is all-or-nothing across 24 jsdom files, and `test:smoke` pays a full per-file boot for one file",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S140",
+  "sev": "low",
+  "lens": "01 documentation",
+  "file": "README.md",
+  "line": 74,
+  "title": "README forward-references packaging that does not exist yet",
+  "detail": "It points readers at a hosted demo, screenshots and a contributing guide, and at docs/superpowers/ for design. The docs directory is real; LICENSE, CONTRIBUTING, SECURITY, the demo and the screenshots are not. Honest about being pre-Phase-4, but the links are dead today.",
+  "source": "session"
+ },
+ {
+  "id": "S136",
+  "sev": "low",
+  "lens": "23 scar-tissue-analysis",
+  "file": "src",
+  "line": 1,
+  "title": "NEGATIVE RESULT — no scar tissue found",
+  "detail": "Zero TODO, FIXME, HACK, XXX, @ts-ignore, @ts-expect-error or eslint-disable comments across 65 source files. .env.example is accurate and explains why no build-time key exists. Reported so the absence is on record rather than assumed unchecked.",
+  "source": "session"
+ },
+ {
+  "id": "S137",
+  "sev": "low",
+  "lens": "22 architectural-complexity",
+  "file": "src/app",
+  "line": 1,
+  "title": "NEGATIVE RESULT — layering is proportionate",
+  "detail": "Three contexts (Profile, Library, Shell), a repo module, and a lib/ that genuinely stays framework-free. No premature plugin systems, no abstractions with a single implementation, no layers that exist for one consumer. The oversized files are a decomposition problem, not an architecture problem.",
+  "source": "session"
+ },
+ {
+  "id": "S096",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/app/AppShell.tsx",
+  "line": 152,
+  "title": "Switch-profile hover state is light-only",
+  "detail": "hover:bg-red-50 has no dark pairing, so the hover wash disappears in dark mode.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F115",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/app/AppShell.tsx",
+  "line": 70,
+  "title": "Indexed access is typed Book but is Book | undefined at runtime; the author's own guard is dead code per the types",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S134",
+  "sev": "low",
+  "lens": "48 observability",
+  "file": "src/app/ErrorBoundary.tsx",
+  "line": 1,
+  "title": "Errors reaching the boundary are not recorded anywhere the user can retrieve",
+  "detail": "For a local-first app with no server this is largely correct, but a user reporting a bug has nothing to send: no error detail surfaced in the UI, no copyable diagnostic, nine scattered console calls and no consistent prefix to grep for.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F116",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/app/routes.tsx",
+  "line": 19,
+  "title": "Route paths and param names are bare strings with no compile-time link to their navigation consumers",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S070",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 257,
+  "title": "Error banner and selected-file label are light-only",
+  "detail": "bg-red-50 / text-red-600 / border-red-100 and text-orange-900 carry no dark variants.",
+  "source": "session"
+ },
+ {
+  "id": "S071",
+  "sev": "low",
+  "lens": "36 error-message-quality",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 91,
+  "title": "File validation rejects on MIME type alone",
+  "detail": "A PDF whose type the OS reports as empty string is refused with 'Please select a valid PDF file' even though the accept filter allowed it, and a renamed non-PDF with a spoofed type passes.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F057",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 42,
+  "title": "`reader.result as string` asserts away `ArrayBuffer | null` at the PDF file boundary, then indexes the split result without a bounds check",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F058",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 91,
+  "title": "A file is accepted as \"a PDF\" on the strength of the browser-reported `File.type` alone, and the advertised 10MB limit is never enforced",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F059",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/AddBookModal.tsx",
+  "line": 30,
+  "title": "Add-book form resets status, priority and rating to static defaults on every open",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S053",
+  "sev": "low",
+  "lens": "21 code-elegance",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 222,
+  "title": "Conflicting display utilities on one element",
+  "detail": "`flex items-center gap-4 hidden sm:flex` — `flex` and `hidden` both apply; it renders correctly only because of stylesheet source order.",
+  "source": "session"
+ },
+ {
+  "id": "S055",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 97,
+  "title": "formatTime renders NaN:NaN when metadata never loads",
+  "detail": "If the blob fails to decode, onLoadedMetadata never fires and duration stays 0 — but currentTime on a broken element can be NaN, which formats as 'NaN:NaN'.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F148",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 64,
+  "title": "`HTMLMediaElement.duration` enters state as a plain `number` that can be `NaN` or `Infinity`, and is then both formatted and truthiness-tested",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F056",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 24,
+  "title": "Playback speed resets to 1x on every play, though the profile already persists the sibling audio preference",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F057",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 111,
+  "title": "No way to save the generated narration, despite an established download helper and a local-first product stance",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F066",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/AudioPlayer.tsx",
+  "line": 12,
+  "title": "The player models exactly one track with no next/previous — no listening queue over a multi-book library",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F011",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/components/BookDetail.test.tsx",
+  "line": 55,
+  "title": "BookDetail > 'offers Chat and Quiz for a book that has a summary' costs 939 ms to assert two buttons exist [IMPORT]",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S135",
+  "sev": "low",
+  "lens": "52 strategic-opportunities",
+  "file": "src/components/BookDetail.tsx",
+  "line": 461,
+  "title": "The single highest-value missing feature is a Summarise button",
+  "detail": "Goodreads import is the headline acquisition feature and it deliberately creates unsummarised books, but there is no action anywhere that turns one into a summarised book. Every other AI capability is gated behind having a summary, so the import funnel terminates in a dead end. This is one button wired to summarizeBook plus saveSummary, and it unlocks chat, quiz, audio, deep dive and the review deck for every imported title.",
+  "source": "session"
+ },
+ {
+  "id": "S045",
+  "sev": "low",
+  "lens": "21 code-elegance",
+  "file": "src/components/BookDetail.tsx",
+  "line": 34,
+  "title": "A hand-rolled markdown renderer lives inside a component file",
+  "detail": "formatInline and SummaryRenderer are ~80 lines of parsing logic with array-index keys, embedded in the page component rather than in lib/ where the project's other pure transforms live and where they could be tested.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F117",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/BookDetail.tsx",
+  "line": 71,
+  "title": "Unchecked-indexed-access cluster: 7 sites across the lot typed `string` where the runtime can yield `undefined`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F118",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/BookDetail.tsx",
+  "line": 199,
+  "title": "Blob MIME type is a bare `string` carried from storage into `window.open` with no check",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F067",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/BookDetail.tsx",
+  "line": 509,
+  "title": "Notes exist on every book but there is no in-app surface that shows them together",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F035",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/components/ChatModal.test.tsx",
+  "line": 5,
+  "title": "ChatModal.test.tsx's @google/genai cascade is unavoidable — the subject under test pulls the SDK itself, so L03's remedy does not apply here",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F003",
+  "sev": "low",
+  "lens": "file-decomposition",
+  "file": "src/components/ChatModal.tsx",
+  "line": 116,
+  "title": "Icon-only close buttons in ChatModal and QuizModal have no accessible name",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F119",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/DailyWisdomModal.tsx",
+  "line": 71,
+  "title": "`coverImageUrl: string` doubles as a \"no cover\" sentinel that only BookCard knows about; DailyWisdomModal renders it raw",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S079",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/components/EReader.tsx",
+  "line": 130,
+  "title": "Numbered-list detection mis-parses decimals at the start of a line",
+  "detail": "/^\\d+\\./ matches '1.5 million people…', which is then rendered as list item number 1 with the remainder as its body.",
+  "source": "session"
+ },
+ {
+  "id": "S080",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/components/EReader.tsx",
+  "line": 219,
+  "title": "No keyboard paging in a reading surface",
+  "detail": "Arrow keys, PageUp/PageDown and Space do nothing; turning a page requires clicking one of two small footer buttons.",
+  "source": "session"
+ },
+ {
+  "id": "file-decomposition/F004",
+  "sev": "low",
+  "lens": "file-decomposition",
+  "file": "src/components/EReader.tsx",
+  "line": 27,
+  "title": "EReader.tsx (477 lines) bundles a 135-line themed markdown renderer with the reader shell; clean one-directional split available",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S089",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/components/ProfileView.tsx",
+  "line": 54,
+  "title": "A monthlyGoal of 0 renders the ring as 100% complete",
+  "detail": "Division by zero yields Infinity, which Math.min clamps to 100. The range input enforces min=1, but a migrated legacy profile can carry 0.",
+  "source": "session"
+ },
+ {
+  "id": "S090",
+  "sev": "low",
+  "lens": "50 product-polish",
+  "file": "src/components/ProfileView.tsx",
+  "line": 409,
+  "title": "Reset All fires onResetLibrary with no confirmation at this level",
+  "detail": "The most destructive control in the app is a single click here; whether it is guarded depends entirely on what the parent passes in.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F120",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ProfileView.tsx",
+  "line": 53,
+  "title": "`monthlyGoal: number` permits 0 and NaN, producing `strokeDasharray=\"NaN, 100\"`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F060",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ProfileView.tsx",
+  "line": 116,
+  "title": "`e.target?.result as string` erases three real possibilities from FileReader's result",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F050",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/ProfileView.tsx",
+  "line": 258,
+  "title": "The profile's free-text 'Bio & Motivation' never reaches the AI recommender, which sees only titles and categories",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S063",
+  "sev": "low",
+  "lens": "38 performance",
+  "file": "src/components/QuizModal.tsx",
+  "line": 52,
+  "title": "Review cards are written one awaited transaction at a time",
+  "detail": "A sequential await inside the loop serialises five independent IndexedDB writes.",
+  "source": "session"
+ },
+ {
+  "id": "S115",
+  "sev": "low",
+  "lens": "21 code-elegance",
+  "file": "src/components/StatsView.tsx",
+  "line": 18,
+  "title": "avgRating returns a string or a number depending on the branch",
+  "detail": "toFixed(1) yields '4.0' while the empty case yields the number 0, so the card renders '0' where it otherwise renders '0.0'.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F121",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/StatsView.tsx",
+  "line": 23,
+  "title": "`Record<string, number>` claims total key coverage; only a `|| 0` coercion saves the read of a key that does not exist yet",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F028",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/StatsView.tsx",
+  "line": 12,
+  "title": "Category bars are inert while the two status cards drill down — the filter state is typed `BookStatus | null` so it cannot express a category",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F062",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ui/ConfirmDialog.tsx",
+  "line": 19,
+  "title": "Pending-confirm state is split across a nullable state field and a nullable ref that the types never tie together, so `Promise<boolean>` can hang forever",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F012",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/components/ui/Dialog.test.tsx",
+  "line": 39,
+  "title": "Dialog > 'traps Tab inside the dialog' costs 1038 ms — 3 direct-API userEvent.tab() calls at ~175-316 ms each [CPU]",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F027",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/components/ui/Dialog.test.tsx",
+  "line": 21,
+  "title": "First *ByRole query per file adds 400-900 ms in all three component test files in this lot, inflating 3 of the suite's top 6 slowest tests",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F123",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ui/Dialog.tsx",
+  "line": 12,
+  "title": "`Dialog`'s `size` prop is a bare `string` where only a handful of Tailwind max-width classes are valid",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F006",
+  "sev": "low",
+  "lens": "file-decomposition",
+  "file": "src/components/ui/Dialog.tsx",
+  "line": 24,
+  "title": "Modal shell (backdrop + aria-modal root) is hand-rolled in three components instead of reusing components/ui/Dialog, and the copy has drifted",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F124",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ui/toastStore.test.ts",
+  "line": 25,
+  "title": "Redundant non-null assertions on array indices mark a tsconfig gap the tests would then mask",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F036",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/components/ui/toastStore.test.ts",
+  "line": 1,
+  "title": "toastStore.test.ts runs 16 ms of DOM-free logic inside a full jsdom environment with fake-indexeddb and Testing Library loaded",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F051",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/components/ui/toastStore.ts",
+  "line": 21,
+  "title": "The app's only notification channel carries text only — no action affordance, and one of its three kinds is dead",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F126",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/components/ui/useFocusTrap.ts",
+  "line": 25,
+  "title": "`document.activeElement as HTMLElement | null` asserts a `.focus()` method onto a base `Element`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F064",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/goodreadsImport.test.tsx",
+  "line": 55,
+  "title": "Optional chain over Array.find's Book | undefined makes the summaryId assertion vacuous",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F038",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/features/library/goodreadsImport.test.tsx",
+  "line": 99,
+  "title": "`imports a large library without any AI cost` spends 251ms on 200 sequential IndexedDB writes to assert one integer, and never checks the AI invariant it is named for",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S122",
+  "sev": "low",
+  "lens": "50 product-polish",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 79,
+  "title": "The preview does not mention that every book will land in the 'Other' category",
+  "detail": "The Bookshelves column is never parsed, so all imported books get category 'Other', collapsing the topic filter, the category breakdown and the Knowledge Topography panel. The preview reports counts and skips but not this.",
+  "source": "session"
+ },
+ {
+  "id": "S123",
+  "sev": "low",
+  "lens": "38 performance",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 24,
+  "title": "The whole CSV is read into memory with no size guard",
+  "detail": "await file.text() on an arbitrarily large user-picked file, then a full parse, all on the main thread.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F066",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/GoodreadsImport.tsx",
+  "line": 15,
+  "title": "Import workflow held as three independent states, letting a failed pick import the previous file's rows",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S101",
+  "sev": "low",
+  "lens": "21 code-elegance",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 86,
+  "title": "previewRecommendation does not preview — it creates the book and navigates away",
+  "detail": "The name survives from the removed preview flow. It also awaits getSummary(created.id) at line 95 and discards the result, which is a database round trip with no effect.",
+  "source": "session"
+ },
+ {
+  "id": "S102",
+  "sev": "low",
+  "lens": "38 performance",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 65,
+  "title": "categories rebuilds a Set over the whole library on every render",
+  "detail": "Unlike filteredBooks it is not memoised, so every keystroke in the search box re-derives it.",
+  "source": "session"
+ },
+ {
+  "id": "S103",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 153,
+  "title": "Status filter labels and the empty-state icon lack dark variants",
+  "detail": "text-emerald-700 and text-amber-700 for the active Finished / Want to Read tabs, and text-gray-300 on the empty-state glyph.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F128",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 22,
+  "title": "The 'All' sentinel shares a value space with real, AI-generated category strings",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F129",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/LibraryPage.tsx",
+  "line": 56,
+  "title": "Priority score map typed `Record<string, number>` instead of `Record<Priority, number>`",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F130",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/RecommendationCarousel.tsx",
+  "line": 12,
+  "title": "A recommendation title doubles as its identity for both the React key and the in-flight marker",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F039",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/features/library/useLibrary.test.tsx",
+  "line": 67,
+  "title": "PDF blob test allocates and structured-clones 10 MB when ~64 KB proves the same invariant",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F131",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/library/useLibrary.tsx",
+  "line": 128,
+  "title": "The 'no active profile' precondition is unrepresentable in the mutators' return types, and is reported to the user as success",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F028",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/features/profile/ProfileContext.test.tsx",
+  "line": 41,
+  "title": "`selects a newly created profile and persists the selection` is 569ms — the lot's slowest test and 59% of its file's body time",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S020",
+  "sev": "low",
+  "lens": "50 product-polish",
+  "file": "src/features/profile/ProfileContext.tsx",
+  "line": 62,
+  "title": "selectProfile silently no-ops on an unknown id",
+  "detail": "Returns without setting state or reporting anything, so a stale deep link to a deleted profile just does nothing.",
+  "source": "session"
+ },
+ {
+  "id": "S108",
+  "sev": "low",
+  "lens": "50 product-polish",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 52,
+  "title": "Finishing a session shows the same 'Nothing due' empty state as never having started one",
+  "detail": "There is no completion summary — no count of what was reviewed, no accuracy, no sense of having finished. The reward for clearing a deck is identical to the screen you would see if the deck were empty.",
+  "source": "session"
+ },
+ {
+  "id": "S109",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 12,
+  "title": "Grade button hover states are light-only",
+  "detail": "Each GRADES entry pairs bg/text with dark variants but leaves hover:bg-*-100 unpaired, so hovering in dark mode washes the button back to a light colour.",
+  "source": "session"
+ },
+ {
+  "id": "S110",
+  "sev": "low",
+  "lens": "41 ui-ux",
+  "file": "src/features/review/ReviewPage.tsx",
+  "line": 131,
+  "title": "No keyboard grading in a keyboard-shaped task",
+  "detail": "Spaced repetition is a rapid-fire keyboard activity everywhere it exists; here all four grades require a mouse click, and the options themselves have no number shortcuts.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F073",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/review/reviewQueue.test.tsx",
+  "line": 10,
+  "title": "The probe binds to an inferred hook contract in which current: queue[0] is typed ReviewCard, not ReviewCard | undefined",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F044",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/features/review/reviewQueue.test.tsx",
+  "line": 131,
+  "title": "Two tests in jsdom/Testing-Library files never render and never touch the hook under test — they are repo tests parked in the React tier",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F132",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/settings/useTheme.test.tsx",
+  "line": 15,
+  "title": "The theme union is re-declared inline instead of importing ThemeChoice",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F075",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/settings/useTheme.test.tsx",
+  "line": 26,
+  "title": "vi.stubGlobal erases the matchMedia type, and the hand-built stub never fires a change event",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F133",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/settings/useTheme.ts",
+  "line": 16,
+  "title": "An unvalidated Profile.theme from IndexedDB is annotated into a three-literal union it may not belong to",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F134",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/features/stats/StatsPage.tsx",
+  "line": 6,
+  "title": "StatsPage destructures books without isLoading, so an unloaded library is typed identically to an empty one",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F014",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/ai/apiKey.test.ts",
+  "line": 10,
+  "title": "apiKey.test.ts loads the real @google/genai SDK (1.04 MB / 227 modules) for three tests that only need a stub constructor",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F060",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/client.ts",
+  "line": 12,
+  "title": "The client hardcodes Google's endpoint — one `httpOptions.baseUrl` setting would let a local-first app talk to a local model",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F029",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/ai/errors.test.ts",
+  "line": 1,
+  "title": "errors.test.ts is 100% pure-function (29.6 ms of tests) yet pays a full jsdom environment + fake-indexeddb setup per file",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S139",
+  "sev": "low",
+  "lens": "36 error-message-quality",
+  "file": "src/lib/ai/errors.ts",
+  "line": 30,
+  "title": "Two error messages point at a Settings screen that does not exist",
+  "detail": "invalid-key says 'Check it in Settings and try again' and there is no settings surface for the key — ApiKeyDialog is only reachable when the shell decides to open it, which four of six AI call sites never do (S092).",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F078",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/ai/prompts.ts",
+  "line": 39,
+  "title": "User-controlled book titles are interpolated raw into the prompt that defines the requested output shape",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F061",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/ai/tts.ts",
+  "line": 21,
+  "title": "TTS runs single-speaker over a concatenated string — the model and SDK support a two-host dialogue and no script is ever written",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S035",
+  "sev": "low",
+  "lens": "37 bug-hunt",
+  "file": "src/lib/audio/wav.ts",
+  "line": 29,
+  "title": "Odd-length PCM is written as a valid 16-bit stream",
+  "detail": "A truncated final sample produces a header claiming more complete samples than the data contains.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F082",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/audio/wav.ts",
+  "line": 12,
+  "title": "pcmToWavBlob stamps a hardcoded 24kHz/mono/16-bit header on unvalidated Gemini bytes while discarding the mimeType the API actually returns",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F136",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/base64.ts",
+  "line": 17,
+  "title": "Redundant `bytes[i] as number` pre-suppresses exactly the check noUncheckedIndexedAccess would add",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F083",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/contrast.ts",
+  "line": 8,
+  "title": "relativeLuminance accepts any string and returns NaN or a plausible wrong number, defeating the project's own WCAG guardrail",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F058",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/contrast.ts",
+  "line": 25,
+  "title": "The WCAG contrast engine has zero runtime consumers; the placeholder cover is hardcoded orange because nothing checks contrast at runtime",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F038",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/covers/index.test.ts",
+  "line": 5,
+  "title": "mockFetch types every API fixture as unknown, so no fixture is checked against the as-asserted response shapes",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F137",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/covers/openLibrary.ts",
+  "line": 8,
+  "title": "Truthy check on a numeric cover id conflates absent with zero",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F062",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/covers/placeholder.ts",
+  "line": 12,
+  "title": "Every generated placeholder cover is the same hardcoded orange, making a placeholder-heavy library grid unscannable",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F087",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/download.test.ts",
+  "line": 1,
+  "title": "download.test.ts covers only slugify; downloadText has no return annotation and cannot run under the current harness",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F019",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/download.test.ts",
+  "line": 2,
+  "title": "`slugify` string tests (14.7 ms) pay a jsdom boot for DOM APIs the file never reaches — `downloadText` is never called",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S031",
+  "sev": "low",
+  "lens": "36 error-message-quality",
+  "file": "src/lib/download.ts",
+  "line": 21,
+  "title": "slugify can leave a trailing hyphen",
+  "detail": "Trim runs before the 60-char slice, so a truncation landing on a separator produces filenames ending in '-'.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F138",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/download.ts",
+  "line": 2,
+  "title": "downloadText takes three adjacent bare-string positional params, so swapping filename and contents compiles cleanly",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F063",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/download.ts",
+  "line": 2,
+  "title": "Data flow is one-way at the CSV boundary: the app ingests Goodreads CSV but can never emit one, and `downloadText`'s mimeType parameter is never overridden",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F088",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.test.ts",
+  "line": 95,
+  "title": "coverForIsbn is tested with one perfect ISBN and undefined, so unvalidated ISBN text becomes Book.coverImageUrl",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S026",
+  "sev": "low",
+  "lens": "29 data-integrity",
+  "file": "src/lib/goodreads.ts",
+  "line": 111,
+  "title": "Imported rating is never clamped to 0-5",
+  "detail": "Any finite integer in the My Rating column is stored verbatim and rendered as stars.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F139",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.ts",
+  "line": 83,
+  "title": "`columnOf` returns a bare `number` hiding a `-1` not-found sentinel that no type can narrow",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F140",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.ts",
+  "line": 113,
+  "title": "`dateRead` is parsed and typed as `string` with no format contract, then silently discarded",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F141",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/goodreads.ts",
+  "line": 121,
+  "title": "`isbn13` is an unvalidated bare `string` interpolated unencoded into a persisted cover URL",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F053",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/goodreads.ts",
+  "line": 83,
+  "title": "A fully format-agnostic CSV spine is hardcoded to six Goodreads header names; a second importer is a column map, not a parser",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F008",
+  "sev": "low",
+  "lens": "file-decomposition",
+  "file": "src/lib/goodreads.ts",
+  "line": 121,
+  "title": "OpenLibrary cover-URL construction lives in two modules: covers/openLibrary.ts and goodreads.ts",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F039",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/markdown.test.ts",
+  "line": 20,
+  "title": "Summary fixture always supplies real arrays, so the one consumer that would crash on an AI-shaped Summary is never exercised",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F091",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/srs.test.ts",
+  "line": 97,
+  "title": "dueAt is a bare string compared numerically by isDue and lexically by repo.listDue, and nothing cross-checks them",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "S023",
+  "sev": "low",
+  "lens": "16 codebase-cleanup",
+  "file": "src/lib/srs.ts",
+  "line": 11,
+  "title": "INTERVAL_MODIFIER[1] is dead",
+  "detail": "grade===1 short-circuits to a literal 1 before the modifier table is consulted, so the 0 entry can never be read.",
+  "source": "session"
+ },
+ {
+  "id": "type-safety/F092",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/srs.ts",
+  "line": 33,
+  "title": "dueAt is a bare string whose fixed-width-UTC-ISO invariant is unenforced, and two consumers compare it in incompatible ways",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F093",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/srs.ts",
+  "line": 42,
+  "title": "scheduleCard declares a total return of ReviewCard but throws RangeError once ease/interval go non-finite; ease has a floor and no ceiling",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F094",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/db.ts",
+  "line": 9,
+  "title": "DBSchema value types promise every read row is a valid domain object, but IndexedDB validates nothing on the way out",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F095",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/db.ts",
+  "line": 11,
+  "title": "blobs store key is a composite `${bookId}:${kind}` but is declared plain string, identical to the by-book index key",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "feature-discovery/F064",
+  "sev": "low",
+  "lens": "feature-discovery",
+  "file": "src/lib/storage/db.ts",
+  "line": 33,
+  "title": "The blob store holds unbounded binary data with no enumeration API and no usage surface",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F030",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/storage/libraryExport.test.ts",
+  "line": 1,
+  "title": "Pure-function `libraryExport.test.ts` is forced through jsdom + fake-indexeddb + Testing Library boot it never uses",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F098",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 66,
+  "title": "The cascade test omits reviewCards, and the whole reviewCards store surface is untested",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F041",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 29,
+  "title": "The storage tier's slowest-decile entries are first-touch warm-up artifacts, not workload — optimising those tests will not help",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F020",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/lib/storage/repo.test.ts",
+  "line": 104,
+  "title": "5 MiB blob fixture costs ~34 ms in `blobs > round-trips a blob without inflating the book record` for two size-agnostic assertions",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F099",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 31,
+  "title": "profiles.update and books.update write whatever the caller hands them, persisting NaN as a typed number",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F100",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 126,
+  "title": "Every identifier in the persistence API is a bare string, including two adjacent methods that take different id kinds",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F112",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/lib/storage/repo.ts",
+  "line": 79,
+  "title": "reviewCards read path loads every row unvalidated and sorts on dueAt with a string method",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F101",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/test/setup.ts",
+  "line": 11,
+  "title": "setup.ts provides no typed fetch stub, so four hand-rolled stubs diverge from typeof fetch and one leaks across tests",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F022",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/test/setup.ts",
+  "line": 17,
+  "title": "The global setup file is unconditionally DOM- and localStorage-bound, so the cheap per-file `// @vitest-environment node` escape hatch cannot be used without crashing every file that tries it",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F102",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/test/smoke.test.tsx",
+  "line": 58,
+  "title": "The 'no Gemini call on boot' invariant is asserted by a for-loop that runs zero times when nothing is captured",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F031",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "src/test/smoke.test.tsx",
+  "line": 4,
+  "title": "`import App` drags 1.02 MB of @google/genai into both workers, and neither file ever constructs a client",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F104",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 29,
+  "title": "Book/Summary/Profile/ReviewCard ids are all bare string, and one adjacent-line call site would silently swallow a swap",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F105",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 33,
+  "title": "Book.category is an unconstrained string fed by the LLM, while the Category enum declared right above it is dead code",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F143",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "src/types.ts",
+  "line": 105,
+  "title": "The quiz-question shape is declared three separate times across types.ts and srs.ts",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "file-decomposition/F007",
+  "sev": "low",
+  "lens": "file-decomposition",
+  "file": "src/types.ts",
+  "line": 6,
+  "title": "Dead `Category` enum is the only runtime-emitting declaration in an otherwise pure-type module",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F144",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 8,
+  "title": "noImplicitOverride is off — one unmarked override in the AI error class hierarchy",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F145",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 11,
+  "title": "Four zero-cost strictness flags are unset — they add 0 errors today but nothing locks the property in",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F146",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 15,
+  "title": "skipLibCheck: true masks an unresolved module in the @google/genai type surface (legitimate, but undocumented)",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "type-safety/F147",
+  "sev": "low",
+  "lens": "type-safety",
+  "file": "tsconfig.json",
+  "line": 17,
+  "title": "Vitest and jest-dom globals are in the type scope of production source, not just tests",
+  "detail": "",
+  "source": "nightytidy"
+ },
+ {
+  "id": "test-efficiency/F023",
+  "sev": "low",
+  "lens": "test-efficiency",
+  "file": "vite.config.ts",
+  "line": 20,
+  "title": "20s testTimeout/hookTimeout is 75x the slowest test in the suite — it is sized for the per-file boot cost, not for any assertion, and it converts a broken fixture into ~11 minutes of dead wall-clock",
+  "detail": "",
+  "source": "nightytidy"
+ }
+]
