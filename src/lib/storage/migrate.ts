@@ -1,4 +1,5 @@
 import { base64ToBytes } from '../base64';
+import { newId } from '../id';
 import { blobs, books, profiles, summaries } from './repo';
 import type { BookStatus, Priority, VoiceName } from '../../types';
 
@@ -121,7 +122,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
         // any attachment that is not valid base64, and this data has been sitting
         // in localStorage since the original app wrote it.
         try {
-          const summaryId = crypto.randomUUID();
+          const summaryId = newId();
           const addedAt = legacy.addedAt ?? new Date().toISOString();
 
           // Decoded before the book is written so a corrupt attachment costs the

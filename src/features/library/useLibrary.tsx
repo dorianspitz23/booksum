@@ -5,6 +5,7 @@ import { useProfile } from '../profile/ProfileContext';
 import { coverForIsbn } from '../../lib/goodreads';
 import type { GoodreadsRow } from '../../lib/goodreads';
 import { placeholderCover } from '../../lib/covers';
+import { newId } from '../../lib/id';
 import type { Book, LibraryExport, Summary } from '../../types';
 
 export type BookDraft = Omit<Book, 'id' | 'profileId' | 'addedAt' | 'summaryId'>;
@@ -41,7 +42,7 @@ function useLibraryState() {
     async (draft: BookDraft, options: AddBookOptions = {}): Promise<Book> => {
       if (!profile) throw new Error('No active profile');
 
-      const summaryId = options.summary ? crypto.randomUUID() : undefined;
+      const summaryId = options.summary ? newId() : undefined;
       const book = await bookRepo.create({ ...draft, profileId: profile.id, summaryId });
 
       if (options.summary && summaryId) {
@@ -104,15 +105,32 @@ function useLibraryState() {
       if (!profile) return 0;
 
       const existing = new Set((await bookRepo.listByProfile(profile.id)).map((b) => b.id));
+      const imported = new Set<string>();
       let added = 0;
 
       for (const book of payload.books ?? []) {
         if (existing.has(book.id)) continue;
         await bookRepo.create({ ...book, profileId: profile.id });
+        imported.add(book.id);
         added += 1;
       }
+
+      // A summary is written only for a book that was just imported, or for one
+      // that has no summary yet. Upserting unconditionally keyed on the summary's
+      // own id -- which differs between devices -- so importing a backup over an
+      // existing library added a second summary row for every book it skipped.
+      // Those orphans outlived the book itself, because books.remove only ever
+      // found the first of them.
       for (const summary of payload.summaries ?? []) {
+        const book = await bookRepo.get(summary.bookId);
+        if (!book || book.profileId !== profile.id) continue;
+        if (!imported.has(summary.bookId) && (await summaryRepo.getByBook(summary.bookId)))
+          continue;
+
         await summaryRepo.upsert(summary);
+        if (book.summaryId !== summary.id) {
+          await bookRepo.update({ ...book, summaryId: summary.id });
+        }
       }
 
       await reload();

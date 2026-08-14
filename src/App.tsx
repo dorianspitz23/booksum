@@ -17,22 +17,24 @@ export default function App() {
     );
   }
 
-  // The picker deliberately renders outside the router: with no profile there is
-  // no library to route around.
-  if (!profile) {
-    return (
-      <>
-        <ProfilePicker />
-        <ToastHost />
-      </>
-    );
-  }
-
+  // ConfirmProvider wraps both branches. It used to sit inside the profile branch
+  // only, which is why deleting a profile -- the single most destructive action in
+  // the app, since it cascades to every book, summary, blob and review card --
+  // could not ask for confirmation: useConfirm would have thrown on that screen.
   return (
-    <LibraryProvider>
-      <ConfirmProvider>
-        <AppRoutes />
-      </ConfirmProvider>
-    </LibraryProvider>
+    <ConfirmProvider>
+      {profile ? (
+        <LibraryProvider>
+          <AppRoutes />
+        </LibraryProvider>
+      ) : (
+        // The picker deliberately renders outside the router: with no profile
+        // there is no library to route around.
+        <>
+          <ProfilePicker />
+          <ToastHost />
+        </>
+      )}
+    </ConfirmProvider>
   );
 }

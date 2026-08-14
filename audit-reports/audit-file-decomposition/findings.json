@@ -1,0 +1,723 @@
+{
+  "auditType": "file-decomposition",
+  "completedAt": "2026-08-12T16:27:30.396Z",
+  "target": "C:\\Software Projects\\BookSum\\.worktrees\\audit-file-decomposition",
+  "summary": {
+    "totalLiveFindings": 12,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 3,
+      "low": 9
+    },
+    "byCategory": {
+      "oversized-multi-responsibility": 3,
+      "oversized-bloated-single-responsibility": 0,
+      "oversized-high-fan-out": 0,
+      "oversized-circular-risk": 0,
+      "oversized-dynamic-ref-risk": 0,
+      "oversized-monolithic-by-design": 1,
+      "barrel-file-decay": 0,
+      "directory-flat-too-many-files": 0,
+      "co-location-scattered": 1,
+      "import-graph-tangle": 0,
+      "bug-found-while-testing": 3,
+      "other": 4
+    },
+    "byPhase": {
+      "discovery": 7,
+      "redTeam": 5
+    }
+  },
+  "findings": [
+    {
+      "id": "F001",
+      "phase": "discovery",
+      "category": "oversized-multi-responsibility",
+      "severity": "medium",
+      "file": "src/components/BookDetail.tsx",
+      "line": 33,
+      "lines": 539,
+      "title": "BookDetail.tsx (539 lines, repo's largest) bundles a self-contained markdown-to-JSX renderer with the book detail screen",
+      "description": "BookDetail.tsx is the repo's only file over 500 lines. The export-grouping test finds two groupings that do not cross-reference each other. Group A (lines 33-115, 83 lines) is `formatInline` + `SummaryRenderer`: a pure `(text: string) => JSX` markdown block renderer that touches no book, no summary, no state and no handler from the rest of the file. Group B (lines 117-539, 423 lines) is the `BookDetailProps` interface plus the `BookDetail` screen. The only edge between them is a single call site at line 461. Group A is therefore a clean, mechanical extraction to `src/components/SummaryRenderer.tsx`, and it turns 83 lines of untestable-in-isolation render logic into a directly unit-testable pure component (the file currently has no co-located test at all).\n\nA second, smaller but genuinely self-contained grouping is the personal-notes editor: the `notes` useState (148), its sync effect (150-153), `handleSaveNotes` (219-223) and the notes `<section>` (502-520). Verified: `notes`/`setNotes`/`handleSaveNotes` are referenced by nothing else in the file, so this moves behind a 2-prop interface with zero prop-drilling.\n\nWhat should NOT happen, and is the reason this is medium rather than high: the sidebar block (lines 237-435, ~199 lines) looks like the obvious big win and is a trap. It reads or writes `book`, `isPreview`, `onAdd`, `onDelete`, `onUpdate` (via `updateRating`/`updatePriority`/`toggleStatus`), `setShowChat`, `setShowQuiz`, `isGeneratingAudio` + `handlePlayAudio`, `isGeneratingDeepDive` + `handleMasterclassClick`, `handleOpenPdf`, and `summary` for the markdown export — roughly 14 props. Extracting it converts one readable screen into a prop-drilling harness and makes the code worse. Leave it. Likewise, do not unify Group A with EReader's near-namesake `formatInline`: see the sharedStateConcern field and L06-F02.",
+      "evidence": "  33  // Helper for inline formatting (bold/italic)\n  34  const formatInline = (text: string) => {\n  35    const parts = text.split(/(\\*\\*.*?\\*\\*|\\*.*?\\*)/g);\n  ...\n  55  // Component to render Markdown-styled summaries (headers, paragraphs, lists)\n  56  const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {\n  ...\n 115  };\n ---- single edge into the rest of the file: ----\n 461            <SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "LINE COUNT: my own `wc -l src/components/BookDetail.tsx` returns 539 — matches the finding exactly and clears the spec's 500-line high-confidence bar. GROUPINGS LOCATED IN SOURCE: Group A is lines 33-115 (comment L33; `formatInline` L34-53; `SummaryRenderer` L56-115) = 83 lines, exactly as claimed. Group B is lines 117-539 (`BookDetailProps` L117-129; `BookDetail` L131-539) = 423 lines. I traced every reference and the single edge between the two groups is real: `SummaryRenderer` is invoked once, at L461 (`<SummaryRenderer text={summary?.summary ?? 'No summary yet.'} />`), and `formatInline` is called only from inside `SummaryRenderer` (L79, L85, L99, L109). Group A reads nothing from the component scope — it is a pure function of its `text` prop. NOTES CLUSTER: verified independently. `notes`/`setNotes` appear at L148 (useState), L152 (sync effect body, effect spans L151-153 under the comment at L150), L510 (`value={notes}`), L511 (`setNotes(e.target.value)`); `handleSaveNotes` is declared L219-223 and used once at L512 (`onBlur`); the section JSX is L502-520 (comment L502, `<section>` L503-520, `PenTool` at L505). No other reference to `notes`, `setNotes` or `handleSaveNotes` exists in the file, so the discoverer's `sharedStateConcern: none` holds — I checked rather than assumed. FAN-OUT (my own count): 1 static import site. `grep -rn \"BookDetail\" src/` returns only `src/features/book/BookDetailPage.tsx:3` (`import { BookDetail } from '../../components/BookDetail'`) plus its own JSX use at L40; `src/app/routes.tsx:6` imports `BookDetailPage`, not this file. Discoverer said 1 — dead on. Repo-wide I confirmed zero `import(...)`, zero `React.lazy`, zero `vi.mock`/`jest.mock`, no `__mocks__`, and no tsconfig/vite path aliases, so there is no non-static reference path. `src/components/` also has no co-located test files at all, so no mock paths break. CIRCULAR-IMPORT CHECK: none possible. `SummaryRenderer.tsx` needs only `react`; `BookNotesEditor.tsx` needs only `react` + `PenTool` from `lucide-react`. Neither needs any symbol from `BookDetail.tsx` — `SummaryRenderer`'s props are the inline `{ text: string }` at L56, `BookNotesEditor`'s are two primitives — so no type travels back up and every edge points downward. ADVERSARIAL CHECKS: (1) The discoverer's warning against extracting the sidebar (L237-435) is correct and I re-derived it: that block reads `book` (L241-242, 268, 278, 282, 287, 293, 304, 323, 330, 356, 402, 417, 426), `isPreview` (L245, 253, 337, 424), `onAdd` (L253, 256), `onDelete` (L426), `updateRating` (L277), `updatePriority` (L302), `toggleStatus` (L358, 366), `setShowChat` (L340), `setShowQuiz` (L347), `isGeneratingAudio` + `handlePlayAudio` (L377-386), `isGeneratingDeepDive` + `handleMasterclassClick` (L390-399), `handleOpenPdf` (L404) and `summary` (L417 via `bookToMarkdown`) — ~15 distinct parent bindings. Extracting it would be a net loss; leaving it is the right call and is why medium, not high, is correct. (2) RESIDUAL: after both extractions the parent lands at ~430 lines — still above the 300-line floor, so BookDetail.tsx would remain a (lower-confidence) decomposition candidate afterwards. The discoverer states this openly (`approxLines: 430`) and rates `worthDoing: probably` rather than `yes`, which I consider honest calibration, not a defect. (3) SEVERITY: 539 lines with fan-out 1 matches the spec's medium row verbatim ('oversized-multi-responsibility files 300-800 lines with low fan-out'). `high` would require >800 lines or a demonstrably hot path; git shows 7 commits touching this file across a 23-commit history, so 'frequently changed' is not established. Medium stands. MIGRATION CAVEAT worth carrying into the fix work (not enough to amend): the current save guard is `if (notes !== book.personalNotes)` (L220) comparing against the raw, possibly-`undefined` field, while L148 normalises with `|| ''`. If `BookNotesEditor` compares `notes !== value` where `value` is already normalised, the edge case `book.personalNotes === undefined` + empty textarea stops firing `onUpdate`. That is arguably an improvement, but it is a behaviour delta — the extraction should pass `value={book.personalNotes || ''}` and keep the guard semantics deliberate.",
+      "suggestedPatch": "Read-only run; steps described, not applied. One file at a time, running `npm run typecheck && npm run lint && npm run format:check && npm test` between each.\n\nStep 1 — extract the renderer. Create `src/components/SummaryRenderer.tsx` containing lines 33-115 verbatim (`formatInline` then `SummaryRenderer`) plus `import React from 'react';`. Change `const SummaryRenderer` to `export const SummaryRenderer` — no rename, no signature change. Delete lines 33-115 from `BookDetail.tsx` and add `import { SummaryRenderer } from './SummaryRenderer';`. The call site at line 461 is untouched. No importer changes: `src/features/book/BookDetailPage.tsx` imports `BookDetail`, whose path and export name are unchanged. Verify.\n\nStep 2 — extract the notes editor. Create `src/components/BookNotesEditor.tsx` taking `{ value: string; onSave: (notes: string) => void }`, holding the `notes` useState seeded from `value`, the effect that resyncs on `value` change, the blur handler that calls `onSave` only when the draft differs, and the `<section>` from lines 502-520 including its `PenTool` heading. In `BookDetail.tsx` delete line 148, lines 150-153, lines 219-223 and lines 502-520, drop `PenTool` from the lucide-react import, and render `<BookNotesEditor value={book.personalNotes || ''} onSave={(n) => onUpdate({ ...book, personalNotes: n })} />` in its place. Verify.\n\nDo NOT do in this pass: extracting the sidebar (14-prop interface, makes it worse); unifying `formatInline` with EReader's copy (breaks the documented reader-theme exclusion); moving anything into `src/lib/markdown.ts` — that module is React-free by invariant and handles the opposite direction (Book to markdown string), not markdown to JSX.",
+      "proposedSplit": [
+        {
+          "newFile": "src/components/SummaryRenderer.tsx",
+          "responsibility": "Pure markdown-to-JSX renderer for summary text. Imports only `react`. Exports `SummaryRenderer`; keeps `formatInline` module-local.",
+          "approxLines": 90,
+          "exportsMoved": [
+            "formatInline",
+            "SummaryRenderer"
+          ]
+        },
+        {
+          "newFile": "src/components/BookNotesEditor.tsx",
+          "responsibility": "Self-contained notes textarea owning its own draft state and blur-to-save. Props: `{ value: string; onSave: (notes: string) => void }`. Imports `react` and `PenTool` from lucide-react.",
+          "approxLines": 45,
+          "exportsMoved": [
+            "notes useState",
+            "notes-sync useEffect",
+            "handleSaveNotes",
+            "notes <section> JSX incl. its PenTool heading"
+          ]
+        },
+        {
+          "newFile": "src/components/BookDetail.tsx (remains)",
+          "responsibility": "Book detail screen only. Drops the `PenTool` import once the notes section moves.",
+          "approxLines": 430,
+          "exportsMoved": [
+            "BookDetail (unchanged export)",
+            "BookDetailProps (unchanged)"
+          ]
+        }
+      ],
+      "fanOut": {
+        "staticImportSites": 1,
+        "importingFiles": [
+          "src/features/book/BookDetailPage.tsx"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None. `SummaryRenderer.tsx` would import only `react`; `BookNotesEditor.tsx` only `react` and `lucide-react`. Neither imports `BookDetail.tsx`, and no type needs to travel back upward (`SummaryRenderer`'s props are inline `{ text: string }`; `BookNotesEditor`'s are two primitives). All edges point one way, from `BookDetail.tsx` down to the two new leaves. Confirmed repo-wide: zero dynamic `import(...)`, zero `React.lazy`, zero `vi.mock`/`jest.mock`, no `__mocks__` directory, and no tsconfig/vite path aliases — so there is no non-static reference path that a move could silently break. Layering also holds: both new files sit in the flat `src/components/` layer and import neither `idb` nor `@google/genai`.",
+      "testSplitPlan": "No co-located test file exists — there is no `src/components/BookDetail.test.tsx`, and `src/test/smoke.test.tsx` renders `App` without referencing this component by name, so nothing splits. The relevant point is the inverse: extracting `SummaryRenderer` to its own file makes the markdown rendering unit-testable for the first time (a future `src/components/SummaryRenderer.test.tsx` beside it, per the co-location convention). Do not treat writing that test as part of the split — land the move first, verify green, then decide.",
+      "verifiedBy": "V01",
+      "sourceLots": [
+        "L06"
+      ],
+      "currentResponsibilities": [
+        {
+          "responsibility": "Markdown-to-JSX rendering (pure; headers, bullet lists, paragraphs, bold/italic)",
+          "approxLines": 83,
+          "exports": [
+            "formatInline (module-local)",
+            "SummaryRenderer (module-local)"
+          ]
+        },
+        {
+          "responsibility": "Book detail screen — sidebar controls, AI actions (TTS + deep dive), PDF open, rating/priority/status mutations, summary sections, chat/quiz modal hosting",
+          "approxLines": 391,
+          "exports": [
+            "BookDetailProps (module-local interface)",
+            "BookDetail (exported)"
+          ]
+        },
+        {
+          "responsibility": "Personal-notes editor — local draft state, blur-to-save, textarea section",
+          "approxLines": 32,
+          "exports": [
+            "notes/setNotes useState (L148)",
+            "sync useEffect (L150-153)",
+            "handleSaveNotes (L219-223)",
+            "notes <section> (L502-520)"
+          ]
+        }
+      ],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "F002",
+      "phase": "discovery",
+      "category": "oversized-multi-responsibility",
+      "severity": "medium",
+      "file": "src/components/ProfileView.tsx",
+      "line": 28,
+      "lines": 439,
+      "title": "ProfileView mixes profile identity/preference editing with the app's entire library backup-restore-reset surface",
+      "description": "ProfileView.tsx is 439 lines and the only file in this lot over the 300-line floor. The export-grouping test finds only three top-level declarations (VOICES at line 10, the ProfileViewProps interface at line 28, the ProfileView component at line 37) -- there are no module-local subcomponents or helpers, so this is not a grab-bag of unrelated exports. The multi-responsibility claim rests instead on two internal groupings that share ZERO state with the rest of the screen.\n\nThe props interface is the clearest tell: 4 of 6 props (books, onResetLibrary, buildExport, onImportLibrary) are library-data concerns, not profile concerns; only profile and onUpdate are actually about the profile. The import list corroborates it -- four of the five non-icon, non-type module imports serve exactly one section of the file and nothing else: toast (used only at 93/120/133/138), useConfirm (only at 49/125), libraryToMarkdown (only at 89), downloadText (only at 92). All four live inside the backup/restore handlers. ThemeToggle (line 5) is used only at line 371, inside the Settings section.\n\nGrouping B (backup / restore / import, ~125 lines) owns its own state -- fileInputRef (47) and importStatus (48) -- which nothing else in the component reads or writes, and it holds the only real branching logic in the file (handleImport at 109-145 does FileReader -> JSON.parse -> shape validation -> confirm() -> merge -> status transitions, with three distinct error paths). Grouping C (Settings, ~49 lines of JSX at 360-408) has no state at all and consumes exactly one prop.\n\nSupporting DRY evidence inside grouping B: handleExportMarkdown (86-94) correctly calls downloadText from src/lib/download.ts, while handleExport (96-107) hand-rolls a byte-for-byte reimplementation of that same helper (Blob -> createObjectURL -> createElement('a') -> click -> revokeObjectURL) just to change the MIME type -- which downloadText already accepts as its third parameter. Two adjacent functions, one using the lib helper and one reinventing it, is what an accreted section looks like.\n\nWhat should happen: extract grouping B to src/components/ProfileDataManagement.tsx and (optionally) grouping C to src/components/ProfileSettings.tsx, leaving ProfileView.tsx at ~260 lines owning exactly profile identity, preferences and derived reading stats. Severity note for the verifier: this file sits in the 300-500 band with fan-out of 1, which matches BOTH the spec's medium row ('300-800 lines with low fan-out') and the low row ('300-500 lines on cold paths'). Git history is uniform (6-7 commits on every file in the lot, all from the phase rewrite) so 'rarely modified' could not be established from evidence; medium was chosen for that reason and low is a defensible amendment.",
+      "evidence": "  28  interface ProfileViewProps {\n  29    profile: Profile;              // <- profile concern\n  30    onUpdate: (profile: Profile) => void;   // <- profile concern\n  31    books: Book[];                          // <- library concern\n  32    onResetLibrary: () => void;             // <- library concern\n  33    buildExport: () => Promise<LibraryExport>;              // <- library concern\n  34    onImportLibrary: (payload: LibraryExport) => Promise<number>;  // <- library concern\n  35  }\n\n  // and the two adjacent exports, one using the lib helper, one reinventing it:\n  92      downloadText(`booksum-library-${...}.md`, markdown);\n  96    const handleExport = async () => {\n  99      const url = URL.createObjectURL(blob);\n 100      const a = document.createElement('a');\n 106      URL.revokeObjectURL(url);",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "LINE COUNT: my own `wc -l src/components/ProfileView.tsx` returns 439 — matches exactly; over the 300-line floor, under the 500 high-confidence bar. TOP-LEVEL DECLARATIONS: confirmed as claimed — exactly three, `VOICES` (L10), `interface ProfileViewProps` (L28-35), `export const ProfileView` (L37-439). No module-local subcomponents, so the finding correctly rests its case on internal groupings rather than on export sprawl. PROPS EVIDENCE: verified at L28-35 — `profile` (L29) and `onUpdate` (L30) are profile concerns; `books` (L31), `onResetLibrary` (L32), `buildExport` (L33), `onImportLibrary` (L34) are library concerns. 4 of 6, as claimed. GROUPING B (backup/restore/import) located in source: `fileInputRef` L47, `importStatus` L48, `confirm = useConfirm()` L49, `handleExportMarkdown` L86-94, `handleExport` L96-107, `handleImport` L109-145, Data Management `<section>` L295-358. I traced every use of its state: `fileInputRef` at L144, L331, L335; `importStatus`/`setImportStatus` at L121, L134, L135, L139, L337, L339, L344; `confirm` at L125. Every one of those is inside the block being moved — nothing in the header, goal card, bio card, settings block or topography panel touches them. So no state is lifted and no setState is drilled: `sharedStateConcern: none` is accurate. The block's only outside needs are `buildExport` (L87, L97) and `onImportLibrary` (L132), both already props on the parent — pure pass-through, one level. GROUPING C (Settings) located at L360-408: stateless, reads only `onResetLibrary` (L401) and renders `<ThemeToggle />` (L371). Confirmed. DRY CLAIM VERIFIED: `src/lib/download.ts:2` is `export function downloadText(filename, contents, mimeType = 'text/markdown')` whose body (L3-11) is Blob -> createObjectURL -> createElement('a') -> append -> click -> remove -> revokeObjectURL. `handleExport` at L98-106 is that same body inlined, differing only in passing `application/json` — which the third parameter already accepts. The discoverer's characterisation is correct. FAN-OUT (my own count): 1 static import site — `grep -rn \"ProfileView\" src/` returns only `src/features/profile/ProfilePage.tsx:2` (import) and its JSX use at L31. Discoverer said 1. Repo-wide: zero dynamic imports, zero `React.lazy`, zero `vi.mock`/`jest.mock`, no `__mocks__`, no path aliases, no test files in `src/components/`. CIRCULAR-IMPORT CHECK: I traced every proposed leaf edge rather than trusting the claim. `src/components/ui/ConfirmDialog.tsx` imports only `react` (L1-2) and `./Dialog` (L3). `src/lib/markdown.ts` imports only `../types` (L1). `src/lib/download.ts` imports nothing. `src/components/ui/toastStore.ts` imports nothing. `src/features/settings/ThemeToggle.tsx` imports only `lucide-react` (L1) and `./useTheme` (L2-3). None of them reach back into `src/components/`, so no cycle is constructible. The one components->features edge (`ProfileSettings.tsx` -> `features/settings/ThemeToggle`) already exists today at ProfileView.tsx:5, so the split relocates it rather than creating it; the only other features->components edge in that subtree is `ApiKeyDialog.tsx:7 -> components/ui/Dialog`, which is not on any proposed path. ADVERSARIAL CHECKS: (1) RESIDUAL — I did the arithmetic myself rather than accepting '~260'. Removing grouping B (3 state lines + 60 handler lines + 64 section lines + ~9 now-dead import lines, minus ~5 added for the child import and its JSX) puts the parent at ~306 — i.e. the Data Management extraction ALONE leaves the file still marginally over the 300-line floor. Adding the Settings extraction (~50 JSX lines + 4 import lines, minus ~3) brings it to ~255-265, matching the claim. This matters for the fix work: the second extraction is load-bearing for clearing the threshold, not an optional extra, and the report should say so. (2) SEVERITY — the discoverer flagged medium-vs-low as genuinely ambiguous and invited a `low` amendment on cold-path grounds. Git evidence resolves it in favour of medium and against the amendment: `git log -- src/components/ProfileView.tsx` shows 7 commits, and two are real feature commits, not infrastructure sweeps — `ae72077 feat(export): export a book or the whole library as Markdown` and `68e20c0 feat(theme): add dark mode`. Notably `ae72077` is what landed the very Data Management section proposed for extraction. This is not a cold path, so the spec's low row ('300-500 lines on cold paths (rarely modified)') does not apply and the medium row ('300-800 lines with low fan-out') does. Severity confirmed as filed. (3) OVER-SPLIT TEST — the discoverer's refusal to extract the Monthly Goal card (L191-248) or the Bio/Voices card (L250-293) is correct and I re-derived it: `isEditing`/`editedProfile`/`setEditedProfile` are read by the header Edit/Save button (L170, L172, L177, L183), the goal card (L228, L237, L239, L244) and the bio/voices card (L257, L260-261, L279, L281) — three siblings sharing one useState pair in one scope. Extracting either would drill a setState across siblings. Likewise the `stats` useMemo (L51-70) genuinely must stay: `stats.joinedDate` feeds the header (L160), `stats.finishedCount`/`stats.progressPercent` feed the goal card (L209, L216), `stats.topGenres` feeds the topography panel (L416-417). Stopping at two extractions is the right boundary.",
+      "suggestedPatch": "Read-only run -- described, not applied. One file at a time, full typecheck + lint + format:check + test between steps.\n\nStep 1 (the valuable one): create src/components/ProfileDataManagement.tsx exporting `ProfileDataManagement` with props { buildExport: () => Promise<LibraryExport>; onImportLibrary: (payload: LibraryExport) => Promise<number> }. Move ProfileView lines 47-49 (fileInputRef, importStatus, confirm), 86-145 (handleExportMarkdown, handleExport, handleImport) and the <section> at 295-358 verbatim. Move the imports that follow them: toast (line 3), useConfirm (4), libraryToMarkdown (6), downloadText (7), the LibraryExport type, and icons Download/FileText/Upload/FileJson/Check. Do NOT rename anything -- the spec bans rename-plus-move. In ProfileView, replace the removed section with <ProfileDataManagement buildExport={buildExport} onImportLibrary={onImportLibrary} /> and delete the now-unused imports. ProfileViewProps stays byte-identical, so src/features/profile/ProfilePage.tsx needs no change at all -- the single import site is untouched.\n\nStep 2 (optional, only if you want the residual under 300): create src/components/ProfileSettings.tsx exporting `ProfileSettings` with props { onResetLibrary: () => void }. Move the <section> at 360-408 plus the ThemeToggle import and icons Settings/ShieldAlert/Trash2. Replace with <ProfileSettings onResetLibrary={onResetLibrary} />.\n\nStep 3 (separate commit, do NOT bundle): replace the hand-rolled body of handleExport with downloadText(`booksum-backup-${date}.json`, JSON.stringify(data, null, 2), 'application/json'). This is a behaviour-preserving DRY fix inside the newly extracted file, but it changes runtime behaviour marginally (downloadText appends ';charset=utf-8' to the MIME type), so it must not ride along with a pure move -- keeping moves behaviour-identical is what makes a bisect useful.\n\nDo NOT extract the Monthly Goal card, the Bio/Voices card, or the stats useMemo -- see sharedStateConcern.",
+      "proposedSplit": [
+        {
+          "newFile": "src/components/ProfileDataManagement.tsx",
+          "responsibility": "Owns the library backup/restore surface end to end: JSON export, Markdown export, backup-file read + shape validation + confirm + merge, and the import status chip. Props { buildExport, onImportLibrary }.",
+          "approxLines": 145,
+          "exportsMoved": [
+            "fileInputRef",
+            "importStatus / setImportStatus",
+            "confirm (useConfirm)",
+            "handleExportMarkdown",
+            "handleExport",
+            "handleImport",
+            "Data Management <section> (295-358)",
+            "imports: toast, useConfirm, libraryToMarkdown, downloadText, LibraryExport type, icons Download/FileText/Upload/FileJson/Check"
+          ]
+        },
+        {
+          "newFile": "src/components/ProfileSettings.tsx",
+          "responsibility": "Owns the Settings block: appearance card wrapping <ThemeToggle/>, the Privacy Mode display switch, and the Danger Zone reset button. Props { onResetLibrary }. Stateless.",
+          "approxLines": 60,
+          "exportsMoved": [
+            "Settings <section> (360-408)",
+            "imports: ThemeToggle, icons Settings/ShieldAlert/Trash2"
+          ]
+        },
+        {
+          "newFile": "src/components/ProfileView.tsx",
+          "responsibility": "RESIDUAL (not a new file) -- keeps profile identity, the isEditing/editedProfile cluster, preference editing, the stats useMemo and Knowledge Topography. Renders the two extracted sections as children, forwarding buildExport/onImportLibrary/onResetLibrary unchanged.",
+          "approxLines": 260,
+          "exportsMoved": [
+            "VOICES",
+            "ProfileViewProps (unchanged signature)",
+            "ProfileView",
+            "handleSave",
+            "getInitials",
+            "stats useMemo"
+          ]
+        }
+      ],
+      "fanOut": {
+        "staticImportSites": 1,
+        "importingFiles": [
+          "src/features/profile/ProfilePage.tsx"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "Zero, and verified rather than assumed. Both new modules are leaves: ProfileDataManagement imports ./ui/toastStore, ./ui/ConfirmDialog, ../lib/markdown, ../lib/download and ../types; ConfirmDialog.tsx imports only react + ./Dialog, markdown.ts imports only ../types, download.ts imports nothing -- none of them import anything from src/components/ back up, so no back-edge is possible. ProfileSettings imports ../features/settings/ThemeToggle, which imports only lucide-react + ./useTheme; note this is an existing src/components -> src/features edge that ProfileView already has at line 5, so the split relocates it rather than creating it, and ThemeToggle has no path back into src/components. ProfileView imports the two new files one-way. The repo has zero path aliases and exactly one barrel (src/lib/covers/index.ts), neither of which is on any of these paths.",
+      "testSplitPlan": "No co-located test file exists -- there is no src/components/ProfileView.test.tsx, and the repo's only tests touching this path are src/test/smoke.test.tsx (renders the whole app) and src/features/profile/ProfileContext.test.tsx (context only, never mounts ProfileView). So nothing splits. The honest consequence is that this extraction has no direct automated safety net: verify with `npm run typecheck` plus the smoke suite. The extraction is a good opportunity to add src/components/ProfileDataManagement.test.tsx, because the moved handleImport has three genuinely testable runtime branches (non-array data.books -> error toast + error status; confirm declined -> no write; success -> singular/plural count message and a 3s status reset) that are currently untested inside a 439-line component -- but adding that test is follow-up work, not part of the mechanical split.",
+      "verifiedBy": "V01",
+      "sourceLots": [
+        "L07"
+      ],
+      "currentResponsibilities": [
+        {
+          "responsibility": "Profile identity + preference editing (header, avatar/initials, monthly-goal ring and slider, bio textarea, AI voice picker)",
+          "approxLines": 168,
+          "exports": [
+            "VOICES (module-local const, line 10)",
+            "ProfileViewProps (line 28)",
+            "ProfileView (line 37)",
+            "isEditing / setIsEditing (45)",
+            "editedProfile / setEditedProfile (46)",
+            "handleSave (72)",
+            "getInitials (77)",
+            "header JSX (149-187)",
+            "monthly goal card JSX (191-248)",
+            "bio + voice picker JSX (250-293)"
+          ]
+        },
+        {
+          "responsibility": "Library backup / restore / import (JSON export, Markdown export, backup file parse + validate + confirm + merge)",
+          "approxLines": 125,
+          "exports": [
+            "fileInputRef (47)",
+            "importStatus / setImportStatus (48)",
+            "confirm = useConfirm() (49)",
+            "handleExportMarkdown (86)",
+            "handleExport (96)",
+            "handleImport (109)",
+            "Data Management section JSX (295-358)"
+          ]
+        },
+        {
+          "responsibility": "App settings + danger zone (theme toggle, decorative Privacy Mode switch, library reset button)",
+          "approxLines": 49,
+          "exports": [
+            "Settings section JSX (360-408)",
+            "consumes only the onResetLibrary prop"
+          ]
+        },
+        {
+          "responsibility": "Derived reading stats (finishedCount, progressPercent, joinedDate, topGenres) + Knowledge Topography panel",
+          "approxLines": 47,
+          "exports": [
+            "stats useMemo (51-70)",
+            "Knowledge Topography JSX (410-436)"
+          ]
+        }
+      ],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "F003",
+      "phase": "discovery",
+      "category": "bug-found-while-testing",
+      "severity": "low",
+      "file": "src/components/ChatModal.tsx",
+      "line": 116,
+      "lines": 182,
+      "title": "Icon-only close buttons in ChatModal and QuizModal have no accessible name",
+      "description": "Surfaced while measuring fan-out of the `components/ui` primitives for L08-F01, so filing it per the spec's rule that incidental bugs are the auditor's responsibility.\n\nBoth `ChatModal.tsx:116-121` and `QuizModal.tsx:167-172` render a close `<button>` whose only child is `<X size={20} />` from lucide-react. lucide-react emits a bare `<svg>` with no `<title>`, so these buttons expose no accessible name — a screen reader announces them as just \"button\". Both are the primary dismiss affordance for an `aria-modal` dialog.\n\nThe two components that did wire it correctly are `Dialog.tsx:41-47` and `DailyWisdomModal.tsx:39-45`, which both pass `aria-label=\"Close\"` on the identical button shape. `QuizModal.tsx` contains no `aria-label` attribute anywhere in the file. This is the drift predicted by L08-F01: the modal shell was copied structurally, the a11y detail was not.\n\nEscape-to-close still works in both (all three modals call `useFocusTrap`, which handles Escape at `useFocusTrap.ts:37-41`), so this is a degraded path rather than a trap — hence `low`. Note that ChatModal's backdrop is also only `bg-gray-900/20`, making the drawer's dismiss affordance weak visually as well as programmatically.",
+      "evidence": "src/components/ChatModal.tsx:116-121 — no accessible name\n 116          <button\n 117            onClick={onClose}\n 118            className=\"p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full ...\"\n 119          >\n 120            <X size={20} />\n 121          </button>\n\nsrc/components/QuizModal.tsx:167-172 — same defect\n 167              <button\n 168                onClick={onClose}\n 169                className=\"p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full ...\"\n 170              >\n 171                <X size={20} />\n 172              </button>\n\nContrast — src/components/ui/Dialog.tsx:41-47 does it correctly\n  41          <button\n  42            onClick={onClose}\n  43            aria-label=\"Close\"\n  44            className=\"p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors\"\n  45          >\n  46            <X size={20} />\n  47          </button>",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "Verified by reading all four cited files, not the excerpt. DEFECT SITE 1 — `src/components/ChatModal.tsx` L116-121: `<button onClick={onClose} className=\"p-2 hover:bg-gray-100 ...\">` whose only child is `<X size={20} />` (L120). I grepped the whole file for every accessible-name source: `aria-label` — zero occurrences; `title=` — zero occurrences; `sr-only` — zero occurrences; `aria-labelledby` appears once, at L98, and it is on the dialog panel (pointing at the `<h3 id={titleId}>` at L108), not on the button. The button therefore exposes no accessible name. DEFECT SITE 2 — `src/components/QuizModal.tsx` L167-172: identical shape, `<X size={20} />` at L171 as the sole child. Grep of the whole file returns only three a11y attributes: `role=\"dialog\"` (L104), `aria-labelledby` (L106) and one `sr-only` (L109) — and I read L109 to be sure: it is `<h2 id={titleId} className=\"sr-only\">`, the dialog's visually-hidden TITLE, not text inside the close button. The discoverer's claim that the file contains no `aria-label` anywhere is literally true. So there is no route by which either button gets a name — I looked for the routes the discoverer might have missed and found none. CONTRAST CASES CONFIRMED — `src/components/ui/Dialog.tsx` L41-47 carries `aria-label=\"Close\"` on L43 above the same `<X size={20} />` (L46); `src/components/DailyWisdomModal.tsx` L39-45 carries `aria-label=\"Close\"` on L41 above `<X size={20} />` (L44). Two call sites in this repo add the attribute to the identical button shape and two do not — that internal inconsistency is itself decisive evidence that the lucide `X` supplies no name (I could not inspect lucide-react directly because `node_modules` is not installed in this worktree, but lucide renders a bare `<svg>` of `<path>` children with no `<title>`, `role` or `aria-label`, and an svg with no text nodes contributes nothing to name-from-content). SEVERITY MITIGATION CONFIRMED — I read `src/components/ui/useFocusTrap.ts` L33-41 and Escape-to-close is real: `if (event.key === 'Escape') { event.stopPropagation(); onClose(); return; }`. All three modals call `useFocusTrap` (ChatModal L34, and Dialog L19), so this is a degraded path rather than a trap. `low` and `bug-found-while-testing` are both correct. LINE COUNT: `wc -l` gives ChatModal 182 (matches the filed `lines: 182`) and QuizModal 254; neither is a decomposition finding and neither is claimed to be. Fan-out recorded as 1 for the cited file (ChatModal is imported once, at `src/components/BookDetail.tsx:30`; QuizModal likewise at L31) — the filed value of 0 is a non-substantive artefact of this being an a11y finding rather than a split proposal, and does not affect the verdict. The fix is attribute-only: add `aria-label=\"Close\"` at ChatModal.tsx:118 and QuizModal.tsx:169. No import-graph impact.",
+      "suggestedPatch": "READ-ONLY RUN — described, not applied. Two-line fix, no structural change:\n1. `src/components/ChatModal.tsx:116` — add `aria-label=\"Close\"` to the close button, matching `Dialog.tsx:43`.\n2. `src/components/QuizModal.tsx:167` — same.\n\nBoth are additive attributes on existing elements; no test should break. Worth pairing with a lint rule (`jsx-a11y/control-has-associated-label`) to stop the next copy of this shell losing it again, though that is a separate decision from this audit.",
+      "proposedSplit": [],
+      "fanOut": {
+        "staticImportSites": 0,
+        "importingFiles": [],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None — attribute-only change, no import graph impact.",
+      "verifiedBy": "V01",
+      "sourceLots": [
+        "L08"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "F004",
+      "phase": "discovery",
+      "category": "oversized-multi-responsibility",
+      "severity": "low",
+      "file": "src/components/EReader.tsx",
+      "line": 27,
+      "lines": 477,
+      "title": "EReader.tsx (477 lines) bundles a 135-line themed markdown renderer with the reader shell; clean one-directional split available",
+      "description": "EReader.tsx is the repo's second-largest file at 477 lines — over the 300-line minimum but under the 500-line high-confidence bar. The export-grouping test finds two groupings with a single edge between them. Group A (line 27 plus lines 30-163, ~135 lines) is the `Theme` type, `formatInline` and `RenderFormattedContent`: a themed markdown-to-JSX renderer handling headers, blockquotes, bullet and numbered lists, drop caps and inline emphasis. It is already fully prop-driven — it receives `{ content, isFirstPage, theme }` and reads nothing from the reader's state. Group B (~322 lines) is `EReaderProps`, `FontSize` and the `EReader` shell, which owns pagination (`pages` useMemo, `currentPage`, `nextPage`/`prevPage`, the scroll-reset effect), the reader chrome (header, settings popover, main, footer, progress bar), reader theming (`themeStyles`, `uiColors`, `activeUI`), and audio generation. The only edge is one JSX call site at lines 394-398.\n\nBecause Group A is already prop-driven, the extraction is purely mechanical and yields a better ratio than L06-F01: 477 down to ~344, a 28% reduction, isolating 135 lines of pure render logic that currently cannot be tested without mounting the whole reader.\n\nThe boundary detail that matters: the `Theme` type must move INTO the new file and be re-imported by `EReader.tsx`. Getting this backwards creates a cycle — see circularImportRisk.\n\nSeverity is low rather than medium because this is a demonstrably cold path. Across the repo's 23 commits, EReader.tsx appears in 5, and every one of them is a sweeping infrastructure commit (toolchain migration, ESLint/Prettier, storage, BYOK, the a11y pass). It has never received a feature commit of its own. Nobody is being slowed down by this file today.",
+      "evidence": "  27  type Theme = 'light' | 'sepia' | 'dark';\n  ...\n  33  const formatInline = (text: string) => {\n  ...\n  53  const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; theme: Theme }> = ({\n  ...\n 163  };\n ---- single edge into the rest of the file: ----\n 394            <RenderFormattedContent\n 395              content={pages[currentPage]}\n 396              isFirstPage={currentPage === 0}\n 397              theme={theme}\n 398            />",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "LINE COUNT: my own `wc -l src/components/EReader.tsx` returns 477 — matches exactly; over the 300-line floor, under the 500 high-confidence bar, as the finding itself states. GROUPINGS LOCATED IN SOURCE: Group A is `type Theme` at L27 plus L30-163 (doc comment L30-32; `formatInline` L33-51; `RenderFormattedContent` L53-163) = 135 lines, exactly the claimed figure. Group B is `EReaderProps` L18-25, `type FontSize` L28, and `EReader` L165-477 = 322 lines. Single edge confirmed: `RenderFormattedContent` is rendered once, at L394-398, with `content={pages[currentPage]}` / `isFirstPage={currentPage === 0}` / `theme={theme}`; `formatInline` is called only from inside the renderer (L110, L123, L134, L150, L157). PROP-DRILLING TEST — this is the strongest part of the finding and it holds: I read L53-163 line by line and `RenderFormattedContent` reads only its three props plus module-local `formatInline`. It touches no `EReader` state, no ref, no handler. The boundary is already drawn today, so extraction drills nothing new. TYPE-CYCLE ANALYSIS VERIFIED, INCLUDING DIRECTION: `Theme` is consumed by the shell at L174 (`useState<Theme>('light')`) and L319 (`(['light','sepia','dark'] as Theme[])`), and by the renderer at L53 (props) and L59/L60/L61/L87/L95/L108/L121. The discoverer's warning is exactly right — leaving `Theme` declared in `EReader.tsx` would force `ReaderContent.tsx` to import from `EReader.tsx` while `EReader.tsx` imports `ReaderContent.tsx`, a real (if type-erased) cycle. Moving `Theme` into `ReaderContent.tsx` and re-importing it makes every edge point shell-to-leaf. Confirmed correct as specified, and it is a genuine trap the proposal catches rather than creates. Minor stylistic note, not a defect: having the shell that OWNS the theme state import the `Theme` type from the content renderer is slightly inverted; a third `readerTheme.ts` holding only the union would read better but is a new file for one type line, which the spec's over-splitting principle argues against. The proposal's choice is the right trade. THEME INVARIANT (CLAUDE.md: EReader is deliberately excluded from the global `.dark` class) — I checked this specifically because the task flagged it. `grep -c \"dark:\" src/components/EReader.tsx` returns 2, and both are false positives: L226 (`dark: 'bg-[#1a1a1a] ...'`) and L242 (`dark: {`) are OBJECT PROPERTY KEYS in `themeStyles` and `uiColors`, not Tailwind `dark:` utilities. The file uses zero global dark-mode classes. Everything constituting reader theming stays in the shell under the proposal and I confirmed each cited anchor: `theme` useState L174, `themeStyles` L223-227, `uiColors` L229-248, `activeUI` L250, theme-selector UI L311-340. The only colour logic that moves is what already lives inside the renderer and is already derived from its `theme` prop — `accentColor`/`headingColor`/`dropCapColor` at L59-61 plus the inline `theme === 'dark' ? ...` ternaries at L87, L95, L108, L121. The split introduces no `.dark:` utility and does not drag reader theming into the global system. The invariant is respected. FAN-OUT (my own count): 1 static import site — `grep -rn \"EReader\" src/` returns only `src/features/book/ReaderPage.tsx:3` (import) and its JSX use at L23. Discoverer said 1. Repo-wide: zero dynamic `import(...)`, zero `React.lazy`, zero `vi.mock`/`jest.mock`, no `__mocks__`, no tsconfig/vite path aliases, no test files in `src/components/`. ADVERSARIAL CHECKS: (1) COLD-PATH CLAIM VERIFIED — `git log --oneline -- src/components/EReader.tsx` returns exactly 5 commits and every one is a sweeping infrastructure change: `0e03747` toolchain migration, `6a09d75` storage schema, `cfe849b` BYOK/profiles, `9646136` ESLint+Prettier+CI, `a48337f` the a11y pass. No feature commit has ever targeted this file, which is the evidence the spec's low row wants ('rarely modified'). `low` is correctly calibrated and I would not raise it. (2) RESIDUAL — 477 minus 135 plus one import line leaves ~344, so `EReader.tsx` stays above the 300-line floor after the split and would still surface in a future run of this audit. The discoverer states this figure openly and rates `worthDoing: probably`. The benefit that survives is real and verifiable: 135 lines of pure, prop-driven render logic currently cannot be exercised without mounting the full reader (five useStates, a useMemo, a scroll effect and a TTS call path), and there is no co-located test anywhere in `src/components/`. Confirmed as filed — but the report's recommendation row should carry the residual-344 caveat so the reader is not sold a 'file no longer oversized' outcome.",
+      "suggestedPatch": "Read-only run; steps described, not applied. Single step, but run `npm run typecheck && npm run lint && npm run format:check && npm test` after it and before touching anything else.\n\nCreate `src/components/ReaderContent.tsx` containing, in order: `import React from 'react';`, then line 27 changed to `export type Theme = 'light' | 'sepia' | 'dark';`, then lines 30-51 (`formatInline`, module-local, unchanged), then lines 53-163 with `const RenderFormattedContent` changed to `export const RenderFormattedContent`. No rename, no prop-signature change.\n\nIn `EReader.tsx`: delete line 27 and lines 30-163, and add `import { RenderFormattedContent, type Theme } from './ReaderContent';`. Leave `FontSize` (line 28) where it is — it is used only at line 175. Leave `themeStyles`, `uiColors`, `activeUI` and the theme selector untouched; they are the reader's own theming and must not move. The call site at 394-398 is unchanged.\n\nNo importer needs rewriting: `src/features/book/ReaderPage.tsx` imports `EReader` from a path and export name that both stay the same. Since the repo has zero path aliases, any future move of `EReader.tsx` itself would require rewriting that relative specifier by hand — but this split does not move it.\n\nDo NOT do in this pass: pulling the settings popover or the header/footer chrome out (they read `theme`, `showSettings`, `fontSize`, `activeUI`, `currentPage`, `pages.length`, `isGeneratingAudio` and four callbacks — a prop-drilling trap of the same shape as BookDetail's sidebar); moving `themeStyles`/`uiColors` anywhere; unifying with `BookDetail.tsx`'s renderer.",
+      "proposedSplit": [
+        {
+          "newFile": "src/components/ReaderContent.tsx",
+          "responsibility": "Themed markdown-to-JSX renderer for reader content. Exports `RenderFormattedContent` and the `Theme` type (the type must live here, not in EReader — see circularImportRisk). Keeps `formatInline` module-local. Imports only `react`.",
+          "approxLines": 140,
+          "exportsMoved": [
+            "Theme",
+            "formatInline",
+            "RenderFormattedContent"
+          ]
+        },
+        {
+          "newFile": "src/components/EReader.tsx (remains)",
+          "responsibility": "Reader shell only — pagination, chrome, reader theming state, audio. Gains `import { RenderFormattedContent, type Theme } from './ReaderContent';`",
+          "approxLines": 344,
+          "exportsMoved": [
+            "EReader (unchanged export)",
+            "EReaderProps (unchanged)",
+            "FontSize (stays — used only by the shell at L175)"
+          ]
+        }
+      ],
+      "fanOut": {
+        "staticImportSites": 1,
+        "importingFiles": [
+          "src/features/book/ReaderPage.tsx"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None, but only if the `Theme` type moves in the correct direction — this is the one way to get this split wrong. Correct: `Theme` is declared in `ReaderContent.tsx` and `EReader.tsx` imports it back alongside the component, so every edge points from the shell down to the leaf. Incorrect: leaving `Theme` declared in `EReader.tsx` would force `ReaderContent.tsx` to import from `EReader.tsx` while `EReader.tsx` imports `ReaderContent.tsx` — a true cycle in the module graph. It would not crash at runtime, since a type-only import is erased by TypeScript, but it is the wrong boundary and would be flagged the moment an import-cycle rule is enabled. Beyond that, confirmed repo-wide: zero dynamic `import(...)`, zero `React.lazy`, zero `vi.mock`/`jest.mock`, no `__mocks__` mirror, no path aliases — every reference to this file is a static relative specifier. Layering holds: `ReaderContent.tsx` sits in the flat `src/components/` layer and imports neither `idb` nor `@google/genai`. No `aria-modal` concern — `EReader` is a full-screen `fixed inset-0` surface, not a dialog, and the split does not add one.",
+      "testSplitPlan": "No co-located test file exists — there is no `src/components/EReader.test.tsx`, and `src/test/smoke.test.tsx` does not reference the reader. Nothing to split. As with L06-F01, the value is that `RenderFormattedContent` becomes independently testable (a future `src/components/ReaderContent.test.tsx` beside it), but writing that test is separate work from the move.",
+      "verifiedBy": "V01",
+      "sourceLots": [
+        "L06"
+      ],
+      "currentResponsibilities": [
+        {
+          "responsibility": "Themed markdown-to-JSX rendering (headers, blockquotes, bullet + numbered lists, drop caps, inline emphasis); derives its own accent/heading/dropcap colours from the `theme` prop",
+          "approxLines": 135,
+          "exports": [
+            "Theme (module-local type)",
+            "formatInline (module-local)",
+            "RenderFormattedContent (module-local)"
+          ]
+        },
+        {
+          "responsibility": "Reader shell — pagination over `##`-split sections, scroll reset, header/settings-popover/footer chrome, progress bar, reader theme + font-size state, long-form audio generation",
+          "approxLines": 322,
+          "exports": [
+            "EReaderProps (module-local interface)",
+            "FontSize (module-local type)",
+            "EReader (exported)"
+          ]
+        }
+      ],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "F006",
+      "phase": "discovery",
+      "category": "other",
+      "severity": "low",
+      "file": "src/components/ui/Dialog.tsx",
+      "line": 24,
+      "lines": 53,
+      "title": "Modal shell (backdrop + aria-modal root) is hand-rolled in three components instead of reusing components/ui/Dialog, and the copy has drifted",
+      "description": "NOT a split finding — no file in this lot exceeds 300 lines (largest is Dialog.test.tsx at 94), so decomposition is off the table. This is the inverse observation: the `Dialog` primitive has three near-miss non-consumers. `ChatModal.tsx`, `QuizModal.tsx` and `DailyWisdomModal.tsx` each hand-roll the same modal shell that `Dialog.tsx:24-36` provides — a `fixed inset-0` root, a click-to-close backdrop div, and a panel carrying `role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId}` with `titleId` from `useId()`. Four verbatim-structure copies of the same ~10 lines.\n\nThis is PARTLY deliberate and should be respected as such: the shared *behaviour* is already correctly extracted, all three modals do call `useFocusTrap`, and `useFocusTrap.ts:7-12` documents the arrangement explicitly (\"shared by `Dialog` and by the modals that keep their own chrome (the chat drawer, the quiz, the daily wisdom card)\"). The chrome genuinely differs: ChatModal is a right-edge drawer (`flex justify-end`, `h-full`, `slide-in-from-right`), QuizModal has an `sr-only` title and no header row, and DailyWisdomModal puts its title inside the body as a styled pill under a gradient band with an absolutely-positioned close button. They also use different z-indices (60/70/100 vs Dialog's 50) and backdrop opacities (/20, /50, /60 vs /40).\n\nI explicitly DO NOT recommend making these three adopt `Dialog`. Absorbing them would require adding at minimum four config props to a 53-line primitive (z-index, backdrop opacity, animation duration, headerless/custom-title mode) plus a drawer layout mode — textbook over-abstraction, against the audit's governing principle and against the project's own \"No config until you need configurability. No abstract layers for one implementation.\" rule.\n\nWhat IS worth recording is the cost the duplication has already incurred: the a11y wiring was copied structurally but not completely. `Dialog.tsx:43` and `DailyWisdomModal.tsx:41` both give their icon-only close button `aria-label=\"Close\"`; the two that copied the shell later — `ChatModal.tsx:116-121` and `QuizModal.tsx:167-172` — omitted it, leaving buttons with no accessible name. Filed separately as L08-F02. That is the concrete evidence that this duplication drifts, and it is the argument for the one narrow extraction that would be justified if the team wants it: a ~6-line `ModalShell` (root + backdrop + the three ARIA attributes + a labelled close button), leaving each modal's own chrome untouched.\n\n**[Merged from L07-F02 — the same observation reported from the modal side]** OBSERVATION ABOUT DUPLICATION, NOT A DECOMPOSITION FINDING. None of the four modals in this lot clears the spec's 300-line floor (AddBookModal 285, QuizModal 254, ChatModal 182, DailyWisdomModal 105), so no split is proposed or possible here. Filed because the lot brief asked whether a modal-body pattern is duplicated across them rather than reused from components/ui.\n\nWhat is real: four independent copies of the dialog scaffold exist. AddBookModal.tsx:100 correctly uses <Dialog> from ./ui/Dialog. QuizModal.tsx:96-108, ChatModal.tsx:86-100 and DailyWisdomModal.tsx:25-36 each hand-roll the same ~12-line shape -- a `fixed inset-0 z-[N]` wrapper, an absolutely-positioned backdrop div with onClick={onClose}, and a panel div carrying ref + role=\"dialog\" + aria-modal=\"true\" + aria-labelledby={titleId} -- which is the same shape Dialog.tsx:24-36 already implements.\n\nWhat is NOT duplicated, and this materially weakens the concern: the behavioural a11y contract is already shared. All four call useFocusTrap(panelRef, { active, onClose }), and src/components/ui/useFocusTrap.ts:7-12 documents the arrangement as deliberate -- 'shared by Dialog and by the modals that keep their own chrome (the chat drawer, the quiz, the daily wisdom card)'. Focus-in on open, Tab cycling, Escape-to-close and focus restore all live in one place. The three chromes also differ for real reasons that Dialog cannot express without new props: ChatModal is a full-height right-edge drawer (Dialog hardcodes `flex items-center justify-center` and `rounded-3xl`), QuizModal needs its own header/footer bars and an edge-to-edge gradient finish screen (hence its sr-only h2 at line 109 -- it explicitly does not want Dialog's visible title row), and DailyWisdomModal has a gradient bleeding to the panel's top edge plus its own overlay close button. Routing them through Dialog would mean adding align/chromeless/z props with one or two users each, which is the configurability-before-need anti-pattern.\n\nThe one genuinely fragile part is the z-index ladder, which is four magic numbers in four files with no single source of truth: Dialog z-50, ChatModal z-[60], QuizModal z-[70], DailyWisdomModal z-[100]. Two of those collide with non-modal overlays elsewhere -- Toast.tsx:30 is also z-[60] and AudioPlayer.tsx:104 is also z-[100]. Both ties currently resolve correctly by DOM order (ToastHost mounts last at AppShell.tsx:218 so toasts paint over the chat drawer; DailyWisdomModal at AppShell:206 renders after AudioPlayer at AppShell:200 so it paints over the player), so nothing is broken today -- but the correctness depends on JSX ordering in AppShell rather than on the numbers, and any reorder silently changes stacking.\n\nSecondary note: only Dialog has test coverage of the contract (src/components/ui/Dialog.test.tsx:23 asserts aria-modal). The three hand-rolled panels have no test asserting backdrop-click-to-close or their aria wiring; src/test/smoke.test.tsx:82 only asserts one dialog is on screen at a time, and only along the AddBookModal -> ApiKeyDialog path.\n\nAny future work here must respect the project invariant that two aria-modal dialogs must never be open at once -- two focus traps fight each other (CLAUDE.md; AppShell.tsx:50 already closes the opener before showing the key dialog).",
+      "evidence": "src/components/ui/Dialog.tsx:24-36 (the canonical shell)\n  24  <div className=\"fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6\">\n  25    <div data-testid=\"dialog-backdrop\" className=\"absolute inset-0 bg-gray-900/40 backdrop-blur-sm\" onClick={onClose} />\n  30    <div ref={panelRef} role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId} ...>\n\nsrc/components/QuizModal.tsx:96-107 (copy 1)\n  96  <div className=\"fixed inset-0 z-[70] flex items-center justify-center p-4\">\n  97    <div className=\"absolute inset-0 bg-gray-900/50 backdrop-blur-sm ...\" onClick={onClose} />\n 102    <div ref={panelRef} role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId} ...>\n\nsrc/components/DailyWisdomModal.tsx:25-35 (copy 2)\n  25  <div className=\"fixed inset-0 z-[100] flex items-center justify-center p-4\">\n  27    <div className=\"absolute inset-0 bg-gray-900/60 backdrop-blur-sm ...\" onClick={onClose} />\n  30    <div ref={panelRef} role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId} ...>\n\nsrc/components/ChatModal.tsx:86-99 (copy 3, drawer variant)\n  86  <div className=\"fixed inset-0 z-[60] flex justify-end\">\n  88    <div className=\"absolute inset-0 bg-gray-900/20 backdrop-blur-sm ...\" onClick={onClose} />\n  94    <div ref={panelRef} role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId} ...>\n\n--- additional evidence from L07-F02 ---\n  // QuizModal.tsx:96-108\n   96  <div className=\"fixed inset-0 z-[70] flex items-center justify-center p-4\">\n   97    <div\n   98      className=\"absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity\"\n   99      onClick={onClose}\n  100    />\n  102    <div\n  103      ref={panelRef}\n  104      role=\"dialog\"\n  105      aria-modal=\"true\"\n  106      aria-labelledby={titleId}\n\n  // same shape at ChatModal.tsx:86-100 (z-[60]), DailyWisdomModal.tsx:25-36 (z-[100]),\n  // and already implemented at ui/Dialog.tsx:24-36 (z-50)",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "CONFIRMED AS AN ACCURATE OBSERVATION - every single checkable claim in this merged finding survived independent verification, including the ones that argue AGAINST acting on it. But it is not a decomposition finding and its own text says so, so it belongs in structural observations, not the numbered Low section.\n\nLINE COUNTS I RE-MEASURED: Dialog.tsx 53. Whole components/ui lot: ConfirmDialog 73, Dialog.test.tsx 94, Dialog 53, Toast 55, toastStore.test 41, toastStore 44, useFocusTrap 63 - largest is Dialog.test.tsx at 94, exactly as claimed, so nothing in this lot is within 200 lines of the 300 floor. Modals: AddBookModal 285, QuizModal 254, ChatModal 182, DailyWisdomModal 105 - all four figures exact.\n\nFAN-OUT I RE-GREPPED: 4 import sites for Dialog, and they are exactly the four listed - AddBookModal.tsx:15, ui/ConfirmDialog.tsx:3, ui/Dialog.test.tsx:5, features/settings/ApiKeyDialog.tsx:7.\n\n(a) WHAT THE PRIMITIVE PROVIDES - Dialog.tsx:23-51: `fixed inset-0 z-50` root (:24), click-to-close backdrop with data-testid (:25-29), panel carrying ref + role=\"dialog\" + aria-modal=\"true\" + aria-labelledby={titleId} (:30-35) with titleId from useId() (:17), a header row with an h2 and a close button labelled aria-label=\"Close\" (:41-47), and a scrollable body (:49). One `size` prop only. Confirmed 53 lines, single cohesive responsibility.\n\n(b) THE THREE HAND-ROLLS ARE REAL, all verified by reading: ChatModal.tsx:86-99 (z-[60], bg-gray-900/20, `flex justify-end`, h-full, slide-in-from-right - a right-edge drawer); QuizModal.tsx:96-107 (z-[70], bg-gray-900/50, sr-only h2 at :109-111 so no visible header row); DailyWisdomModal.tsx:25-35 (z-[100], bg-gray-900/60, gradient band at :37 bleeding to the panel edge, absolutely-positioned close button at :39-45). All three carry role/aria-modal/aria-labelledby verbatim. The chrome differences are real and are not expressible through Dialog's single `size` prop.\n\n(c) THE DIVERGENCE IS DOCUMENTED AS DELIBERATE - CONFIRMED VERBATIM. src/components/ui/useFocusTrap.ts:7-12 reads: \"Modal keyboard behaviour, shared by `Dialog` and by the modals that keep their own chrome (the chat drawer, the quiz, the daily wisdom card): focus moves in on open, Tab cycles within the panel, Escape closes, and focus returns to whatever opened it.\" The quote in the finding is exact. And all four DO call it: Dialog.tsx:19, ChatModal.tsx:34, QuizModal.tsx:31, DailyWisdomModal.tsx:22. So the behavioural a11y contract genuinely is single-sourced and the divergence is an documented, intentional chrome-only divergence. That means \"these should reuse Dialog\" would be a pure convention preference, which the spec bars - and the finding correctly refuses to recommend it. This is why it is an observation, not a defect.\n\n(d) Z-INDEX LADDER - CLAIMS VERIFIED, BOTH COLLISIONS REAL, BOTH CURRENTLY RESOLVE CORRECTLY. Grepped every z-index in src/. Modal ladder: Dialog.tsx:24 z-50, ChatModal.tsx:86 z-[60], QuizModal.tsx:96 z-[70], DailyWisdomModal.tsx:25 z-[100]. Collisions: ui/Toast.tsx:30 is also z-[60] (ties ChatModal) and AudioPlayer.tsx:104 is also z-[100] (ties DailyWisdomModal). Both ties resolve in favour of the intended winner today, purely by JSX order in AppShell.tsx: `<Outlet />` is at AppShell.tsx:176 (ChatModal renders inside it via BookDetail.tsx:30) while `<ToastHost />` is at AppShell.tsx:218, so toasts paint over the drawer; AudioPlayer is at AppShell.tsx:201 and DailyWisdomModal at AppShell.tsx:206-216, so the wisdom card paints over the player. Nothing is broken today - correct, as stated - but the correctness rests on source ordering in one file, not on the numbers. (Also worth noting for the record: EReader.tsx:254 is z-50, tying Dialog, and AppShell.tsx:183's mobile FAB is z-50 too - so the ladder is even less of a single source of truth than the finding says. Does not change the verdict.)\n\nSECONDARY CLAIMS ALSO VERIFIED: aria-label=\"Close\" exists at exactly two places repo-wide, Dialog.tsx:43 and DailyWisdomModal.tsx:41; the close buttons at ChatModal.tsx:116-121 and QuizModal.tsx:167-172 have no accessible name (confirmed by reading both - icon-only <X> children, no aria-label). Dialog.test.tsx:23 asserts aria-modal and :82 clicks dialog-backdrop; smoke.test.tsx:82 is `expect(screen.getAllByRole('dialog')).toHaveLength(1);` under the comment at :81, reached via the AddBookModal -> ApiKeyDialog path only. A grep of every *.test.ts/*.test.tsx for ChatModal|QuizModal|DailyWisdomModal returns ZERO hits - the three hand-rolled panels genuinely have no test coverage. AppShell.tsx:50-53 does close the opener before showing the key dialog, with the two-focus-traps comment, as claimed.\n\nPLACEMENT: everything actionable here is either filed elsewhere (the missing aria-labels, as L08-F02, which is an a11y bug outside this audit's class) or explicitly not recommended (the ModalShell extraction, correctly refused as configurability-before-need). What remains is an accurate shared-module observation with no split and no recommended action. Route it to `## Structural observations` -> `### Shared module opportunities`, carrying the z-index-ladder note (four magic numbers across four files, two ties resolved only by AppShell JSX order) as the one durable risk worth recording.",
+      "suggestedPatch": "READ-ONLY RUN — described, not applied. Recommended action: none for the structure; treat the current factoring as intentional and correct. Fix only the drift (see L08-F02).\n\nIf the team nonetheless wants the shell shared, the ONLY split that pays for itself, and it should be done as one commit with the full suite run after:\n1. Add `src/components/ui/ModalShell.tsx` (~25 lines) exporting `ModalShell({ open, labelledBy, onClose, zClass, backdropClass, children })` — renders the `fixed inset-0` root, the click-to-close backdrop, and a panel div carrying `role=\"dialog\" aria-modal=\"true\" aria-labelledby={labelledBy}` with a forwarded ref, and calls `useFocusTrap` internally.\n2. Rewrite `Dialog.tsx` to render its header row + body inside `ModalShell`. Do NOT change `DialogProps`; `Dialog`'s public API stays byte-identical so its 4 import sites are untouched.\n3. Migrate the three modals one at a time, full suite after each, keeping each modal's own panel classNames as-is by passing them through.\n4. Do not rename anything while moving. Do not add a barrel — `src/components/ui/` has no `index.ts` and the codebase has exactly one barrel (`src/lib/covers/index.ts`); adding one here would introduce a pattern the project does not use.\n\nInvariant to preserve: never allow two `aria-modal` dialogs open at once. `ModalShell` must not change mount timing or add its own open/close state — it renders null when `open` is false, exactly as `Dialog.tsx:21` does today. `AppShell.tsx:50` already closes the requesting modal before opening the key dialog; that sequencing must survive untouched. `src/test/smoke.test.tsx:81` asserts the single-modal rule and is the regression guard.",
+      "proposedSplit": [],
+      "fanOut": {
+        "staticImportSites": 4,
+        "importingFiles": [
+          "src/components/ui/ConfirmDialog.tsx",
+          "src/components/AddBookModal.tsx",
+          "src/features/settings/ApiKeyDialog.tsx",
+          "src/components/ui/Dialog.test.tsx"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None. No split is proposed. If the optional `ModalShell` extraction were taken, it would be a new leaf module in `src/components/ui/` importing only React + `useFocusTrap`; `Dialog.tsx` and the three modals would import it one-directionally. `useFocusTrap.ts` imports nothing from this layer, so no cycle is reachable.",
+      "verifiedBy": "V02",
+      "sourceLots": [
+        "L07",
+        "L08"
+      ],
+      "currentResponsibilities": [
+        "Dialog.tsx — modal shell: overlay root, click-to-close backdrop, ARIA dialog wiring, header row with title + labelled close button, scrollable body. Single cohesive responsibility, 53 lines."
+      ],
+      "fanOutSites": 4,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "F007",
+      "phase": "discovery",
+      "category": "other",
+      "severity": "low",
+      "file": "src/types.ts",
+      "line": 6,
+      "lines": 110,
+      "title": "Dead `Category` enum is the only runtime-emitting declaration in an otherwise pure-type module",
+      "description": "OBSERVATIONAL — NOT AN OVERSIZED-FILE FINDING AND NO SPLIT IS RECOMMENDED. src/types.ts is 110 lines, far below the 300-line floor, and is correctly structured as one cohesive domain-model module.\n\nWhat was found incidentally while measuring fan-out: the exported `enum Category` (lines 6-15) is referenced by nothing in the repo. A whole-repo word-boundary grep for `Category` returns exactly five hits — the declaration itself, two JSX label/comment strings in src/components/BookDetail.tsx:321 and src/components/StatsView.tsx:133,138, and the literal text `**Category:**` in a markdown template at src/lib/markdown.ts:13. None is an import or a use of the enum. There is no value import, no namespace import (`import * as`), and no re-export of src/types.ts anywhere; all 35 import statements that target the module are `import type`.\n\nWhy this matters to a decomposition audit specifically: `Category` is the sole value-emitting declaration in the file. Every other export is a type alias or an interface, which TypeScript erases at build. Because of that one enum, src/types.ts is nominally a mixed type+runtime module rather than a fully-erasable type-only module — a (very small) mixing of two kinds of responsibility under one filename. Removing the dead enum would make the module 100% type-only and 100% erasable, which is the cleanest possible shape for a module with 33 importers.\n\nThere is also a latent type-safety gap: `Book.category` is declared `string` (line 33), not `Category`, so the enum that exists to constrain the field does not constrain it. Test fixtures accordingly use bare literals (`category: 'Productivity'` in src/lib/markdown.test.ts:10, src/lib/storage/repo.test.ts:18, src/features/library/useLibrary.test.tsx:33, and three others).\n\nWhat should happen: the user picks one of two directions — delete lines 6-15 (zero-risk; nothing imports them), or wire the enum up by narrowing `Book.category` from `string` to `Category`. The second is a real behavioural/typing change with migration implications for existing IndexedDB records that hold arbitrary category strings (notably Goodreads-imported shelves), so it is NOT a mechanical change and is out of this audit's scope to recommend. Deletion is the low-risk option. Neither option involves splitting the file.",
+      "evidence": "src/types.ts\n  1 export type BookStatus = 'Finished' | 'Want to Read';\n  2 export type Priority = 'Low' | 'Medium' | 'High';\n  3 export type VoiceName = 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir';\n  4 export type BlobKind = 'pdf' | 'audio-short' | 'audio-long';\n  5\n  6 export enum Category {          <-- only value-emitting decl; zero importers\n  7   PSYCHOLOGY = 'Psychology',\n  8   PRODUCTIVITY = 'Productivity',\n ...\n 14   OTHER = 'Other',\n 15 }\n ...\n 33   category: string;             <-- Book.category is `string`, not `Category`\n\nVerification greps (whole repo, node_modules excluded):\n  grep -rnw 'Category' src/  -> 5 hits, all label strings or the decl itself\n  grep -rnE \"^import \\{[^}]*\\} from '(\\.{1,2}/)+types'\" src/  -> 0 hits (no value imports)\n  grep -rnE \"import \\* as .* from '(\\.{1,2}/)+types'\" src/    -> 0 hits\n  grep -rnE \"export .* from '(\\.{1,2}/)+types'\" src/          -> 0 hits (no re-export)",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "CONFIRMED - the enum is genuinely dead and genuinely the module's only runtime-emitting declaration. Both claims verified exhaustively; this is the only item in batch V02 with a concrete, zero-risk, mechanical action, so it stays a finding.\n\nLINE COUNT: `wc -l src/types.ts` = 110. Confirmed, far under the 300 floor - correctly NOT filed as a split.\n\nCLAIM 1, DEAD: `grep -rnw \"Category\" src/` returns EXACTLY 5 hits, matching the finding hit-for-hit: src/types.ts:6 (the declaration), src/components/BookDetail.tsx:321 (JSX label text \"Category\"), src/components/StatsView.tsx:133 (a JSX comment `{/* Category Breakdown */}`), src/components/StatsView.tsx:138 (heading text \"Category Breakdown\"), src/lib/markdown.ts:13 (the literal `**Category:**` inside a markdown template string). Not one is an import or a use of the enum. I extended the check beyond the finding on all four axes the batch brief asked for: (a) type-position uses - none, the 5 hits are the whole set; (b) string-literal uses of member VALUES - `grep -rn \"PSYCHOLOGY|'Psychology'\" src/` returns a single hit, src/types.ts:7, the declaration itself, so no code round-trips the member values as bare strings either; (c) test files - covered by the same repo-wide -w grep, zero test hits; (d) JSON/config/docs - a repo-wide grep (node_modules, dist, .git, audit-reports excluded) hits only the three src files above plus three design/plan markdown docs under docs/superpowers/. Nothing loadable references it. Also confirmed zero value imports (`grep -rnE \"^import \\{[^}]*\\} from '(\\.{1,2}/)+types'\" src/` -> no match, exit 1) and zero re-exports (`grep -rnE \"export .*from '(\\.{1,2}/)+types'\" src/` -> no match, exit 1). VERDICT: unreferenced, no ambiguity.\n\nCLAIM 2, ONLY RUNTIME-EMITTING DECL: verified by reading all 110 lines. Lines 1-4 are `export type` aliases (BookStatus, Priority, VoiceName, BlobKind); lines 17, 28, 54, 67, 83, 98, 105 are `export interface` (Profile, Book, Summary, StoredBlob, ReviewCard, LibraryExport, QuizQuestion). `export enum Category` at lines 6-15 is the only declaration that survives type erasure. CORRECT.\n\nFAN-OUT I RE-COUNTED: 35 import statements across 33 files (ProfileView.tsx and QuizModal.tsx each import from '../types' twice - lines 2 and 8, and lines 3 and 4 respectively), which reconciles the finding's \"35 import sites\" with its 33-entry importingFiles list. Every one of the 35 is `import type`. Zero-cycle claim also holds: types.ts's only line matching an import is none - it imports nothing.\n\nONE NUANCE THE REPORT SHOULD CARRY (not an amendment - the finding does not overclaim here, it says only \"nominally a mixed type+runtime module\"): there is NO bundle cost today. tsconfig.json sets `verbatimModuleSyntax: true` and `isolatedModules: true`, and all 35 importers use `import type`, so no module ever value-imports src/types.ts; the file never enters the runtime module graph and the enum ships zero bytes. So the argument for deletion is not bundle weight - it is (i) removing 10 lines of provably dead exported code, and (ii) removing a trap: a reader who finds `export enum Category` will reasonably assume it is the canonical category list, when in fact Book.category is declared `string` at src/types.ts:33 and callers pass bare literals (e.g. useLibrary.tsx:154 writes `category: 'Other'` during Goodreads import). The finding's own note that wiring the enum up instead of deleting it would be a real typing/migration change - not mechanical, out of scope - is correct and should be preserved verbatim in the report; existing IndexedDB records hold arbitrary category strings.\n\nSeverity `low` and category `other` both stand - there is no better category and no higher severity fits a 10-line dead declaration. belongsIn = findings: this is the one item in the batch that produces a real row in the Recommended actions table (\"delete src/types.ts:6-15\", effort trivial, risk none, worth doing yes). The Low section should render it without a Proposed-split table, since no split is proposed.",
+      "suggestedPatch": "READ-ONLY RUN — described only, not applied.\n\nOption A (recommended, zero-risk): delete lines 6-15 of src/types.ts (the entire `export enum Category { ... }` block) plus the blank line that follows it. No importer changes are needed anywhere, because no file imports `Category`. Verify with `npm run typecheck && npm run lint && npm test`; all three should stay green with no other edit. Do not touch `Book.category` in this change.\n\nOption B (user's call, NOT recommended from this audit): keep the enum and narrow `Book.category` from `string` to `Category` at src/types.ts:33. This is a breaking type change requiring an IndexedDB migration path in src/lib/storage/migrate.ts for existing records whose `category` holds an arbitrary string, and it would break Goodreads import, which writes free-text shelf names. Out of scope here.\n\nIn both options: do not rename any other export and do not move the file. Per the audit's rename-plus-move prohibition and the zero-path-alias constraint recorded in fanOutMeasurements, src/types.ts must stay at its current path.",
+      "proposedSplit": [],
+      "fanOut": {
+        "staticImportSites": 35,
+        "importingFiles": [
+          "src/app/AppShell.tsx",
+          "src/components/AddBookModal.tsx",
+          "src/components/BookCard.tsx",
+          "src/components/BookDetail.tsx",
+          "src/components/ChatModal.tsx",
+          "src/components/DailyWisdomModal.tsx",
+          "src/components/EReader.tsx",
+          "src/components/ProfileView.tsx",
+          "src/components/QuizModal.tsx",
+          "src/components/StatsView.tsx",
+          "src/features/book/BookDetailPage.tsx",
+          "src/features/book/useBookRoute.ts",
+          "src/features/library/LibraryPage.tsx",
+          "src/features/library/useLibrary.tsx",
+          "src/features/library/useLibrary.test.tsx",
+          "src/features/profile/ProfileContext.tsx",
+          "src/features/review/useReviewQueue.ts",
+          "src/features/review/reviewQueue.test.tsx",
+          "src/features/settings/useTheme.ts",
+          "src/lib/ai/chat.ts",
+          "src/lib/ai/prompts.ts",
+          "src/lib/ai/quiz.ts",
+          "src/lib/ai/recommend.ts",
+          "src/lib/ai/summarize.ts",
+          "src/lib/ai/tts.ts",
+          "src/lib/goodreads.ts",
+          "src/lib/markdown.ts",
+          "src/lib/markdown.test.ts",
+          "src/lib/srs.ts",
+          "src/lib/srs.test.ts",
+          "src/lib/storage/db.ts",
+          "src/lib/storage/migrate.ts",
+          "src/lib/storage/repo.ts"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "high"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None. src/types.ts has zero imports of its own — it is a pure leaf of the import graph, imported by 33 files and importing nothing. Deleting the dead enum cannot introduce a cycle. (For completeness: any hypothetical per-domain split of this module would also be cycle-free for the same reason, since the declarations do not reference each other across proposed domain lines — but such a split is NOT recommended; see fanOutMeasurements.)",
+      "verifiedBy": "V02",
+      "sourceLots": [
+        "L05"
+      ],
+      "currentResponsibilities": [
+        {
+          "responsibility": "Domain type declarations (erased at build) — the module's actual job",
+          "approxLines": 95,
+          "exports": [
+            "BookStatus",
+            "Priority",
+            "VoiceName",
+            "BlobKind",
+            "Profile",
+            "Book",
+            "Summary",
+            "StoredBlob",
+            "ReviewCard",
+            "LibraryExport",
+            "QuizQuestion"
+          ]
+        },
+        {
+          "responsibility": "Runtime value declaration (emits JS) — dead, unreferenced",
+          "approxLines": 10,
+          "exports": [
+            "Category"
+          ]
+        }
+      ],
+      "fanOutSites": 33,
+      "fanOutTier": "high"
+    },
+    {
+      "id": "F008",
+      "phase": "discovery",
+      "category": "other",
+      "severity": "low",
+      "file": "src/lib/goodreads.ts",
+      "line": 121,
+      "lines": 123,
+      "title": "OpenLibrary cover-URL construction lives in two modules: covers/openLibrary.ts and goodreads.ts",
+      "description": "OBSERVATIONAL, NOT A DECOMPOSITION FINDING AND NOT A RECOMMENDED ACTION. src/lib/goodreads.ts is 123 lines, far under the 300-line floor, and no split is proposed.\n\nWhat is real: knowledge of the OpenLibrary cover-CDN URL template `https://covers.openlibrary.org/b/{key}/{value}-L.jpg` is hardcoded in three source modules, only one of which is inside src/lib/covers/, the directory that exists to own cover sourcing. (1) src/lib/covers/openLibrary.ts:8 builds the cover-id-keyed form. (2) src/lib/goodreads.ts:122 (`coverForIsbn`) builds the ISBN-keyed form. (3) src/features/library/recommendationDefaults.ts:12,18,24,30,37,43 embeds six pre-baked ISBN-keyed literals in the seed recommendation data. Two tests pin the template as a literal string as well: src/lib/covers/index.test.ts:41 and src/lib/goodreads.test.ts:98. A reader who finds src/lib/covers/ and concludes it is the complete cover surface is wrong by two modules; if OpenLibrary changed its cover URL scheme, eight hardcoded instances across three files would need editing.\n\nWhat is NOT true, and corrects the original framing: the two functions are not duplicates. `coverForIsbn` is pure, synchronous, zero-network and keyed on `/b/isbn/`, returning `undefined` on miss; `fetchOpenLibraryCover` is async, first queries a different host (`https://openlibrary.org/search.json`, openLibrary.ts:3) to resolve a `cover_i`, then builds a `/b/id/` URL, returning `null` on miss. No logic is shared - only the CDN hostname and the `-L.jpg` suffix. This is a single-source-of-truth observation about one URL template, not duplicated construction.\n\nWhy no action is recommended: the current placement of `coverForIsbn` is defensible. Its docstring (goodreads.ts:120, \"Free cover from an ISBN, when Goodreads gave us one\"), its input type (`GoodreadsRow.isbn13`, declared in the same file at goodreads.ts:8) and its sole production call site (src/features/library/useLibrary.tsx:158, inside the per-row create loop of `importGoodreads`) are all Goodreads-import-specific. Filing it with the Goodreads concern is as coherent as filing it with cover sourcing, and choosing between two coherent placements is a convention preference rather than a defect. Folding the six recommendationDefaults literals into a helper would also be a net readability loss for static seed data.\n\nHARD CONSTRAINT for any future work here: the two cover paths must remain behaviourally separate. `fetchCover` (src/lib/covers/index.ts:12-21) issues up to two network lookups per book (googleBooks.ts:9, openLibrary.ts:3), so the Goodreads import path must keep using the zero-request ISBN URL builder - a large import must not become 2-3 HTTP requests per book. (Note: `fetchCover` makes no AI calls - covers/index.test.ts:63-75 asserts this explicitly - so the constraint is cost and latency, not the CLAUDE.md zero-AI-calls invariant.)",
+      "evidence": "src/lib/goodreads.ts:120-123\n  120  /** Free cover from an ISBN, when Goodreads gave us one. */\n  121  export function coverForIsbn(isbn13: string | undefined): string | undefined {\n  122    return isbn13 ? `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg` : undefined;\n  123  }\n\nsrc/lib/covers/openLibrary.ts:7-8   (same host, different key)\n    7    const coverId = data.docs?.[0]?.cover_i;\n    8    return coverId ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg` : null;\n\nsrc/features/library/useLibrary.tsx:5,7,158   (the two halves rejoined at the call site)\n    5  import { coverForIsbn } from '../../lib/goodreads';\n    7  import { placeholderCover } from '../../lib/covers';\n  158            coverImageUrl: coverForIsbn(row.isbn13) ?? placeholderCover(row.title),",
+      "confidence": "medium",
+      "verdict": "amended",
+      "verifierNote": "AMENDED - the underlying locality observation is real and I verified every cited line, but the finding UNDERCOUNTS the scatter (three source modules, not two) and OVERSTATES the relationship between the two functions (they are not duplicates). The category is also wrong. And the placement it implicitly argues for is a defensible-either-way taste call, which under the spec's `## Out of scope` ban on convention preference keeps it out of the numbered findings.\n\nLINE COUNTS I RE-MEASURED: src/lib/goodreads.ts = 123 (matches; well under the 300 floor, correctly not a split); src/lib/covers/openLibrary.ts = 9; src/lib/covers/index.ts = 22; src/lib/covers/googleBooks.ts = 29; src/lib/covers/placeholder.ts = 15; src/features/library/recommendationDefaults.ts = 45.\n\nFAN-OUT I RE-GREPPED: 6 import statements targeting lib/goodreads across 4 files - GoodreadsImport.tsx:3 and :4, useLibrary.tsx:5 and :6, goodreadsImport.test.tsx:7, goodreads.test.ts:2. Matches the finding exactly.\n\nEVERY CITED LINE VERIFIED: goodreads.ts:120-123 is the docstring plus `coverForIsbn`, building `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg` at :122. covers/openLibrary.ts:8 builds `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`. useLibrary.tsx:5 and :7 import the two halves from the two modules and :158 rejoins them as `coverImageUrl: coverForIsbn(row.isbn13) ?? placeholderCover(row.title)`. All exact.\n\nAMENDMENT 1 - THE SCATTER IS WIDER THAN REPORTED. A repo-wide `grep -rn openlibrary src/` finds the cover-CDN URL template in THREE source modules, not two: covers/openLibrary.ts:8, goodreads.ts:122, and - missed by the finding - src/features/library/recommendationDefaults.ts at lines 12, 18, 24, 30, 37 and 43, six hardcoded `https://covers.openlibrary.org/b/isbn/<isbn>-L.jpg` literals in the seed recommendation data. It is additionally pinned by two tests as literal strings: covers/index.test.ts:41 and goodreads.test.ts:98. So the finding's own consequence argument (\"if OpenLibrary changed its cover URL scheme, two files in two directories would need editing\") actually understates: eight hardcoded instances across three modules plus two tests. This strengthens the observation while making it less actionable, since converting six data literals into function calls would be a net readability loss.\n\nAMENDMENT 2 - \"DUPLICATION\" IS THE WRONG WORD. The two functions share only a hostname and the `-L.jpg` suffix; they are two different endpoints of the same public API, not two copies of one thing. `coverForIsbn` (goodreads.ts:121-123) is pure, synchronous, zero-network, keyed on `/b/isbn/`, and returns `undefined`. `fetchOpenLibraryCover` (covers/openLibrary.ts:1-8) is async, issues a request to a DIFFERENT host (`https://openlibrary.org/search.json` at :3) to resolve a `cover_i`, is keyed on `/b/id/`, and returns `null`. No logic is duplicated. The accurate framing is single-source-of-truth for one URL TEMPLATE, not duplicated construction.\n\nAMENDMENT 3 - CATEGORY. `co-location-scattered` per the spec means \"related FILES (component + hook + store + test) scattered across multiple top-level directories\". Nothing here is a scattered file group; this is one small function arguably filed in the wrong module. Amended to `other`. Severity `low` stands.\n\nAMENDMENT 4 - THE PLACEMENT IS DEFENSIBLE AS-IS, so this is observational. `coverForIsbn` is not incidentally in goodreads.ts: its docstring at goodreads.ts:120 reads \"Free cover from an ISBN, when Goodreads gave us one\", its input type is `GoodreadsRow.isbn13` (declared goodreads.ts:8 in the same file), and its single production call site (useLibrary.tsx:158) sits inside the Goodreads CSV import loop (verified by reading useLibrary.tsx:142-162 - it is the per-row `bookRepo.create` inside `importGoodreads`). Filing it with the Goodreads import concern is as coherent as filing it with cover sourcing. Choosing between two coherent placements is exactly the convention preference the spec excludes from findings.\n\nTHE CAVEAT IS CORRECT AND MUST SURVIVE, with one precision fix. The finding is right that the two cover paths must stay behaviourally separate: `fetchCover` (covers/index.ts:12-21) loops two lookups, each issuing at least one `fetch` (googleBooks.ts:9, openLibrary.ts:3), so routing a Goodreads import through it would mean up to 2-3 HTTP requests per book. Precision fix: the CLAUDE.md invariant actually quoted is about AI calls, and `fetchCover` makes none - covers/index.test.ts:63-75 explicitly asserts it never hits a Gemini endpoint. So the constraint here is cost/latency on large imports, not the AI-call invariant literally. Directionally the caveat is right and the two paths must not be merged.\n\nbelongsIn = structural-observations-only: route to `## Structural observations` -> `### Shared module opportunities`, recording that the OpenLibrary cover-CDN URL template is hardcoded in three modules plus two tests and that only one of them lives under src/lib/covers/, with the explicit note that unifying the two CODE PATHS is forbidden by the zero-network import requirement.",
+      "suggestedPatch": "READ-ONLY RUN — described, not applied. This is documentation-only per the spec's treatment of co-location findings; the user may reasonably decide the churn is not worth it for a 3-line function. If actioned: (1) Move `coverForIsbn` verbatim from src/lib/goodreads.ts:120-123 into src/lib/covers/openLibrary.ts, where the sibling covers.openlibrary.org URL already lives, keeping the name and signature byte-identical (the spec forbids rename-plus-move). (2) Re-export it from the existing facade so external callers keep using the one canonical entry point that the other five covers consumers already use — change src/lib/covers/index.ts:3-5 to also pull and re-export it, e.g. add `coverForIsbn` to the `./openLibrary` import and widen `export { placeholderCover }` to `export { placeholderCover, coverForIsbn }`. This adds one re-export to a 22-line facade; it does not create a new barrel and does not change the module's shape. (3) Update the only two symbol-level import sites: src/features/library/useLibrary.tsx:5 (delete the line — line 7 already imports from '../../lib/covers', so fold `coverForIsbn` into that existing named-import list) and src/lib/goodreads.test.ts:2 (drop `coverForIsbn` from the './goodreads' import). (4) Move the corresponding `coverForIsbn` test cases out of src/lib/goodreads.test.ts and into src/lib/covers/index.test.ts, matching the co-located-test convention — this is the split point for the test file that the spec requires a finding to name. Do NOT touch GoodreadsImport.tsx or goodreadsImport.test.tsx; they import only `parseGoodreadsCsv`/`GoodreadsParseResult` and are unaffected. Net effect: goodreads.ts becomes purely a CSV parser (~119 lines), and all cover-URL knowledge sits in src/lib/covers/. Verify with `npm run typecheck && npm run lint && npm test` — with zero dynamic refs, zero path aliases and zero vi.mock in the repo, the type-checker catches every missed specifier.",
+      "proposedSplit": [],
+      "fanOut": {
+        "staticImportSites": 6,
+        "importingFiles": [
+          "src/features/library/GoodreadsImport.tsx",
+          "src/features/library/useLibrary.tsx",
+          "src/features/library/goodreadsImport.test.tsx",
+          "src/lib/goodreads.test.ts"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low",
+      "circularImportRisk": "None. The symbol in question (`coverForIsbn`) is a pure 3-line string builder with zero imports of its own. src/lib/goodreads.ts imports only `../types` (a type-only import); the three covers/ modules import nothing at all. Relocating the function into src/lib/covers/ would add no edge to any module that does not already have one: src/features/library/useLibrary.tsx already imports from BOTH '../../lib/goodreads' and '../../lib/covers' (lines 5 and 7), so it would simply drop one specifier. The covers subtree would remain a strict one-level tree with no module-to-module edges. Zero cycle risk in either direction. The only correctness constraint is that the relocated function must NOT be routed through `fetchCover` (see the free-import caveat in the description) — it must remain a separate zero-network export.",
+      "verifiedBy": "V02",
+      "sourceLots": [
+        "L03"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 4,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "RT-F001",
+      "phase": "redTeam",
+      "category": "bug-found-while-testing",
+      "severity": "medium",
+      "file": "src/components/ProfileView.tsx",
+      "line": 385,
+      "lines": 439,
+      "title": "\"Privacy Mode / Local storage encryption\" is a dead toggle advertising a feature the app does not have",
+      "description": "While reading ProfileView.tsx for the export-grouping test I traced every interactive element in the Settings section. The 'Privacy Mode' control at lines 385-387 is a bare <div> styled as a switch rendered permanently in the ON position: no onClick, no state, no onChange, no role, no tabIndex, no aria-checked. It cannot be operated by mouse or keyboard and nothing in the codebase reads or writes a privacy-mode value. Worse, its subtitle claims 'Local storage encryption'. A repo-wide grep for /encrypt|privacyMode/i returns exactly two hits, both of them these two label strings in this file - BookSum stores books, summaries, personal notes and PDF blobs in plain IndexedDB with no encryption anywhere. The UI therefore asserts a security property the app does not implement, in the always-enabled position, which is a false assurance to a user deciding whether to type sensitive notes into the personal-notes textarea (BookDetail.tsx:509-515). Secondary defect: a cursor-pointer div with no role and no keyboard affordance is also an accessibility violation. Fix is either delete the card or wire it to a real setting; do not carry it into the proposed ProfileSettings.tsx extraction unchanged.\n\n**[Independently found by a second red-team class (inherently-monolithic-classifier) — its account:]** Surfaced while reading ProfileView.tsx in full to assess F002's proposed `ProfileSettings` extraction. Filed per the spec's rule on incidental bugs.\n\nLines 375-388 render a settings row reading 'Privacy Mode' / 'Local storage encryption', followed by what looks like an enabled toggle: an orange pill (`bg-orange-600 rounded-full`) with the knob pushed right (`ml-auto`). It is a static `<div>`. There is no `onClick`, no `onChange`, no state, no handler and no prop behind it — it cannot be operated, and it renders in the 'on' position unconditionally on every load.\n\nIt is also not merely inert, it is inaccurate. I grepped the entire source tree for any encryption primitive: `grep -rni 'encrypt|crypto.subtle|cipher' src/` returns exactly one hit — the label string on line 382 itself. (`crypto.randomUUID` appears elsewhere; that is ID generation, not encryption.) The app stores books, summaries, profiles, notes and PDF/audio bytes in plain IndexedDB via `src/lib/storage/repo.ts`, and the Gemini API key in plain `localStorage`. There is no encryption anywhere. A permanently-'on' switch labelled 'Local storage encryption' tells the user their local data is encrypted at rest when it is not.\n\nSeverity note, stated openly: I filed `low` for consistency with how this audit has treated its other incidental bug (F003, also `low`), and because this spec's severity scale is written entirely around decomposition cost and has no row that describes a user-facing false claim. On its own merits — a security assertion the product does not implement, on a project heading for an open-source launch per CLAUDE.md — this deserves higher priority than `low` conveys. Recommended disposition is to delete the row or wire it to something real, decided by the user, not to carry it forward.\n\nDECOMPOSITION RELEVANCE: this is the single largest element of the `ProfileSettings.tsx` file that F002 step 2 proposes to create. Giving a fake control its own module dignifies dead UI, and it is part of why I recommend dropping that step — see counterargumentAnalysis for ProfileView.tsx.",
+      "evidence": "380              <div>\n381                <p className=\"font-bold text-gray-900 dark:text-gray-100\">Privacy Mode</p>\n382                <p className=\"text-xs text-gray-500 dark:text-gray-400\">Local storage encryption</p>\n383              </div>\n384            </div>\n385            <div className=\"w-12 h-6 bg-orange-600 rounded-full p-1 cursor-pointer\">\n386              <div className=\"w-4 h-4 bg-white dark:bg-gray-900 rounded-full ml-auto shadow-sm\" />\n387            </div>\n388          </div>\n\n--- corroborating evidence ---\nsrc/components/ProfileView.tsx:375-388 — no onClick, no state, no handler anywhere\n 375          <div className=\"bg-white dark:bg-gray-900 p-6 rounded-2xl border ... flex items-center justify-between\">\n 376            <div className=\"flex items-center gap-4\">\n 377              <div className=\"w-10 h-10 rounded-full bg-blue-50 ... text-blue-600\">\n 378                <ShieldAlert size={20} />\n 379              </div>\n 380              <div>\n 381                <p className=\"font-bold ...\">Privacy Mode</p>\n 382                <p className=\"text-xs ...\">Local storage encryption</p>\n 383              </div>\n 384            </div>\n 385            <div className=\"w-12 h-6 bg-orange-600 rounded-full p-1 cursor-pointer\">\n 386              <div className=\"w-4 h-4 bg-white dark:bg-gray-900 rounded-full ml-auto shadow-sm\" />\n 387            </div>          <- static div styled as an enabled toggle; `cursor-pointer` with no handler\n 388          </div>\n\nContrast — the adjacent Danger Zone control in the same grid IS wired:\n 400            <button\n 401              onClick={onResetLibrary}\n\nNo encryption exists in the codebase:\n  $ grep -rni 'encrypt|crypto.subtle|cipher' src/\n  src/components/ProfileView.tsx:382:  ...Local storage encryption</p>   <- the label itself, sole hit",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "Phase 4 red-team finding — filed directly by the cross-cutting sweep and not routed through Phase 3 verification. Its evidence was gathered first-hand by the class subagent against the source at the audited commit.",
+      "suggestedPatch": null,
+      "proposedSplit": [],
+      "fanOut": null,
+      "migrationRisk": null,
+      "circularImportRisk": null,
+      "testSplitPlan": null,
+      "verifiedBy": "phase-4-red-team",
+      "redteamClass": "multi-responsibility-classifier + inherently-monolithic-classifier",
+      "foundByClasses": [
+        "multi-responsibility-classifier",
+        "inherently-monolithic-classifier"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "RT-F002",
+      "phase": "redTeam",
+      "category": "other",
+      "severity": "low",
+      "file": "eslint.config.js",
+      "line": 32,
+      "lines": 37,
+      "title": "React-free layering guard is scoped to src/lib/**/*.ts and silently does not cover .tsx — an extracted module can evade the invariant",
+      "description": "CLAUDE.md declares a hard invariant: 'src/lib/** imports no React ... ESLint enforces the first half.' The enforcing block scopes itself to `files: ['src/lib/**/*.ts']`. Minimatch `*.ts` does not match `*.tsx`, and the only other config block covering `**/*.{ts,tsx}` does not carry `no-restricted-imports`. Consequently any file placed at `src/lib/**/*.tsx` receives the general rules but NOT the React-free guard, and could import React with lint staying green. This is currently latent, not live: all 37 tracked files under `src/lib/` are `.ts`, so nothing evades the rule today. It matters for decomposition specifically because it is the guard-rail that governs where extracted modules may legally go. A refactor that pulls pure logic out of an oversized component toward `src/lib/` gets a correct hard error if the new file is `.ts`, but gets silent acceptance if the extractor reaches for `.tsx` (a natural instinct when the extracted unit still contains a hook or any JSX). The failure mode is a green lint on a commit that breaks a documented architectural invariant. None of the three current split candidates trips this — their splits stay inside `src/components/` as sibling `.tsx` files — so this is preventive, filed to be recorded in the migration constraints rather than actioned as part of any specific split. Fix is one character: `files: ['src/lib/**/*.{ts,tsx}']`.",
+      "evidence": "eslint.config.js:30-36 (the enforcing block, quoted verbatim):\n  30    {\n  31      // lib/ must stay framework-free so it is testable without a DOM renderer.\n  32      files: ['src/lib/**/*.ts'],\n  33      rules: {\n  34        'no-restricted-imports': ['error', { patterns: ['react', 'react-dom', 'react/*'] }],\n  35      },\n  36    },\n\neslint.config.js:10-29 — the only other block matching src/lib files is `files: ['**/*.{ts,tsx}']`; its `rules` are react-hooks/rules-of-hooks, react-hooks/exhaustive-deps, @typescript-eslint/no-unused-vars, @typescript-eslint/consistent-type-imports, no-console, no-restricted-globals. It contains no `no-restricted-imports`.\n\nCurrent state is clean (rule is not being evaded today):\n  $ git ls-files 'src/lib/*' | grep -E '\\.tsx$'\n  (none — all src/lib files are .ts)\n  $ git ls-files 'src/lib/*' | wc -l\n  37\n\nInvariant the rule is meant to enforce — CLAUDE.md:35-38:\n  '**Layering.** `src/lib/**` imports no React. ... ESLint enforces the first half.'\n\nRestated as a refactor constraint — docs/superpowers/plans/2026-08-12-booksum-refactor-handover.md:57:\n  '- `src/lib/**` stays React-free; components never import `idb` or `@google/genai`.'",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "Phase 4 red-team finding — filed directly by the cross-cutting sweep and not routed through Phase 3 verification. Its evidence was gathered first-hand by the class subagent against the source at the audited commit.",
+      "suggestedPatch": null,
+      "proposedSplit": [],
+      "fanOut": null,
+      "migrationRisk": null,
+      "circularImportRisk": null,
+      "testSplitPlan": null,
+      "verifiedBy": "phase-4-red-team",
+      "redteamClass": "dynamic-reference-detection",
+      "foundByClasses": [
+        "dynamic-reference-detection"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": null,
+      "fanOutTier": "n/a"
+    },
+    {
+      "id": "RT-F003",
+      "phase": "redTeam",
+      "category": "co-location-scattered",
+      "severity": "low",
+      "file": "src/components/AudioPlayer.tsx",
+      "line": 4,
+      "lines": 264,
+      "title": "Documentation only: audio playback spans 6 top-level directories and the one contract binding them, `AudioTrack`, is declared in a UI leaf rather than src/types.ts where every other cross-layer shape lives",
+      "description": "Audio playback is the widest-spanning logical unit in the repo: 6 distinct top-level directories (src/components, src/app, src/lib/ai, src/lib/audio, src/lib, src/lib/storage), comfortably clearing the 4+ bar. Five of those six placements are mandated by architecture the project documents and should NOT be changed: the generate-decode-encode-persist pipeline (lib/ai/tts.ts -> lib/audio/wav.ts -> lib/base64.ts -> lib/storage/repo.ts blobs) is React-free work that the ESLint-enforced layering invariant requires to live under src/lib/**, and the player must be mounted by the shell (src/app/AppShell.tsx L35, L82-83, L200-201) rather than by a route so audio survives navigation. No co-location refactor of those files is recommended, and none is implied here.\n\nThe one element that genuinely deviates from the repo's own norm is where the unit's shared contract lives. `AudioTrack` (src/components/AudioPlayer.tsx L4-9) is a pure-data interface -- four string fields, zero React, zero DOM -- yet it is declared inside a presentational component file. src/types.ts is the established, unambiguous home for cross-layer data shapes in this codebase: it holds 11 exported shapes (BookStatus, Priority, VoiceName, BlobKind, Category, Profile, Book, Summary, StoredBlob, ReviewCard, LibraryExport, QuizQuestion) and every other layer of the audio unit resolves its shared shapes through it (lib/ai/tts.ts imports Book/Summary/VoiceName from ../../types; lib/storage/repo.ts imports BlobKind from ../../types). AudioTrack is the sole exception, and the cost is concrete: src/app/ShellContext.ts -- the shell's public API surface, which otherwise imports nothing at all from src/components -- must reach sideways into the components tree for a type (L2), making src/app structurally dependent on a UI leaf for its own interface definition (ShellApi.playAudio, L5).\n\nA repo-wide sweep confirms this is a singleton, not a pattern: the only three cross-top-level-directory type imports that do not originate in src/lib/** are src/app/AppShell.tsx L5 and src/app/ShellContext.ts L2 (both AudioTrack) plus src/components/AddBookModal.tsx L14 (AddBookOptions/BookDraft from features/library/useLibrary, which is a hook exporting its own parameter types -- normal). Every other shared type in the repo is exported either from src/types.ts or from a src/lib/** module, i.e. from the designated shared layer. So this is a genuine deviation from the codebase's own convention rather than an imported preference.\n\nRecorded for the report's structural observations. Not a split, not a recommended action, and explicitly not a co-location refactor: the implied change is a single type declaration moving to the module that already owns shared shapes, which the spec's ban on introducing new patterns does not cover because src/types.ts is the pattern already.",
+      "evidence": "AUDIO PLAYBACK UNIT -- 6 top-level directories:\n  src/components/AudioPlayer.tsx      (264 lines) player UI + `export interface AudioTrack` at L4-9\n  src/components/BookDetail.tsx       type-imports AudioTrack L29; calls onPlayAudio L162\n  src/components/EReader.tsx          type-imports AudioTrack L16; calls onPlayAudio L206\n  src/app/AppShell.tsx                type-imports AudioTrack L5; owns state L35; exposes playAudio L82; renders player L200-201\n  src/app/ShellContext.ts             type-imports AudioTrack L2; ShellApi.playAudio L5\n  src/lib/ai/tts.ts                   generateAudioSummary (Gemini TTS call)\n  src/lib/audio/wav.ts                pcmToWavBlob  (+ co-located wav.test.ts)\n  src/lib/base64.ts                   base64ToBytes (+ co-located base64.test.ts)\n  src/lib/storage/repo.ts             blobs store (audio-short / audio-long BlobKind)\n\nsrc/app/ShellContext.ts, in full (18 lines) -- its ONLY non-react import is the AudioTrack type from src/components:\n  L1  import { createContext, useContext } from 'react';\n  L2  import type { AudioTrack } from '../components/AudioPlayer';\n  L5    playAudio: (track: AudioTrack) => void;\n\nsrc/components/AudioPlayer.tsx L4-9 -- a pure data shape, no React:\n  export interface AudioTrack {\n    src: string; // Blob URL or remote URL\n    title: string;\n    author: string;\n    coverUrl: string;\n  }\n\nsrc/types.ts -- the established home for cross-layer shapes (11 exports, all plain data):\n  L1 BookStatus  L2 Priority  L3 VoiceName  L4 BlobKind  L6 Category\n  L17 Profile  L28 Book  L54 Summary  L67 StoredBlob  L83 ReviewCard  L98 LibraryExport  L105 QuizQuestion\n\nRepo-wide sweep -- every cross-top-level-dir type import NOT sourced from src/lib/**:\n  src/app/AppShell.tsx:5        import type { AudioTrack } from '../components/AudioPlayer';\n  src/app/ShellContext.ts:2     import type { AudioTrack } from '../components/AudioPlayer';\n  src/components/AddBookModal.tsx:14  import type { AddBookOptions, BookDraft } from '../features/library/useLibrary';\n(only three; the third is a hook exporting its own parameter types, which is conventional)\n\nAudioPlayer.tsx importers (4): src/app/AppShell.tsx, src/app/ShellContext.ts, src/components/BookDetail.tsx, src/components/EReader.tsx",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "Phase 4 red-team finding — filed directly by the cross-cutting sweep and not routed through Phase 3 verification. Its evidence was gathered first-hand by the class subagent against the source at the audited commit.",
+      "suggestedPatch": null,
+      "proposedSplit": [],
+      "fanOut": null,
+      "migrationRisk": null,
+      "circularImportRisk": null,
+      "testSplitPlan": null,
+      "verifiedBy": "phase-4-red-team",
+      "redteamClass": "co-location-opportunities",
+      "foundByClasses": [
+        "co-location-opportunities"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 4,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "RT-F004",
+      "phase": "redTeam",
+      "category": "bug-found-while-testing",
+      "severity": "low",
+      "file": "src/components/EReader.tsx",
+      "line": 393,
+      "lines": 477,
+      "title": "EReader page-turn animation never replays: `key={currentPage}` is written inside the className string literal",
+      "description": "Surfaced while reading EReader.tsx in full to assess whether it should be split. Filed per the spec's rule that incidentally-discovered bugs are the auditor's responsibility.\n\nLine 393 reads `<div className=\"animate-in fade-in slide-in-from-bottom-4 duration-700 key={currentPage}\">`. The `key={currentPage}` is INSIDE the double-quoted className value, not a JSX prop. The author's evident intent was to key the wrapper on the page index so React unmounts and remounts it on every page turn, which is what makes a CSS enter-animation replay. Two consequences:\n\n1. The wrapper is never remounted, so the `animate-in fade-in slide-in-from-bottom-4 duration-700` entrance animation plays exactly once — on first mount of the reader — and never again. Every subsequent 'Next Chapter' / 'Back' navigation (L219-220, L405-420, L442-448, L466-472) swaps the content with no transition. The reader's headline polish silently does nothing after page one.\n2. Three junk tokens (`key={currentPage}` splits on whitespace into `key={currentPage}`) are emitted as CSS class names into the DOM. Harmless at runtime, but they are meaningless classes shipped on every render.\n\nThis is a one-line fix — move `key={currentPage}` out of the string and onto the element as a real prop — but it is invisible to every automated gate the project runs: TypeScript accepts any string as `className`, ESLint has no rule that inspects string contents, Prettier reformats it happily, and there is no test that mounts EReader at all (no `src/components/EReader.test.tsx`; `src/test/smoke.test.tsx` never reaches the reader). It is exactly the class of defect that hides in a long component, and I count it as evidence in FAVOUR of splitting the file — see RT-F001, where I weigh it against the case for leaving it whole.\n\nRepo-wide check: `grep -rn 'className=\"[^\"]*key=' src/` returns this line and nothing else, so it is a one-off, not a pattern.",
+      "evidence": "src/components/EReader.tsx:390-399\n 390          <div\n 391            className={`max-w-2xl mx-auto px-6 py-12 md:py-20 ${fontSize} transition-all duration-300`}\n 392          >\n 393            <div className=\"animate-in fade-in slide-in-from-bottom-4 duration-700 key={currentPage}\">\n                                                                            ^^^^^^^^^^^^^^^^^^^^^\n                                          intended as a JSX prop; sitting inside the string literal\n 394              <RenderFormattedContent\n 395                content={pages[currentPage]}\n 396                isFirstPage={currentPage === 0}\n 397                theme={theme}\n 398              />\n 399            </div>\n\nPage state that was meant to drive the remount:\n 173  const [currentPage, setCurrentPage] = useState(0);\n 219  const nextPage = () => setCurrentPage((p) => Math.min(pages.length - 1, p + 1));\n 220  const prevPage = () => setCurrentPage((p) => Math.max(0, p - 1));\n\nRepo-wide uniqueness:\n  $ grep -rn 'className=\"[^\"]*key=' src/\n  src/components/EReader.tsx:393:  (only hit)",
+      "confidence": "high",
+      "verdict": "confirmed",
+      "verifierNote": "Phase 4 red-team finding — filed directly by the cross-cutting sweep and not routed through Phase 3 verification. Its evidence was gathered first-hand by the class subagent against the source at the audited commit.",
+      "suggestedPatch": null,
+      "proposedSplit": [],
+      "fanOut": null,
+      "migrationRisk": null,
+      "circularImportRisk": null,
+      "testSplitPlan": null,
+      "verifiedBy": "phase-4-red-team",
+      "redteamClass": "inherently-monolithic-classifier",
+      "foundByClasses": [
+        "inherently-monolithic-classifier"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    },
+    {
+      "id": "RT-F005",
+      "phase": "redTeam",
+      "category": "oversized-monolithic-by-design",
+      "severity": "low",
+      "file": "src/components/EReader.tsx",
+      "line": 27,
+      "lines": 477,
+      "title": "EReader.tsx is a self-contained reader that owns its own theme system; F004's split cuts that system in half and should be downgraded to optional",
+      "description": "DELIBERATE CONTRADICTION of F004, filed as the counterweight this red-team class exists to produce. F004 is not factually wrong about anything it asserts, but it omits the split's principal cost and therefore oversells it as the 'cleanest split in the lot'. My verdict: leave EReader.tsx whole, or at minimum downgrade F004's recommendation from 'probably worth doing' to 'maintainer's call, documented, not recommended'.\n\nTHE OMITTED COST. F004's sharedStateConcern states that after the split 'the reader keeps sole ownership of its themes'. That is true only against the global `.dark` system; it is false at the file level. The reader's three-theme palette is today defined in exactly one file. After the split it is defined in two. Staying in EReader.tsx: `themeStyles` (L223-227), `uiColors` (L229-248), the audio-button branch (L281-287), the theme selector (L318-339) and the progress-bar branch (L452-458). Moving to ReaderContent.tsx: `accentColor`/`headingColor`/`dropCapColor` (L59-61) plus four inline `theme === 'dark'` ternaries (L87, L95, L108, L121). Roughly 7 of 13 theme mappings cross the boundary. Adding a fourth reader theme, or restyling an existing one, becomes a synchronized two-file edit, and nothing in the type system forces the two palettes to agree — the `Theme` union guarantees the KEYS match, not that the colours are coherent. That is a boundary cutting THROUGH one concern, not between two.\n\nThis matters more here than it would elsewhere because the file's self-containment is a documented design decision, not an accident. CLAUDE.md names this exact file: '`src/components/EReader.tsx` is deliberately excluded — it owns its own reader themes.' The split makes that sentence half-true.\n\nTHE TYPE INVERSION. F004 is right that `Theme` must move into the new file, and right that the alternative is a real (type-erased) cycle. But look at what the correct direction buys: the shell that OWNS the theme state (L174 `useState<Theme>('light')`) must import its own state's type from its child renderer. F004's own verifier flagged this as 'slightly inverted' and noted the only fix is a third file holding one type line. Both branches of that fork are worse than today: inverted ownership, or three files where there was one. The spec's governing principle — over-splitting is worse than under-splitting — points at neither branch.\n\nONE CONSUMER, FOREVER, AND UNSHAREABLE. `ReaderContent.tsx` would have exactly one importer for the life of the project, and that importer is the file it came out of. Its `theme: Theme` prop hardcodes the reader's palette vocabulary, so it can serve no other surface; and F001's analysis independently establishes it can never merge with BookDetail's `SummaryRenderer` (different class vocabulary, `\\n` vs `\\n\\n+` block splitting, different feature set). A module with one caller, no independent identity and no possible second consumer is the textbook case for staying inline.\n\nTHE SPLIT DOES NOT RESOLVE THE FLAGGED CONDITION. Residual is ~344 — still 15% over the 300-line floor. A future run of this same audit re-flags the file. You pay a file and gain a still-oversized parent.\n\nWHAT I WEIGHED ON THE OTHER SIDE, HONESTLY. The testability gain is real and larger than I first credited: 111 lines with seven pure branches (h1/h2/h3, blockquote, bullet, numbered, drop-cap, plain paragraph) plus `formatInline`'s two, none reachable today without mounting a `fixed inset-0` full-screen reader with five useStates, a useMemo, a scroll effect and a TTS path. And I found a live bug in this file (RT-F002, L393) that is precisely the kind of defect a 477-line file hides — that is evidence FOR splitting and I count it as such. I also decline to lean on F004's cold-path argument in either direction: see the churn note below, it is not a usable signal in this repo.\n\nThe tiebreaker is the spec's own rule. At 477 lines the file is under the 500-line high-confidence bar; the call is genuinely near 50/50; and the spec says a near-tie resolves to not splitting. Filed at `low` because the spec's own row for this category is 'documented for awareness, no action recommended' — which is exactly the disposition I am arguing for.\n\nCATEGORY CAVEAT, stated plainly: the enum row for `oversized-monolithic-by-design` says 'file >500 lines'. EReader is 477. No in-scope file in this repo reaches 500 except BookDetail.tsx at 539, so the category is applied at the repo's real scale per this class's brief. The substance is unaffected.",
+      "evidence": "THE THEME SYSTEM, SPLIT ACROSS TWO FILES BY F004's PROPOSAL\n\n-- stays in EReader.tsx --\n 223  const themeStyles = {\n 224    light: 'bg-[#fcfcf9] text-slate-800 selection:bg-orange-200',\n 225    sepia: 'bg-[#f4ecd8] text-[#433422] selection:bg-[#dcd1b5]',\n 226    dark:  'bg-[#1a1a1a] text-[#d4d4d4] selection:bg-orange-900',\n 227  };\n 229  const uiColors = { light: {...}, sepia: {...}, dark: {...} };   // L229-248\n 281-287  audio button:  theme === 'sepia' ? ... : theme === 'dark' ? ...\n 318-339  theme selector over (['light','sepia','dark'] as Theme[])\n 452-458  progress bar:  theme === 'dark' ? 'bg-white' : 'bg-black'\n\n-- moves to ReaderContent.tsx --\n  59    const accentColor  = theme === 'dark' ? 'text-orange-400' : 'text-orange-700';\n  60    const headingColor = theme === 'dark' ? 'text-gray-100'   : 'text-gray-900';\n  61    const dropCapColor = theme === 'dark' ? 'text-orange-500' : 'text-orange-700';\n  87    theme === 'dark' ? 'border-gray-800' : 'border-gray-200/60'\n  95    theme === 'dark' ? 'text-gray-300'   : 'text-gray-700'\n 108    theme === 'dark' ? 'border-orange-900 bg-orange-900/10' : 'border-orange-200 bg-orange-50'\n 121    theme === 'dark' ? 'bg-orange-500'   : 'bg-orange-400'\n\nTYPE-OWNERSHIP INVERSION FORCED BY THE SPLIT\n  27  type Theme = 'light' | 'sepia' | 'dark';        <- must move OUT to the child\n 174  const [theme, setTheme] = useState<Theme>('light');   <- owner stays, now imports\n                                                              its own state's type back\n                                                              from the child it renders\n\nDOCUMENTED INTENT (CLAUDE.md, Conventions)\n  \"Dark mode is a `.dark` class on <html> ... `src/components/EReader.tsx` is\n   deliberately excluded — it owns its own reader themes.\"",
+      "confidence": "medium",
+      "verdict": "confirmed",
+      "verifierNote": "Phase 4 red-team finding — filed directly by the cross-cutting sweep and not routed through Phase 3 verification. Its evidence was gathered first-hand by the class subagent against the source at the audited commit.",
+      "suggestedPatch": null,
+      "proposedSplit": [],
+      "fanOut": null,
+      "migrationRisk": null,
+      "circularImportRisk": null,
+      "testSplitPlan": null,
+      "verifiedBy": "phase-4-red-team",
+      "redteamClass": "inherently-monolithic-classifier",
+      "foundByClasses": [
+        "inherently-monolithic-classifier"
+      ],
+      "currentResponsibilities": [],
+      "fanOutSites": 1,
+      "fanOutTier": "low"
+    }
+  ],
+  "refuted": [
+    {
+      "id": "F005",
+      "phase": "discovery",
+      "category": "co-location-scattered",
+      "severity": "low",
+      "file": "src/components/StatsView.tsx",
+      "line": 1,
+      "lines": 238,
+      "title": "Documentation only: StatsView/ProfileView live in components/ while their feature folders hold only thin page wrappers - this is the established convention, not a defect",
+      "description": "DOCUMENTATION ONLY -- NO ACTION RECOMMENDED. The lot brief asked me to check for a co-location mismatch between src/components/StatsView.tsx and src/features/stats/StatsPage.tsx. I investigated and the mismatch hypothesis is NOT supported: this is the codebase's dominant convention, applied consistently, and moving these files would introduce a change the spec explicitly forbids ('Don't introduce new patterns the codebase doesn't already use').\n\nThe actual relationship: StatsPage.tsx is a 10-line wrapper that pulls books from useLibrary, builds a navigate callback, and renders <StatsView>. ProfilePage.tsx is a 40-line wrapper doing the same for ProfileView plus a confirm-guarded reset handler. The pattern -- features/<x>/<X>Page.tsx owns routing and data wiring, src/components/<X>.tsx owns presentation -- holds for 4 of the 6 routes in src/app/routes.tsx: StatsPage -> StatsView, ProfilePage -> ProfileView, BookDetailPage -> BookDetail, ReaderPage -> EReader. Only LibraryPage (230 lines) and ReviewPage (148 lines) render their presentation inline, and those are the deviations from the norm, not these.\n\nThe one factually notable wrinkle, recorded for the record rather than as a recommendation: src/components/ is described in CLAUDE.md as the 'Shared UI' layer, but every one of the six files in this lot has exactly one import site -- ProfileView (ProfilePage), StatsView (StatsPage), AddBookModal (AppShell), DailyWisdomModal (AppShell), QuizModal (BookDetail), ChatModal (BookDetail). None of them is shared in the sense of having multiple consumers. src/features/stats/ is a directory containing a single 10-line file. So the layer boundary is presentational-vs-wiring rather than shared-vs-feature-specific. That is a legible convention and it is documented; it is simply not what the folder name suggests.\n\nWhy no action: relocating StatsView into src/features/stats/ (and by symmetry ProfileView, AddBookModal, QuizModal, ChatModal, DailyWisdomModal into their feature folders) would be a convention change requiring a team-level architectural decision, would touch CLAUDE.md's documented architecture block, and delivers no decomposition benefit -- the files do not get smaller or more focused, they only move. This finding exists so the observation is recorded once and not re-raised as a recommendation by a later pass.",
+      "evidence": "  // src/features/stats/StatsPage.tsx -- the entire file, the only file in that directory\n   5  export function StatsPage() {\n   6    const { books } = useLibrary();\n   7    const navigate = useNavigate();\n   9    return <StatsView books={books} onBookClick={(book) => void navigate(`/book/${book.id}`)} />;\n  10  }\n\n  // same shape at src/features/profile/ProfilePage.tsx:31 -> components/ProfileView\n  // same shape at src/features/book/BookDetailPage.tsx:3 -> components/BookDetail\n  // same shape at src/features/book/ReaderPage.tsx:3   -> components/EReader",
+      "confidence": "high",
+      "verdict": "refuted",
+      "verifierNote": "REFUTED AS A FINDING, NOT AS FACT. Every factual claim in F005 checks out under independent measurement, but the item asserts the defect category `co-location-scattered` for a case its own body disproves, and it fails the spec's floor on two counts: `wc -l src/components/StatsView.tsx` = 238 lines (under the 300 floor) and `proposedSplit` is empty. Its own `worthDoing` is \"no\" and its own text reads \"the mismatch hypothesis is NOT supported\". Under the spec's refute list this is both \"file is under threshold\" and \"file has a single coherent responsibility\"; under `## Out of scope` it is also a convention-preference item (\"Don't introduce new patterns the codebase doesn't already use\"), which is barred from being a finding.\n\nMY OWN RE-MEASUREMENT (all confirming the discoverer):\n- Line counts: StatsView.tsx 238; StatsPage.tsx 10; ProfilePage.tsx 40; BookDetailPage.tsx 55; ReaderPage.tsx 32; LibraryPage.tsx 230; ReviewPage.tsx 148.\n- Route count: src/app/routes.tsx:18-23 registers exactly 6 routes (LibraryPage, BookDetailPage, ReaderPage, ReviewPage, StatsPage, ProfilePage).\n- Page-wrapper-over-components/ convention holds for 4 of 6, verified by reading each page's import block: StatsPage.tsx:2 -> components/StatsView; ProfilePage.tsx:2 -> components/ProfileView; BookDetailPage.tsx:3 -> components/BookDetail; ReaderPage.tsx:3 -> components/EReader. The two deviations are exactly the two named: LibraryPage.tsx (230 lines, imports only BookCard at :4 and renders inline) and ReviewPage.tsx (148 lines, imports nothing from src/components/ at all). So the claim \"dominant convention, 4 of 6\" is CORRECT.\n- Fan-out for all six lot components, grepped individually: StatsView 1 (StatsPage.tsx:2), ProfileView 1 (ProfilePage.tsx:2), AddBookModal 1 (AppShell.tsx:6), DailyWisdomModal 1 (AppShell.tsx:7), QuizModal 1 (BookDetail.tsx:31), ChatModal 1 (BookDetail.tsx:30). All exactly one import site, as claimed. (Note the claim is correctly scoped to those six; components/ as a whole does contain genuinely shared files - BookCard has 2 sites, AudioPlayer 5 - so \"components/ is not really shared\" is true of the lot, not of the directory.)\n- `ls src/features/stats` returns exactly one file, StatsPage.tsx (10 lines). Confirmed.\n\nWHY REFUTED RATHER THAN CONFIRMED: refuting the finding STATUS does not impugn the discovery work - the discoverer investigated a hypothesis and correctly reported that it does not hold. But an item whose entire content is \"I checked for a defect and there is none\" cannot be rendered as a numbered defect. The accurate content is genuinely useful and MUST NOT be dropped: it is the evidence for the executive summary's required statement about established module-organization convention (the pattern is presentational-in-components/ + wiring-in-features/, applied consistently), and it belongs in `## Structural observations` under `### Co-location opportunities` as the standing argument against re-raising this move. Hence belongsIn = structural-observations-only. Phase 5 should NOT list this twice - render it in structural observations only, not in both the refuted appendix and the observations section.",
+      "suggestedPatch": "Read-only run, and no patch is recommended. Leave src/components/StatsView.tsx and src/components/ProfileView.tsx where they are. If the user ever decides to converge on feature-folder co-location, that is a separate architectural decision that must (a) update the src/components/ description in CLAUDE.md, (b) decide what remains in the 'Shared UI' layer once single-consumer views leave, and (c) move one file per commit with typecheck between each, since every import specifier is relative and there is no barrel to absorb the change.",
+      "proposedSplit": [],
+      "fanOut": {
+        "staticImportSites": 1,
+        "importingFiles": [
+          "src/features/stats/StatsPage.tsx"
+        ],
+        "dynamicRefs": [],
+        "barrelReExports": [],
+        "testMockPaths": [],
+        "tier": "low"
+      },
+      "migrationRisk": "low"
+    }
+  ],
+  "audit": {
+    "lotCount": 11,
+    "rawDiscoveryFindings": 9,
+    "deduplicatedFindings": 8,
+    "redTeamClasses": 9,
+    "redTeamFindings": 5,
+    "verdicts": {
+      "confirmed": 6,
+      "amended": 1,
+      "refuted": 1,
+      "uncertain": 0
+    }
+  }
+}

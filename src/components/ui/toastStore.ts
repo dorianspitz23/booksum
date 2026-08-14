@@ -1,3 +1,5 @@
+import { newId } from '../../lib/id';
+
 export type ToastKind = 'error' | 'success' | 'info';
 
 export interface ToastMessage {
@@ -14,7 +16,7 @@ function emit() {
 }
 
 function push(kind: ToastKind, message: string) {
-  toasts = [...toasts, { id: crypto.randomUUID(), kind, message }];
+  toasts = [...toasts, { id: newId(), kind, message }];
   emit();
 }
 

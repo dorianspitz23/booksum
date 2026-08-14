@@ -1,7 +1,6 @@
 import { getDb } from './db';
+import { newId } from '../id';
 import type { BlobKind, Book, Profile, ReviewCard, Summary } from '../../types';
-
-const newId = () => crypto.randomUUID();
 
 export const profiles = {
   async list(): Promise<Profile[]> {
@@ -66,8 +65,10 @@ export const books = {
   },
 
   async remove(id: string): Promise<void> {
-    const summary = await summaries.getByBook(id);
-    if (summary) await summaries.remove(summary.id);
+    // removeByBook, not getByBook -- a book can carry more than one summary row
+    // if a backup was ever imported over it, and deleting only the first left
+    // the rest behind permanently.
+    await summaries.removeByBook(id);
     await blobs.removeByBook(id);
     await reviewCards.removeByBook(id);
     await (await getDb()).delete('books', id);
@@ -113,6 +114,10 @@ export const summaries = {
     return (await getDb()).getFromIndex('summaries', 'by-book', bookId);
   },
 
+  async listByBook(bookId: string): Promise<Summary[]> {
+    return (await getDb()).getAllFromIndex('summaries', 'by-book', bookId);
+  },
+
   async upsert(summary: Summary): Promise<Summary> {
     await (await getDb()).put('summaries', summary);
     return summary;
@@ -120,6 +125,12 @@ export const summaries = {
 
   async remove(id: string): Promise<void> {
     await (await getDb()).delete('summaries', id);
+  },
+
+  async removeByBook(bookId: string): Promise<void> {
+    const db = await getDb();
+    const keys = await db.getAllKeysFromIndex('summaries', 'by-book', bookId);
+    await Promise.all(keys.map((key) => db.delete('summaries', key)));
   },
 };
 

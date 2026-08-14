@@ -2,12 +2,22 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { BookOpen, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProfile } from './ProfileContext';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { toast } from '../../components/ui/toastStore';
+import type { Profile } from '../../types';
 
 export function ProfilePicker() {
   const { allProfiles, selectProfile, createProfile, deleteProfile } = useProfile();
+  const confirm = useConfirm();
   const [name, setName] = useState('');
-  const [isCreating, setIsCreating] = useState(allProfiles.length === 0);
   const [isBusy, setIsBusy] = useState(false);
+
+  // Derived, not snapshotted. As useState(allProfiles.length === 0) this latched
+  // `true` whenever the picker mounted before the profile list had loaded, and
+  // never recovered -- so the existing profiles stayed hidden behind the create
+  // form. It only ever worked because App gates on isLoading before rendering.
+  const [wantsNewProfile, setWantsNewProfile] = useState(false);
+  const isCreating = wantsNewProfile || allProfiles.length === 0;
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -15,8 +25,30 @@ export function ProfilePicker() {
     setIsBusy(true);
     try {
       await createProfile(name);
+    } catch (error) {
+      console.error('Could not create profile', error);
+      toast.error('Could not create that profile. Try again.');
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  /** Deleting a profile cascades to every book, summary, PDF and review card it owns. */
+  const handleDelete = async (candidate: Profile) => {
+    const confirmed = await confirm({
+      title: `Delete ${candidate.name}?`,
+      body: `This permanently removes ${candidate.name}'s entire library — every book, summary, note, PDF and review card. It cannot be undone.`,
+      confirmLabel: 'Delete profile',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteProfile(candidate.id);
+      toast.success(`Deleted ${candidate.name}.`);
+    } catch (error) {
+      console.error('Could not delete profile', error);
+      toast.error('Could not delete that profile. Try again.');
     }
   };
 
@@ -57,9 +89,9 @@ export function ProfilePicker() {
                   <BookOpen size={18} className="ml-auto text-gray-300" />
                 </button>
                 <button
-                  onClick={() => void deleteProfile(candidate.id)}
+                  onClick={() => void handleDelete(candidate)}
                   aria-label={`Delete profile ${candidate.name}`}
-                  className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  className="p-3 text-gray-300 dark:text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-xl transition-all"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -93,7 +125,7 @@ export function ProfilePicker() {
             {allProfiles.length > 0 && (
               <button
                 type="button"
-                onClick={() => setIsCreating(false)}
+                onClick={() => setWantsNewProfile(false)}
                 className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 Back to profiles
@@ -102,7 +134,7 @@ export function ProfilePicker() {
           </form>
         ) : (
           <button
-            onClick={() => setIsCreating(true)}
+            onClick={() => setWantsNewProfile(true)}
             className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-500 dark:text-gray-400 hover:border-orange-400 hover:text-orange-700 dark:hover:text-orange-400 transition-all font-semibold"
           >
             <Plus size={18} /> Add a profile

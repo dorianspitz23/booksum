@@ -1,3 +1,4 @@
+import { newId } from './id';
 import type { ReviewCard } from '../types';
 
 /** 1 = again, 2 = hard, 3 = good, 4 = easy. */
@@ -21,7 +22,7 @@ export interface NewCardInput {
 
 export function newCard(input: NewCardInput, now: Date = new Date()): ReviewCard {
   return {
-    id: crypto.randomUUID(),
+    id: newId(),
     profileId: input.profileId,
     bookId: input.bookId,
     question: input.question,
