@@ -20,6 +20,10 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 20_000,
     setupFiles: ['./src/test/setup.ts'],
+    // `.worktrees/` holds full checkouts created by audit tooling. They contain
+    // their own copies of every test file, so without this the suite collects
+    // ~220 files instead of ~24 and takes ten minutes instead of thirty seconds.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.worktrees/**'],
     css: false,
     restoreMocks: true,
   },

@@ -4,7 +4,10 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  // `.worktrees/` holds full checkouts created by audit tooling. Without this
+  // ignore, eslint lints 13 copies of the codebase and reports every problem
+  // once per copy.
+  { ignores: ['dist', 'node_modules', 'coverage', '.worktrees'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
