@@ -6,6 +6,7 @@ import { coverForIsbn } from '../../lib/goodreads';
 import type { GoodreadsRow } from '../../lib/goodreads';
 import { placeholderCover } from '../../lib/covers';
 import { newId } from '../../lib/id';
+import { parseReadDate } from '../../lib/stats';
 import type { Book, LibraryExport, Summary } from '../../types';
 
 export type BookDraft = Omit<Book, 'id' | 'profileId' | 'addedAt' | 'summaryId'>;
@@ -175,6 +176,10 @@ function useLibraryState() {
           readingTimeMinutes: 0,
           coverImageUrl: coverForIsbn(row.isbn13) ?? placeholderCover(row.title),
           hasPdf: false,
+          // The CSV's Date Read column was parsed and then discarded, so every
+          // imported book arrived with no completion date and could never count
+          // toward a monthly goal.
+          finishedAt: row.status === 'Finished' ? parseReadDate(row.dateRead) : undefined,
         });
         added += 1;
       }

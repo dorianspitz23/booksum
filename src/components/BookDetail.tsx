@@ -216,6 +216,11 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       ...book,
       status: newStatus,
       rating: newStatus === 'Finished' ? book.rating || 5 : book.rating,
+      // Nothing in the app used to write finishedAt, which is why the "Monthly
+      // Goal" ring counted the whole library and stuck at 100%. An existing date
+      // is kept, so re-marking a book does not move it into the current month.
+      finishedAt:
+        newStatus === 'Finished' ? (book.finishedAt ?? new Date().toISOString()) : undefined,
     });
   };
 

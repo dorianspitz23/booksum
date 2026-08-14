@@ -6,6 +6,7 @@ import { ThemeToggle } from '../features/settings/ThemeToggle';
 import { libraryToMarkdown } from '../lib/markdown';
 import { parseLibraryExport } from '../lib/storage/libraryExport';
 import { downloadText } from '../lib/download';
+import { monthlyProgress } from '../lib/stats';
 import type { VoiceName } from '../types';
 
 const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
@@ -50,8 +51,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const confirm = useConfirm();
 
   const stats = useMemo(() => {
-    const finishedCount = books.filter((b) => b.status === 'Finished').length;
-    const progressPercent = Math.min(100, (finishedCount / profile.monthlyGoal) * 100);
+    // This used to count every Finished book ever, with no date filter, so a card
+    // labelled "Monthly Goal" only ever climbed and stuck at 100%.
+    const monthly = monthlyProgress(books, profile.monthlyGoal);
+    const finishedCount = monthly.finished;
+    const progressPercent = monthly.percent;
+    const undatedCount = monthly.undated;
     const joinedDate = new Date(profile.createdAt).toLocaleDateString('en-US', {
       month: 'long',
       year: 'numeric',
@@ -67,7 +72,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       .slice(0, 3)
       .map(([cat]) => cat);
 
-    return { finishedCount, progressPercent, joinedDate, topGenres };
+    return { finishedCount, progressPercent, joinedDate, topGenres, undatedCount };
   }, [books, profile]);
 
   const handleSave = () => {
@@ -231,8 +236,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Monthly Goal</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Reading insights is the best way to compound knowledge.
+            Finished this month. Reading insights is the best way to compound knowledge.
           </p>
+          {stats.undatedCount > 0 && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4 leading-relaxed">
+              {stats.undatedCount} older book{stats.undatedCount === 1 ? '' : 's'} finished without
+              a recorded date, so {stats.undatedCount === 1 ? 'it is' : 'they are'} not counted
+              here. Anything you finish from now on will be.
+            </p>
+          )}
 
           {isEditing && (
             <div className="w-full mt-2">

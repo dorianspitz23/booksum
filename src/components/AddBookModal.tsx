@@ -74,6 +74,8 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
           rating,
           priority: status === 'Want to Read' ? priority : undefined,
           hasPdf: Boolean(pdf),
+          // Adding a book straight to Finished is a completion event too.
+          finishedAt: status === 'Finished' ? new Date().toISOString() : undefined,
         },
         { summary: generated.summary, pdf },
       );
