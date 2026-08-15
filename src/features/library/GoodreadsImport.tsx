@@ -9,6 +9,9 @@ interface GoodreadsImportProps {
   onDone: () => void;
 }
 
+/** Goodreads exports a ~250-byte row per book, so this clears a 20,000-book library. */
+const MAX_CSV_BYTES = 10 * 1024 * 1024;
+
 export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
   const { importGoodreadsRows } = useLibrary();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -16,12 +19,38 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
   const [filename, setFilename] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  /**
+   * The accept attribute on a file input is a filter in the picker dialog, not a
+   * guarantee — a user can pick anything, and drag-and-drop bypasses it entirely.
+   * Reading 400MB of video into a string to look for commas hangs the tab before
+   * the parser ever sees it, so size is checked before the bytes are read.
+   */
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.size > MAX_CSV_BYTES) {
+      toast.error(
+        `That file is ${Math.round(file.size / 1024 / 1024)}MB. A Goodreads export of a large library is well under ${MAX_CSV_BYTES / 1024 / 1024}MB.`,
+      );
+      return;
+    }
+    if (file.size === 0) {
+      toast.error('That file is empty.');
+      return;
+    }
+
     try {
       const parsed = parseGoodreadsCsv(await file.text());
+
+      if (parsed.unrecognised) {
+        // Distinct from "no books": a CSV with no Title column is the wrong file,
+        // and telling the user their library looks empty sends them hunting in
+        // the wrong direction.
+        toast.error('That CSV has no Title column, so it is not a Goodreads export.');
+        return;
+      }
+
       setPreview(parsed);
       setFilename(file.name);
       if (parsed.rows.length === 0) {

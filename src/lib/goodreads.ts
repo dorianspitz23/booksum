@@ -7,12 +7,21 @@ export interface GoodreadsRow {
   rating: number;
   isbn13?: string;
   dateRead?: string;
+  /**
+   * Derived from the `Bookshelves` column. Goodreads shelves are the closest
+   * thing the export has to a category, and ignoring them meant every imported
+   * book landed as 'Other' — flattening the category filter, the top-genres list
+   * and the stats breakdown for anyone whose library came from an import.
+   */
+  category?: string;
 }
 
 export interface GoodreadsParseResult {
   rows: GoodreadsRow[];
   /** Rows present in the file but unusable (no title). */
   skipped: number;
+  /** True when the file has no Title column, so it is not a Goodreads export. */
+  unrecognised?: boolean;
 }
 
 /**
@@ -84,10 +93,17 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
 
   const titleAt = columnOf('title');
   const authorAt = columnOf('author');
+
+  // Without this, any CSV at all parsed to zero rows and reported as an empty
+  // library rather than as the wrong file — including a spreadsheet whose first
+  // row happens to look like a header.
+  if (titleAt < 0) return { rows: [], skipped: table.length - 1, unrecognised: true };
+
   const ratingAt = columnOf('my rating');
   const shelfAt = columnOf('exclusive shelf');
   const isbnAt = columnOf('isbn13');
   const dateReadAt = columnOf('date read');
+  const shelvesAt = columnOf('bookshelves');
 
   const rows: GoodreadsRow[] = [];
   let skipped = 0;
@@ -111,10 +127,34 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
       rating: Number.isFinite(rating) ? rating : 0,
       isbn13: cleanIsbn(cell(isbnAt)),
       dateRead: dateRead || undefined,
+      category: categoryFromShelves(cell(shelvesAt)),
     });
   }
 
   return { rows, skipped };
+}
+
+/**
+ * The first meaningful shelf, title-cased, as the book's category.
+ *
+ * Goodreads writes the reading-state shelves into this column alongside the
+ * user's own, so `to-read, philosophy` means the category is Philosophy. Taking
+ * the first entry blindly would have categorised half a library as "To Read".
+ */
+const STATE_SHELVES = new Set(['read', 'to-read', 'currently-reading', 'did-not-finish', 'dnf']);
+
+export function categoryFromShelves(shelves: string): string | undefined {
+  for (const raw of shelves.split(',')) {
+    const shelf = raw.trim().toLowerCase();
+    if (!shelf || STATE_SHELVES.has(shelf)) continue;
+
+    return shelf
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map((word) => word[0].toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  return undefined;
 }
 
 /** Free cover from an ISBN, when Goodreads gave us one. */

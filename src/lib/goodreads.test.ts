@@ -98,6 +98,64 @@ describe('parseGoodreadsCsv', () => {
   });
 });
 
+describe('categories from shelves', () => {
+  const withShelves = (shelves: string) =>
+    parseGoodreadsCsv(
+      [
+        'Title,Author,Exclusive Shelf,Bookshelves',
+        `Atomic Habits,James Clear,read,"${shelves}"`,
+      ].join('\n'),
+    ).rows[0];
+
+  it('uses the first shelf that is not a reading state', () => {
+    // Goodreads writes the state shelves into this column alongside the user's
+    // own, so taking the first entry blindly would categorise half a library
+    // as "To Read".
+    expect(withShelves('to-read, philosophy')?.category).toBe('Philosophy');
+    expect(withShelves('read, currently-reading, personal-finance')?.category).toBe(
+      'Personal Finance',
+    );
+  });
+
+  it('title-cases a hyphenated shelf', () => {
+    expect(withShelves('science-fiction')?.category).toBe('Science Fiction');
+  });
+
+  it('leaves the category unset when there is nothing but state shelves', () => {
+    // Falls back to 'Other' at the import site rather than inventing one here.
+    expect(withShelves('read, to-read')?.category).toBeUndefined();
+    expect(withShelves('')?.category).toBeUndefined();
+  });
+
+  it('is absent when the export has no Bookshelves column at all', () => {
+    const parsed = parseGoodreadsCsv(
+      ['Title,Author,Exclusive Shelf', 'Atomic Habits,James Clear,read'].join('\n'),
+    );
+    expect(parsed.rows[0]?.category).toBeUndefined();
+    expect(parsed.unrecognised).toBeFalsy();
+  });
+});
+
+describe('rejecting a file that is not a Goodreads export', () => {
+  it('flags a CSV with no Title column', () => {
+    // This used to parse to zero rows and report as an empty library, sending
+    // the user hunting for missing books rather than for the right file.
+    const parsed = parseGoodreadsCsv(['Name,Amount', 'Coffee,3.50'].join('\n'));
+
+    expect(parsed.unrecognised).toBe(true);
+    expect(parsed.rows).toHaveLength(0);
+  });
+
+  it('does not flag a real export', () => {
+    const parsed = parseGoodreadsCsv(
+      ['Title,Author,Exclusive Shelf', 'Atomic Habits,James Clear,read'].join('\n'),
+    );
+
+    expect(parsed.unrecognised).toBeFalsy();
+    expect(parsed.rows).toHaveLength(1);
+  });
+});
+
 describe('coverForIsbn', () => {
   it('builds an OpenLibrary URL', () => {
     expect(coverForIsbn('9780735211292')).toBe(

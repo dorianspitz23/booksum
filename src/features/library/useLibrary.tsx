@@ -224,7 +224,11 @@ function useLibraryState() {
           profileId: profile.id,
           title: row.title,
           author: row.author,
-          category: 'Other',
+          // Taken from the CSV's Bookshelves column when it has one. Hardcoding
+          // 'Other' meant a 300-book import produced a library with exactly one
+          // category, flattening the filter, the top-genres list and the stats
+          // breakdown all at once.
+          category: row.category ?? 'Other',
           status: row.status,
           rating: row.rating,
           readingTimeMinutes: 0,
