@@ -91,4 +91,30 @@ describe('Dialog', () => {
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('hides the page behind it from assistive tech', () => {
+    // Trapping Tab is only half of aria-modal. A screen reader walks the
+    // accessibility tree rather than tabbing, so the page behind an open dialog
+    // stayed fully readable — exactly what aria-modal promises it is not.
+    render(<Harness />);
+
+    // Still in the DOM, but out of the accessibility tree: role queries resolve
+    // against the same tree a screen reader reads, so this is the real check.
+    expect(screen.getByText('outside')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'outside' })).not.toBeInTheDocument();
+
+    // The dialog's own content stays reachable.
+    expect(screen.getByRole('button', { name: 'first' })).toBeInTheDocument();
+  });
+
+  it('gives the page back when it closes', () => {
+    const { unmount } = render(<Harness />);
+    expect(screen.queryByRole('button', { name: 'outside' })).not.toBeInTheDocument();
+
+    unmount();
+
+    // Left hidden, the whole app would be unreachable to a screen reader after
+    // the first dialog anyone opened.
+    expect(document.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
+  });
 });

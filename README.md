@@ -5,7 +5,8 @@ you have read. Everything is stored in your browser; there is no server and no a
 
 ## Run it
 
-**Prerequisites:** Node.js 20.19 or newer.
+**Prerequisites:** Node.js 22.22.2+, 24.15+, or 26+. The gaps are not arbitrary — `jsdom`,
+which the tests run on, disclaims the versions in between, and `npm install` warns on them.
 
 ```bash
 npm install

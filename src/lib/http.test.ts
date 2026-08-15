@@ -13,9 +13,7 @@ afterEach(() => {
 
 describe('fetchJsonOrNull', () => {
   it('returns the parsed body on success', async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response('{"ok":true}', { status: 200 })),
-    );
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response('{"ok":true}', { status: 200 })));
 
     await expect(fetchJsonOrNull<{ ok: boolean }>('https://example.test')).resolves.toEqual({
       ok: true,
@@ -29,9 +27,7 @@ describe('fetchJsonOrNull', () => {
   });
 
   it('returns null when the body is not JSON', async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response('<html>rate limited</html>')),
-    );
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response('<html>rate limited</html>')));
 
     // Providers answer 200 with an HTML error page often enough that this needs
     // to be a fallback rather than an exception the caller has to catch.

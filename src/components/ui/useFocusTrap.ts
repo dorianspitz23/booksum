@@ -30,6 +30,52 @@ export function useFocusTrap(
     };
   }, [active, focusable]);
 
+  /**
+   * Hides everything outside the panel from assistive tech.
+   *
+   * Trapping Tab is only half of `aria-modal`. A screen reader does not navigate
+   * by Tab — it walks the accessibility tree — so the page behind an open dialog
+   * stayed fully readable and announceable, which is exactly what `aria-modal`
+   * on the panel promises is not the case.
+   *
+   * Every dialog here renders inline in the React tree rather than in a portal,
+   * so this walks from the panel to `body` marking each ancestor's *siblings*
+   * inert, leaving only the path to the panel reachable.
+   */
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!active || !panel) return;
+
+    const changed: { element: Element; hadInert: boolean; ariaHidden: string | null }[] = [];
+
+    for (let node: HTMLElement | null = panel; node && node !== document.body;) {
+      const parent: HTMLElement | null = node.parentElement;
+      if (!parent) break;
+
+      for (const sibling of Array.from(parent.children)) {
+        if (sibling === node) continue;
+        changed.push({
+          element: sibling,
+          hadInert: (sibling as HTMLElement).inert === true,
+          ariaHidden: sibling.getAttribute('aria-hidden'),
+        });
+        (sibling as HTMLElement).inert = true;
+        sibling.setAttribute('aria-hidden', 'true');
+      }
+      node = parent;
+    }
+
+    return () => {
+      // Restored rather than cleared: a sibling may have been legitimately hidden
+      // before this dialog opened, and stacked dialogs unwind in reverse order.
+      for (const { element, hadInert, ariaHidden } of changed) {
+        (element as HTMLElement).inert = hadInert;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      }
+    };
+  }, [active, panelRef]);
+
   useEffect(() => {
     if (!active) return;
 
