@@ -1,4 +1,24 @@
-@import 'tailwindcss';
+/* `source(none)` turns off automatic detection, which walks up to the git root
+   and scans everything not gitignored -- including audit-reports/, whose JSON
+   quotes class names verbatim. That was enough for Tailwind to emit a rule for
+   a class no element uses, embedding a third-party texture URL in the stylesheet
+   of an app that promises it contacts nobody. Only src/ is a real source. */
+@import 'tailwindcss' source(none);
+@source './';
+@source '../index.html';
+
+/* Self-hosted, so no page load contacts a third party. These used to come from
+   fonts.googleapis.com, which meant every visit announced itself to Google
+   before the user had entered a key or touched an AI feature -- in an app whose
+   README says data never leaves the browser. Only the weights actually used are
+   imported; the italic Playfair is used by the pull-quote styling. */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/playfair-display/700.css';
+@import '@fontsource/playfair-display/700-italic.css';
 
 /* Class-driven rather than media-driven so a profile can override the system. */
 @custom-variant dark (&:where(.dark, .dark *));

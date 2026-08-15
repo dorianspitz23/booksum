@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useProfile } from '../profile/ProfileContext';
+import { THEME_CACHE } from '../../lib/storageKeys';
 import type { Profile } from '../../types';
 
 export type ThemeChoice = Profile['theme'];
@@ -28,6 +29,15 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', resolved === 'dark');
+    // Mirrored for the pre-paint script in index.html. Without this the class is
+    // only set once React has mounted and this effect has run, so every load in
+    // dark mode flashed a white screen first.
+    try {
+      localStorage.setItem(THEME_CACHE, resolved);
+    } catch {
+      // Private-mode browsers throw. The app still themes correctly once mounted;
+      // only the pre-paint optimisation is lost, so there is nothing to recover.
+    }
   }, [resolved]);
 
   const setTheme = useCallback(

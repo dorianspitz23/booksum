@@ -6,9 +6,17 @@ import { LibraryProvider } from './features/library/useLibrary';
 import { ReviewQueueProvider } from './features/review/useReviewQueue';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
 import { ToastHost } from './components/ui/Toast';
+import { useTheme } from './features/settings/useTheme';
 
 export default function App() {
   const { profile, isLoading } = useProfile();
+
+  // Applied here rather than in AppShell, which only renders once a profile has
+  // been chosen. Everything before that -- the loading spinner and the whole
+  // "Who's reading?" screen -- was rendering its dark: variants against an html
+  // element that never got the class, so the first screen a new user ever sees
+  // ignored dark mode entirely.
+  useTheme();
 
   if (isLoading) {
     return (

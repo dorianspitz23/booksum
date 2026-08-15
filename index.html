@@ -10,12 +10,31 @@
     />
     <!-- Relative, so it still resolves when the app is served from /<repo>/. -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap"
-      rel="stylesheet"
-    />
+    <!--
+      Fonts are bundled from @fontsource, not fetched from fonts.googleapis.com.
+      See src/index.css.
+
+      Theme is applied before first paint. The real setting lives on the profile
+      in IndexedDB, which cannot be read synchronously, so useTheme mirrors the
+      resolved value into localStorage purely so this can run. Without it every
+      dark-mode load painted a white screen until React mounted and the effect
+      ran. Inline and synchronous on purpose -- an external file would defeat it.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('booksum.theme');
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch {
+          /* Private-mode browsers throw on localStorage; light is the safe default. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -7,7 +7,6 @@ import { AddBookModal } from '../components/AddBookModal';
 import { DailyWisdomModal } from '../components/DailyWisdomModal';
 import { ApiKeyDialog } from '../features/settings/ApiKeyDialog';
 import { useProfile } from '../features/profile/ProfileContext';
-import { useTheme } from '../features/settings/useTheme';
 import { useLibrary } from '../features/library/useLibrary';
 import { useReviewQueue } from '../features/review/useReviewQueue';
 import { ShellContext } from './ShellContext';
@@ -46,9 +45,8 @@ export function AppShell() {
   const { books, addBook, getSummary } = useLibrary();
   const { remaining: dueCount } = useReviewQueue();
 
-  // Applied here so the theme holds on every route, not only where the toggle
-  // happens to be mounted.
-  useTheme();
+  // The theme is applied in App, above this shell, so it also covers the loading
+  // screen and the profile picker -- neither of which renders inside the shell.
   const location = useLocation();
   const navigate = useNavigate();
 

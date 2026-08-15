@@ -17,6 +17,14 @@ export const ACTIVE_PROFILE = 'booksum.activeProfile';
 /** Set once the one-time localStorage-to-IndexedDB migration has run. */
 export const MIGRATION_MARKER = 'booksum.migratedAt';
 
+/**
+ * The last resolved theme, mirrored here so the inline script in index.html can
+ * apply it before first paint. The profile record is the source of truth; this
+ * is only a paint-time cache, because IndexedDB cannot be read synchronously.
+ * The literal is duplicated in index.html, which cannot import this file.
+ */
+export const THEME_CACHE = 'booksum.theme';
+
 /** Cached AI recommendations, per profile. */
 export const recommendationsKey = (profileId: string) => `booksum.recs.${profileId}`;
 
