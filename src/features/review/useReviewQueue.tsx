@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { reviewCards as cardRepo } from '../../lib/storage/repo';
-import { scheduleCard } from '../../lib/srs';
+import { isAnswerable, scheduleCard } from '../../lib/srs';
 import type { Grade } from '../../lib/srs';
 import { useProfile } from '../profile/ProfileContext';
 import { toast } from '../../components/ui/toastStore';
@@ -22,7 +22,18 @@ function useReviewQueueState() {
       return;
     }
     try {
-      setQueue(await cardRepo.listDue(profile.id));
+      const due = await cardRepo.listDue(profile.id);
+      // An unanswerable card cannot be graded, so it never leaves the queue —
+      // one of them at the head deadlocked the entire session. Skipped rather
+      // than deleted: they are the user's data, and a future repair pass could
+      // still rebuild them from the book they came from.
+      const answerable = due.filter(isAnswerable);
+      if (answerable.length !== due.length) {
+        console.warn(
+          `[booksum] skipped ${due.length - answerable.length} review card(s) that cannot be answered`,
+        );
+      }
+      setQueue(answerable);
     } catch (error) {
       // Without this the rejection skipped setIsLoading(false) entirely and the
       // page sat on its spinner forever, with no message and no way to retry.

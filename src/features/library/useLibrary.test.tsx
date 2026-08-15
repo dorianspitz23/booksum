@@ -5,8 +5,10 @@ import {
   blobs,
   books as bookRepo,
   profiles,
+  reviewCards as cardRepo,
   summaries as summaryRepo,
 } from '../../lib/storage/repo';
+import { newCard } from '../../lib/srs';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { LibraryProvider, useLibrary } from './useLibrary';
 import type { Book, LibraryExport, Summary } from '../../types';
@@ -141,7 +143,7 @@ describe('useLibrary.importLibrary', () => {
   });
 
   const exportOf = (books: Book[], summaries: Summary[]): LibraryExport => ({
-    version: 2,
+    version: 3,
     exportedAt: '2026-01-01T00:00:00.000Z',
     books,
     summaries,
@@ -283,5 +285,108 @@ describe('useLibrary.importLibrary', () => {
     expect(first).toBe(1);
     expect(second).toBe(0);
     await expect(bookRepo.listByProfile(profile.id)).resolves.toHaveLength(1);
+  });
+});
+
+describe('backup completeness', () => {
+  const exportOf = (books: Book[], summaries: Summary[]): LibraryExport => ({
+    version: 3,
+    exportedAt: '2026-01-01T00:00:00.000Z',
+    books,
+    summaries,
+  });
+
+  it('carries the review schedule and the profile settings', async () => {
+    const profile = await renderLibrary();
+    let book!: Book;
+    await act(async () => {
+      book = await api.addBook(draft('Atomic Habits'));
+    });
+    await cardRepo.upsert(
+      newCard({
+        profileId: profile.id,
+        bookId: book.id,
+        question: 'What is habit stacking?',
+        options: ['a', 'b', 'c', 'd'],
+        correctAnswerIndex: 1,
+        explanation: 'because',
+      }),
+    );
+
+    let payload!: LibraryExport;
+    await act(async () => {
+      payload = await api.exportLibrary();
+    });
+
+    // A v2 backup carried books and summaries only, so moving devices lost every
+    // setting and the entire spaced-repetition schedule — the one dataset that
+    // costs money to rebuild, since cards only come from an AI-generated quiz.
+    expect(payload.version).toBe(3);
+    expect(payload.reviewCards).toHaveLength(1);
+    expect(payload.reviewCards?.[0]?.question).toBe('What is habit stacking?');
+    expect(payload.profile?.favoriteVoice).toBe(profile.favoriteVoice);
+    expect(payload.profile?.monthlyGoal).toBe(profile.monthlyGoal);
+  });
+
+  it('restores review cards onto the importing profile', async () => {
+    const profile = await renderLibrary();
+    const incoming: Book = {
+      ...draft('Deep Work'),
+      id: 'incoming-1',
+      profileId: 'a-different-device',
+      addedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const card = newCard({
+      profileId: 'a-different-device',
+      bookId: 'incoming-1',
+      question: 'What is deep work?',
+      options: ['a', 'b', 'c', 'd'],
+      correctAnswerIndex: 0,
+      explanation: 'because',
+    });
+
+    await act(async () => {
+      await api.importLibrary({ ...exportOf([incoming], []), reviewCards: [card] });
+    });
+
+    const restored = await cardRepo.listByProfile(profile.id);
+    // Profile ids are per-device, so a card imported with its original id would
+    // belong to a profile that does not exist here and never surface again.
+    expect(restored).toHaveLength(1);
+    expect(restored[0]?.profileId).toBe(profile.id);
+  });
+
+  it('keeps the local schedule for a card the backup also has', async () => {
+    const profile = await renderLibrary();
+    let book!: Book;
+    await act(async () => {
+      book = await api.addBook(draft('Atomic Habits'));
+    });
+
+    const local = await cardRepo.upsert({
+      ...newCard({
+        profileId: profile.id,
+        bookId: book.id,
+        question: 'Q',
+        options: ['a', 'b', 'c', 'd'],
+        correctAnswerIndex: 0,
+        explanation: '',
+      }),
+      intervalDays: 30,
+      reviewCount: 9,
+    });
+
+    await act(async () => {
+      await api.importLibrary({
+        ...exportOf([], []),
+        reviewCards: [{ ...local, intervalDays: 1, reviewCount: 0 }],
+      });
+    });
+
+    const [after] = await cardRepo.listByProfile(profile.id);
+    // Restoring the backup's older schedule over locally-earned progress would
+    // undo real review work, so a card already present is left alone.
+    expect(after?.intervalDays).toBe(30);
+    expect(after?.reviewCount).toBe(9);
   });
 });

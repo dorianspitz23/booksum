@@ -47,6 +47,71 @@ beforeEach(async () => {
   localStorage.clear();
 });
 
+describe('useReviewQueue with unusable cards', () => {
+  it('does not let a card with no options deadlock the session', async () => {
+    const profile = await renderQueue();
+    // The fixture for this state already existed in this file, used only to
+    // check cascade deletion — the assertion for the bug it actually causes was
+    // never written. A card with no options rendered a question with no buttons,
+    // so it could not be graded, never left the head of the queue, and blocked
+    // every card behind it for good.
+    await reviewCards.upsert(
+      newCard({
+        profileId: profile.id,
+        bookId: 'b1',
+        question: 'Unanswerable',
+        options: [],
+        correctAnswerIndex: 0,
+        explanation: '',
+      }),
+    );
+    await seedCard(profile, 'Answerable');
+
+    mount();
+
+    await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
+    expect(api.current?.question).toBe('Answerable');
+  });
+
+  it('skips a card whose correct answer is out of range', async () => {
+    const profile = await renderQueue();
+    await reviewCards.upsert(
+      newCard({
+        profileId: profile.id,
+        bookId: 'b1',
+        question: 'Impossible',
+        options: ['a', 'b'],
+        correctAnswerIndex: 7,
+        explanation: '',
+      }),
+    );
+
+    mount();
+
+    // Every answer scored wrong, whichever the user picked.
+    await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('0'));
+  });
+
+  it('surfaces a card whose dueAt is corrupt instead of hiding it forever', async () => {
+    const profile = await renderQueue();
+    const card = newCard({
+      profileId: profile.id,
+      bookId: 'b1',
+      question: 'Corrupt date',
+      options: ['a', 'b', 'c', 'd'],
+      correctAnswerIndex: 0,
+      explanation: '',
+    });
+    // upsert normalising dueAt is the fix — an unnormalised value sorts past
+    // every cutoff in the by-profile-due index and is unreachable through it.
+    await reviewCards.upsert({ ...card, dueAt: 'not a date' });
+
+    mount();
+
+    await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
+  });
+});
+
 describe('useReviewQueue', () => {
   it('surfaces a due card', async () => {
     const profile = await renderQueue();

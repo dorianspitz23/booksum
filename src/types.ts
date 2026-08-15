@@ -94,12 +94,28 @@ export interface ReviewCard {
   reviewCount: number;
 }
 
-/** Shape of a library backup file. */
+/** Profile fields a backup carries. Identity (`id`, `createdAt`) is not restored. */
+export type ProfileSettings = Pick<
+  Profile,
+  'name' | 'bio' | 'monthlyGoal' | 'favoriteVoice' | 'theme'
+>;
+
+/**
+ * Shape of a library backup file.
+ *
+ * v3 added `profile` and `reviewCards`. v2 carried books and summaries only, so
+ * moving to a new device silently lost every setting and the whole
+ * spaced-repetition schedule — the one dataset that costs real money to rebuild,
+ * since cards can only come from an AI-generated quiz. v2 files still import;
+ * both fields are optional for exactly that reason.
+ */
 export interface LibraryExport {
-  version: 2;
+  version: 3;
   exportedAt: string;
   books: Book[];
   summaries: Summary[];
+  profile?: ProfileSettings;
+  reviewCards?: ReviewCard[];
 }
 
 export interface QuizQuestion {

@@ -55,6 +55,39 @@ export function scheduleCard(card: ReviewCard, grade: Grade, now: Date = new Dat
   };
 }
 
+/**
+ * The single definition of "due". `reviewCards.listDue` is the indexed form of
+ * this predicate: `by-profile-due` stores ISO-8601 strings, which sort in the
+ * same order as the instants they name, so a key range up to `now` selects
+ * exactly the cards this returns true for. Any change to one needs the other.
+ */
 export function isDue(card: ReviewCard, now: Date = new Date()): boolean {
-  return Date.parse(card.dueAt) <= now.getTime();
+  const due = Date.parse(card.dueAt);
+  // `NaN <= n` is false, so a card whose dueAt could not be parsed used to be
+  // invisible in both directions at once: this said "not due", and the index
+  // range excluded it too because a non-ISO string sorts past any real cutoff.
+  // Treating it as due surfaces the card, and grading rewrites dueAt — so the
+  // card repairs itself instead of sitting in the database forever unreachable.
+  return Number.isNaN(due) || due <= now.getTime();
+}
+
+/**
+ * Whether a card can actually be answered.
+ *
+ * Cards are built from model output. One with an empty `options` array rendered
+ * a question with no buttons — nothing to click, nothing to grade, and the card
+ * stayed at the head of the queue, so the whole review session deadlocked. One
+ * with `correctAnswerIndex` outside the options scored every answer wrong.
+ *
+ * Quiz responses are validated before they become cards now, so this guards
+ * what is already persisted rather than what is arriving.
+ */
+export function isAnswerable(card: ReviewCard): boolean {
+  return (
+    Array.isArray(card.options) &&
+    card.options.length >= 2 &&
+    Number.isInteger(card.correctAnswerIndex) &&
+    card.correctAnswerIndex >= 0 &&
+    card.correctAnswerIndex < card.options.length
+  );
 }

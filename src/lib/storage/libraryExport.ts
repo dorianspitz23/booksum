@@ -1,4 +1,14 @@
-import type { Book, BookStatus, LibraryExport, Priority, Summary } from '../../types';
+import type {
+  Book,
+  BookStatus,
+  LibraryExport,
+  Priority,
+  Profile,
+  ProfileSettings,
+  ReviewCard,
+  Summary,
+  VoiceName,
+} from '../../types';
 
 /**
  * Runtime validation for the one boundary where a user-chosen file becomes the
@@ -18,7 +28,17 @@ import type { Book, BookStatus, LibraryExport, Priority, Summary } from '../../t
 export type ParseResult =
   { ok: true; data: LibraryExport; skipped: number } | { ok: false; reason: string };
 
-const EXPORT_VERSION = 2;
+const EXPORT_VERSION = 3;
+
+/**
+ * v2 files are still accepted. They carry books and summaries only, so they
+ * import with no profile settings and no review cards — which is exactly what
+ * they contained, and better than refusing a backup someone already made.
+ */
+const SUPPORTED_VERSIONS = [2, 3];
+
+const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
+const THEMES: Profile['theme'][] = ['system', 'light', 'dark'];
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -94,14 +114,69 @@ function toSummary(value: unknown): Summary | null {
   return result;
 }
 
+/** Rebuilds a ReviewCard from unknown input, or returns null if it is not one. */
+function toReviewCard(value: unknown): ReviewCard | null {
+  if (!isRecord(value)) return null;
+
+  const { id, profileId, bookId, question, options, correctAnswerIndex, explanation } = value;
+
+  if (!str(id) || !str(profileId) || !str(bookId) || !str(question)) return null;
+  if (!str(explanation) || !strArray(options)) return null;
+
+  // Rejected here rather than repaired: a card whose correct answer is outside
+  // its options scores every attempt wrong, and one with fewer than two options
+  // cannot be answered at all. Both used to be importable and permanent.
+  if (!num(correctAnswerIndex) || !Number.isInteger(correctAnswerIndex)) return null;
+  if (options.length < 2 || correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
+    return null;
+  }
+
+  const dueAt = str(value.dueAt) && !Number.isNaN(Date.parse(value.dueAt)) ? value.dueAt : null;
+  if (!dueAt) return null;
+
+  return {
+    id,
+    profileId,
+    bookId,
+    question,
+    options,
+    correctAnswerIndex,
+    explanation,
+    ease: num(value.ease) ? value.ease : 2.5,
+    intervalDays: num(value.intervalDays) ? Math.max(1, Math.round(value.intervalDays)) : 1,
+    dueAt,
+    reviewCount: num(value.reviewCount) ? Math.max(0, Math.round(value.reviewCount)) : 0,
+  };
+}
+
+/** Rebuilds the restorable profile settings, or returns null if absent/malformed. */
+function toProfileSettings(value: unknown): ProfileSettings | null {
+  if (!isRecord(value)) return null;
+  if (!str(value.name) || !value.name.trim()) return null;
+
+  return {
+    name: value.name,
+    bio: str(value.bio) ? value.bio : '',
+    monthlyGoal: num(value.monthlyGoal) ? Math.max(0, Math.round(value.monthlyGoal)) : 4,
+    favoriteVoice:
+      str(value.favoriteVoice) && VOICES.includes(value.favoriteVoice as VoiceName)
+        ? (value.favoriteVoice as VoiceName)
+        : 'Kore',
+    theme:
+      str(value.theme) && THEMES.includes(value.theme as Profile['theme'])
+        ? (value.theme as Profile['theme'])
+        : 'system',
+  };
+}
+
 export function parseLibraryExport(value: unknown): ParseResult {
   if (!isRecord(value)) {
     return { ok: false, reason: 'That file is not a BookSum backup.' };
   }
-  if (value.version !== EXPORT_VERSION) {
+  if (typeof value.version !== 'number' || !SUPPORTED_VERSIONS.includes(value.version)) {
     return {
       ok: false,
-      reason: `That backup is version ${String(value.version ?? 'unknown')}, and this version of BookSum can only import version ${EXPORT_VERSION}.`,
+      reason: `That backup is version ${String(value.version ?? 'unknown')}, and this version of BookSum can import ${SUPPORTED_VERSIONS.join(' and ')}.`,
     };
   }
   if (!Array.isArray(value.books)) {
@@ -125,14 +200,24 @@ export function parseLibraryExport(value: unknown): ParseResult {
     else skipped += 1;
   }
 
-  return {
-    ok: true,
-    skipped,
-    data: {
-      version: EXPORT_VERSION,
-      exportedAt: str(value.exportedAt) ? value.exportedAt : new Date().toISOString(),
-      books,
-      summaries,
-    },
+  const reviewCards: ReviewCard[] = [];
+  for (const candidate of Array.isArray(value.reviewCards) ? value.reviewCards : []) {
+    const card = toReviewCard(candidate);
+    if (card) reviewCards.push(card);
+    else skipped += 1;
+  }
+
+  const data: LibraryExport = {
+    version: EXPORT_VERSION,
+    exportedAt: str(value.exportedAt) ? value.exportedAt : new Date().toISOString(),
+    books,
+    summaries,
+    reviewCards,
   };
+
+  // Absent in every v2 file, so a missing profile is normal rather than an error.
+  const profile = toProfileSettings(value.profile);
+  if (profile) data.profile = profile;
+
+  return { ok: true, skipped, data };
 }

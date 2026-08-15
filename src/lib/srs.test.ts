@@ -5,7 +5,7 @@
  * builds. See src/test/setup.ts.
  */
 import { describe, expect, it } from 'vitest';
-import { isDue, newCard, scheduleCard } from './srs';
+import { isAnswerable, isDue, newCard, scheduleCard } from './srs';
 import type { ReviewCard } from '../types';
 
 const NOW = new Date('2026-08-12T00:00:00.000Z');
@@ -111,5 +111,40 @@ describe('isDue', () => {
 
   it('is true after the due date', () => {
     expect(isDue(card({ dueAt: '2026-01-01T00:00:00.000Z' }), NOW)).toBe(true);
+  });
+
+  it('treats an unparseable dueAt as due rather than hiding the card forever', () => {
+    // `NaN <= n` is false, so this used to return false — and the by-profile-due
+    // index excluded the card too, because a non-ISO string sorts past every real
+    // cutoff. The card existed and was unreachable in both directions at once.
+    expect(isDue(card({ dueAt: 'not a date' }), NOW)).toBe(true);
+    expect(isDue(card({ dueAt: '' }), NOW)).toBe(true);
+  });
+});
+
+describe('isAnswerable', () => {
+  it('accepts a well-formed card', () => {
+    expect(isAnswerable(card({ options: ['a', 'b', 'c', 'd'], correctAnswerIndex: 2 }))).toBe(true);
+  });
+
+  it('rejects a card with no options', () => {
+    // This exact shape deadlocked the review session: the page rendered a
+    // question with no buttons, so the card could never be graded and never
+    // left the head of the queue.
+    expect(isAnswerable(card({ options: [], correctAnswerIndex: 0 }))).toBe(false);
+  });
+
+  it('rejects a single-option card, which cannot test anything', () => {
+    expect(isAnswerable(card({ options: ['only'], correctAnswerIndex: 0 }))).toBe(false);
+  });
+
+  it('rejects an out-of-range correct answer', () => {
+    // Scored every answer wrong, whichever the user picked.
+    expect(isAnswerable(card({ options: ['a', 'b'], correctAnswerIndex: 2 }))).toBe(false);
+    expect(isAnswerable(card({ options: ['a', 'b'], correctAnswerIndex: -1 }))).toBe(false);
+  });
+
+  it('rejects a non-integer index, which can never equal a rendered index', () => {
+    expect(isAnswerable(card({ options: ['a', 'b'], correctAnswerIndex: 1.5 }))).toBe(false);
   });
 });

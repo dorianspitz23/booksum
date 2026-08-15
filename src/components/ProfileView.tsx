@@ -151,10 +151,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         const { data, skipped } = parsed;
         const count = data.books.length;
+        const cards = data.reviewCards?.length ?? 0;
         const proceed = await confirm({
           title: 'Import this backup?',
           body:
-            `Found ${count} book${count === 1 ? '' : 's'}. They will be merged into your current library; nothing is removed.` +
+            `Found ${count} book${count === 1 ? '' : 's'}` +
+            (cards > 0 ? ` and ${cards} review card${cards === 1 ? '' : 's'}` : '') +
+            '. They will be merged into your current library; nothing is removed.' +
+            (data.profile ? ' Your reading goal, voice and theme will be restored too.' : '') +
             (skipped > 0
               ? ` ${skipped} unreadable record${skipped === 1 ? '' : 's'} will be skipped.`
               : ''),
@@ -344,7 +348,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">Backup & Restore</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Since BookSum runs locally on your device, you need to manually export your data if
-                you want to move it to another device (like from your laptop to your phone).
+                you want to move it to another device (like from your laptop to your phone). The
+                file holds your books, summaries, review schedule and settings — but not uploaded
+                PDFs or generated audio, which stay on this device.
               </p>
             </div>
 

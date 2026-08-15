@@ -168,9 +168,22 @@ export const reviewCards = {
     return (await getDb()).getAllFromIndex('reviewCards', 'by-book', bookId);
   },
 
+  /**
+   * `dueAt` is normalised on the way in. The `by-profile-due` index is ordered on
+   * it, so a value that is not an ISO timestamp sorts past every real cutoff and
+   * makes the card permanently unreachable through listDue. Falling back to "now"
+   * makes a malformed card due immediately, which is the recoverable failure:
+   * the user sees it, grades it, and the next write is well-formed.
+   */
   async upsert(card: ReviewCard): Promise<ReviewCard> {
-    await (await getDb()).put('reviewCards', card);
-    return card;
+    const parsed = Date.parse(card.dueAt);
+    const normalised: ReviewCard = {
+      ...card,
+      dueAt: new Date(Number.isNaN(parsed) ? Date.now() : parsed).toISOString(),
+    };
+
+    await (await getDb()).put('reviewCards', normalised);
+    return normalised;
   },
 
   async removeByBook(bookId: string): Promise<void> {

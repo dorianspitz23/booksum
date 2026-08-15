@@ -146,3 +146,96 @@ describe('parseLibraryExport', () => {
     expect(result.data.summaries).toEqual([]);
   });
 });
+
+describe('parseLibraryExport across versions', () => {
+  const card = {
+    id: 'card-1',
+    profileId: 'profile-1',
+    bookId: 'book-1',
+    question: 'Q?',
+    options: ['a', 'b', 'c', 'd'],
+    correctAnswerIndex: 1,
+    explanation: 'because',
+    ease: 2.5,
+    intervalDays: 3,
+    dueAt: '2026-08-01T00:00:00.000Z',
+    reviewCount: 2,
+  };
+
+  it('still accepts a v2 backup, which has neither new field', () => {
+    // Refusing these would break every backup already sitting on someone's disk.
+    const result = parseLibraryExport({ version: 2, books: [book], summaries: [summary] });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.books).toHaveLength(1);
+    expect(result.data.reviewCards).toEqual([]);
+    expect(result.data.profile).toBeUndefined();
+  });
+
+  it('carries review cards and profile settings out of a v3 backup', () => {
+    const result = parseLibraryExport({
+      version: 3,
+      books: [book],
+      summaries: [summary],
+      reviewCards: [card],
+      profile: {
+        name: 'Dorian',
+        bio: 'Reader',
+        monthlyGoal: 6,
+        favoriteVoice: 'Puck',
+        theme: 'dark',
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.reviewCards).toHaveLength(1);
+    expect(result.data.profile?.favoriteVoice).toBe('Puck');
+    expect(result.data.profile?.theme).toBe('dark');
+  });
+
+  it('rejects a card that cannot be answered rather than persisting it', () => {
+    const result = parseLibraryExport({
+      version: 3,
+      books: [],
+      summaries: [],
+      reviewCards: [
+        { ...card, id: 'c1', options: [] }, // deadlocked the review session
+        { ...card, id: 'c2', correctAnswerIndex: 9 }, // scored every answer wrong
+        { ...card, id: 'c3', dueAt: 'not a date' }, // unreachable through the index
+        card,
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.reviewCards).toHaveLength(1);
+    expect(result.data.reviewCards?.[0]?.id).toBe('card-1');
+    expect(result.skipped).toBe(3);
+  });
+
+  it('falls back to safe defaults for unknown voices and themes', () => {
+    const result = parseLibraryExport({
+      version: 3,
+      books: [],
+      summaries: [],
+      profile: { name: 'Dorian', favoriteVoice: 'NotAVoice', theme: 'neon' },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Otherwise this would be written straight onto the profile and handed to
+    // the TTS API as a voice name.
+    expect(result.data.profile?.favoriteVoice).toBe('Kore');
+    expect(result.data.profile?.theme).toBe('system');
+  });
+
+  it('rejects a version it cannot read, and says which it can', () => {
+    const result = parseLibraryExport({ version: 99, books: [] });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toContain('2 and 3');
+  });
+});

@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { blobs, books as bookRepo, summaries as summaryRepo } from '../../lib/storage/repo';
+import {
+  blobs,
+  books as bookRepo,
+  reviewCards as cardRepo,
+  summaries as summaryRepo,
+} from '../../lib/storage/repo';
 import { useProfile } from '../profile/ProfileContext';
 import { coverForIsbn } from '../../lib/goodreads';
 import type { GoodreadsRow } from '../../lib/goodreads';
@@ -17,7 +22,7 @@ export interface AddBookOptions {
 }
 
 function useLibraryState() {
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, isLoading: profileLoading, updateProfile } = useProfile();
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -100,11 +105,24 @@ function useLibraryState() {
   const exportLibrary = useCallback(async (): Promise<LibraryExport> => {
     const all = profile ? await bookRepo.listByProfile(profile.id) : [];
     const found = await Promise.all(all.map((book) => summaryRepo.getByBook(book.id)));
+    // v2 carried books and summaries only, so a device move silently lost every
+    // setting and the whole review schedule — the one dataset that cannot be
+    // rebuilt without spending money, since cards only ever come from an AI quiz.
     return {
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       books: all,
       summaries: found.filter((s): s is Summary => s !== undefined),
+      reviewCards: profile ? await cardRepo.listByProfile(profile.id) : [],
+      ...(profile && {
+        profile: {
+          name: profile.name,
+          bio: profile.bio,
+          monthlyGoal: profile.monthlyGoal,
+          favoriteVoice: profile.favoriteVoice,
+          theme: profile.theme,
+        },
+      }),
     };
   }, [profile]);
 
@@ -142,10 +160,38 @@ function useLibraryState() {
         }
       }
 
+      // Review cards are re-pointed at the active profile, since profile ids are
+      // per-device. A card whose book did not come across has nothing to review,
+      // and one already present keeps its local schedule rather than being reset
+      // to the backup's older one.
+      const existingCards = new Set(
+        (await cardRepo.listByProfile(profile.id)).map((card) => card.id),
+      );
+      for (const card of payload.reviewCards ?? []) {
+        if (existingCards.has(card.id)) continue;
+        const book = await bookRepo.get(card.bookId);
+        if (!book || book.profileId !== profile.id) continue;
+
+        await cardRepo.upsert({ ...card, profileId: profile.id });
+      }
+
+      // Settings are restored, but not `name`: the user just chose a name for the
+      // profile they are importing into on this device, and silently renaming it
+      // from a backup would be the surprising half of a restore.
+      if (payload.profile) {
+        await updateProfile({
+          ...profile,
+          bio: payload.profile.bio,
+          monthlyGoal: payload.profile.monthlyGoal,
+          favoriteVoice: payload.profile.favoriteVoice,
+          theme: payload.profile.theme,
+        });
+      }
+
       await reload();
       return added;
     },
-    [profile, reload],
+    [profile, reload, updateProfile],
   );
 
   /**
