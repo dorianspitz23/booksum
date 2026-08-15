@@ -7,7 +7,10 @@ export default tseslint.config(
   // `.worktrees/` holds full checkouts created by audit tooling. Without this
   // ignore, eslint lints 13 copies of the codebase and reports every problem
   // once per copy.
-  { ignores: ['dist', 'node_modules', 'coverage', '.worktrees'] },
+  // `audit-reports/` holds findings data and the throwaway Node scripts that
+  // analyse it. They are records of the audit, not application source, and the
+  // browser globals below do not apply to them.
+  { ignores: ['dist', 'node_modules', 'coverage', '.worktrees', 'audit-reports'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

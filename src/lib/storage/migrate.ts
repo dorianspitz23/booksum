@@ -56,11 +56,32 @@ const EMPTY: MigrationResult = {
   failed: 0,
 };
 
-function readJson<T>(key: string): T | null {
+const PRIORITIES: Priority[] = ['Low', 'Medium', 'High'];
+
+/**
+ * Legacy records were written by a different version of this app and have been
+ * sitting in localStorage ever since. Nothing guarantees their shape, so each
+ * field is checked for the type it is supposed to be rather than merely for
+ * being non-nullish — `??` would let a number through where a string belongs and
+ * then hand the compiler a `Book` it wrongly believes.
+ */
+const str = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value : undefined;
+
+const num = (value: unknown, min: number, max: number): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : undefined;
+
+const strArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+/** Returns parsed JSON as `unknown` — the caller is responsible for checking it. */
+function readJson(key: string): unknown {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as T;
+    return JSON.parse(raw) as unknown;
   } catch {
     return null;
   }
@@ -106,7 +127,14 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
 
   for (const userId of userIds) {
     try {
-      const legacyProfile = readJson<LegacyProfile>(legacyProfileKey(userId));
+      const rawProfile = readJson(legacyProfileKey(userId));
+      // An asserted generic told the compiler this was a LegacyProfile no matter
+      // what came back -- including a string, an array, or null -- and every
+      // field read off it downstream inherited that lie.
+      const legacyProfile: LegacyProfile =
+        rawProfile !== null && typeof rawProfile === 'object' && !Array.isArray(rawProfile)
+          ? (rawProfile as LegacyProfile)
+          : {};
       const profile = await profiles.create({
         name: legacyProfile?.name?.trim() || 'Reader',
         bio: legacyProfile?.bio,
@@ -116,15 +144,32 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
       });
       result.profiles += 1;
 
-      const legacyBooks = readJson<LegacyBook[]>(`${LIBRARY_KEY_PREFIX}${userId}`) ?? [];
+      // Same reason: a library key holding an object rather than an array used to
+      // be handed to `for...of` as a typed array and threw a TypeError that took
+      // the whole migration with it.
+      const rawBooks = readJson(`${LIBRARY_KEY_PREFIX}${userId}`);
+      const legacyBooks: LegacyBook[] = Array.isArray(rawBooks)
+        ? rawBooks.filter(
+            (entry): entry is LegacyBook => entry !== null && typeof entry === 'object',
+          )
+        : [];
 
       for (const legacy of legacyBooks) {
         // One unreadable record must not abort the run. base64ToBytes throws on
         // any attachment that is not valid base64, and this data has been sitting
         // in localStorage since the original app wrote it.
         try {
-          const summaryId = newId();
-          const addedAt = legacy.addedAt ?? new Date().toISOString();
+          const addedAt = str(legacy.addedAt) ?? new Date().toISOString();
+
+          // A legacy book only gets a summary if it actually had one. Every book
+          // used to be given a summaryId and a Summary row made of empty
+          // strings, so a "Want to Read" entry that had never been summarised
+          // came out looking summarised to any check keyed on summaryId, and
+          // unsummarised to any check keyed on the takeaway.
+          const takeaway = str(legacy.oneSentenceTakeaway);
+          const body = str(legacy.summary);
+          const hasSummary = Boolean(takeaway || body);
+          const summaryId = hasSummary ? newId() : undefined;
 
           // Decoded before the book is written so a corrupt attachment costs the
           // user the attachment, not the book -- and so hasPdf describes what was
@@ -134,35 +179,48 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
           if (legacy.pdfData && !pdfBytes) result.failed += 1;
           if (legacy.audioData && !audioBytes) result.failed += 1;
 
+          // `??` guards nullish only, so a legacy record holding a number where a
+          // string belonged (or the reverse) was written straight through as a
+          // typed Book that the compiler then trusted everywhere downstream.
+          const status = legacy.status === 'Finished' ? 'Finished' : 'Want to Read';
+
           const book = await books.create({
             profileId: profile.id,
-            title: legacy.title ?? 'Untitled',
-            author: legacy.author ?? 'Unknown',
-            category: legacy.category ?? 'Other',
-            status: legacy.status ?? 'Want to Read',
-            priority: legacy.priority,
-            rating: legacy.rating ?? 0,
-            personalNotes: legacy.personalNotes,
-            coverImageUrl: legacy.coverImageUrl ?? '',
-            readingTimeMinutes: legacy.readingTimeMinutes ?? 5,
+            title: str(legacy.title) ?? 'Untitled',
+            author: str(legacy.author) ?? 'Unknown',
+            category: str(legacy.category) ?? 'Other',
+            status,
+            priority: PRIORITIES.includes(legacy.priority as Priority)
+              ? (legacy.priority as Priority)
+              : undefined,
+            rating: num(legacy.rating, 0, 5) ?? 0,
+            personalNotes: str(legacy.personalNotes),
+            coverImageUrl: str(legacy.coverImageUrl) ?? '',
+            readingTimeMinutes: num(legacy.readingTimeMinutes, 0, 100_000) ?? 5,
             addedAt,
+            // Denormalised onto Book so list views render without loading the
+            // summary. Leaving it unset was why every migrated book showed
+            // "Not summarised yet" despite carrying a summaryId.
+            oneSentenceTakeaway: takeaway,
             summaryId,
             hasPdf: pdfBytes !== null,
           });
           result.books += 1;
 
-          await summaries.upsert({
-            id: summaryId,
-            bookId: book.id,
-            oneSentenceTakeaway: legacy.oneSentenceTakeaway ?? '',
-            summary: legacy.summary ?? '',
-            keyInsights: legacy.keyInsights ?? [],
-            actionableSteps: legacy.actionableSteps ?? [],
-            detailedSummary: legacy.detailedSummary,
-            generatedAt: addedAt,
-            model: 'legacy',
-          });
-          result.summaries += 1;
+          if (summaryId) {
+            await summaries.upsert({
+              id: summaryId,
+              bookId: book.id,
+              oneSentenceTakeaway: takeaway ?? '',
+              summary: body ?? '',
+              keyInsights: strArray(legacy.keyInsights),
+              actionableSteps: strArray(legacy.actionableSteps),
+              detailedSummary: str(legacy.detailedSummary),
+              generatedAt: addedAt,
+              model: 'legacy',
+            });
+            result.summaries += 1;
+          }
 
           if (pdfBytes) {
             await blobs.put(book.id, 'pdf', new Blob([pdfBytes], { type: 'application/pdf' }));

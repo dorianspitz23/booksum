@@ -233,3 +233,86 @@ describe('migrateLegacyData with unreadable legacy data', () => {
     await expect(profiles.list()).resolves.toHaveLength(1);
   });
 });
+
+describe('migrateLegacyData with malformed legacy JSON', () => {
+  it('denormalises the takeaway onto the Book, not only onto the Summary', async () => {
+    seedLegacyLocalStorage();
+    await migrateLegacyData();
+
+    const [profile] = await profiles.list();
+    const all = await books.listByProfile(profile!.id);
+    const atomic = all.find((book) => book.title === 'Atomic Habits');
+
+    // The regression this guards: a migrated book carried a summaryId but no
+    // oneSentenceTakeaway, so every list view rendered "Not summarised yet"
+    // over a book that had a complete summary sitting in the summaries store.
+    expect(atomic?.summaryId).toBeDefined();
+    expect(atomic?.oneSentenceTakeaway).toBe('Small changes compound.');
+  });
+
+  it('leaves a never-summarised book without a summary rather than an empty one', async () => {
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([{ id: 'b', title: 'Unread', author: 'Nobody', status: 'Want to Read' }]),
+    );
+
+    const result = await migrateLegacyData();
+
+    const [profile] = await profiles.list();
+    const [book] = await books.listByProfile(profile!.id);
+    // Every legacy book used to get a summaryId plus a Summary made of empty
+    // strings, so "has a summary?" answered yes and "what does it say?" answered
+    // nothing -- and the AI features that need a summary offered themselves anyway.
+    expect(book?.summaryId).toBeUndefined();
+    expect(book?.oneSentenceTakeaway).toBeUndefined();
+    expect(result.summaries).toBe(0);
+    await expect(summaries.listByBook(book!.id)).resolves.toHaveLength(0);
+  });
+
+  it('survives a profile record that is not an object', async () => {
+    localStorage.setItem(`booksum_profile_${LEGACY_USER_ID}`, JSON.stringify('corrupted'));
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([{ id: 'b', title: 'Kept', author: 'Someone' }]),
+    );
+
+    const result = await migrateLegacyData();
+
+    // An asserted generic made every field read off this string compile fine and
+    // resolve to undefined at runtime; the name fallback is what keeps it usable.
+    expect(result.profiles).toBe(1);
+    const [profile] = await profiles.list();
+    expect(profile?.name).toBe('Reader');
+    await expect(books.listByProfile(profile!.id)).resolves.toHaveLength(1);
+  });
+
+  it('survives a library record that is not an array', async () => {
+    localStorage.setItem(`booksum_library_${LEGACY_USER_ID}`, JSON.stringify({ nope: true }));
+
+    const result = await migrateLegacyData();
+
+    // `for...of` over a plain object throws, which used to abort the whole
+    // migration for every profile after this one.
+    expect(result.migrated).toBe(true);
+    expect(result.profiles).toBe(1);
+    expect(result.books).toBe(0);
+    expect(localStorage.getItem(MIGRATION_MARKER)).not.toBeNull();
+  });
+
+  it('imports later profiles even when an earlier one is unreadable', async () => {
+    localStorage.setItem(`booksum_library_bad`, '{not json at all');
+    localStorage.setItem(
+      `booksum_library_good`,
+      JSON.stringify([{ id: 'b', title: 'Survivor', author: 'Someone' }]),
+    );
+
+    const result = await migrateLegacyData();
+
+    expect(result.profiles).toBe(2);
+    const all = (await profiles.list()).map((profile) => profile.id);
+    const titles = (await Promise.all(all.map((id) => books.listByProfile(id))))
+      .flat()
+      .map((book) => book.title);
+    expect(titles).toContain('Survivor');
+  });
+});
