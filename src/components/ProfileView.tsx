@@ -173,7 +173,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span className="flex items-center gap-1.5">
                 <Calendar size={16} /> Joined {stats.joinedDate}
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5 text-orange-700 dark:text-orange-400 font-bold">
                 <BookOpen size={16} /> {books.length} Books in Library
               </span>
@@ -210,7 +210,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 cy="18"
                 r="16"
                 fill="none"
-                className="stroke-gray-50"
+                className="stroke-gray-100 dark:stroke-gray-800"
                 strokeWidth="3"
               />
               <circle
@@ -282,7 +282,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })}
                 />
               ) : (
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed italic border-l-4 border-orange-100 pl-4">
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed italic border-l-4 border-orange-100 dark:border-orange-900 pl-4">
                   "{profile.bio}"
                 </p>
               )}
@@ -300,7 +300,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     onClick={() => setEditedProfile({ ...editedProfile, favoriteVoice: voice })}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
                       (isEditing ? editedProfile.favoriteVoice : profile.favoriteVoice) === voice
-                        ? 'bg-stone-900 text-white border-stone-900'
+                        ? 'bg-stone-900 text-white border-stone-900 dark:bg-stone-100 dark:text-stone-900 dark:border-stone-100'
                         : 'bg-white dark:bg-gray-900 text-gray-400 dark:text-gray-500 border-gray-100 dark:border-gray-800 hover:border-gray-300'
                     }`}
                   >
@@ -332,7 +332,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-4">
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-5 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                className="flex items-center gap-2 px-5 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 rounded-xl font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               >
                 <Download size={18} /> Export JSON
               </button>
@@ -356,9 +356,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold border transition-colors ${
                     importStatus === 'success'
-                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800'
                       : importStatus === 'error'
-                        ? 'bg-red-50 text-red-600 border-red-100'
+                        ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-900'
                         : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                 >
@@ -414,14 +414,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
 
-          <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100 flex items-center justify-between group">
+          <div className="bg-rose-50 dark:bg-rose-950/40 p-6 rounded-2xl border border-rose-100 dark:border-rose-900 flex items-center justify-between group">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-300 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                 <Trash2 size={20} />
               </div>
               <div>
-                <p className="font-bold text-rose-900">Danger Zone</p>
-                <p className="text-xs text-rose-700">Clear your entire library</p>
+                <p className="font-bold text-rose-900 dark:text-rose-200">Danger Zone</p>
+                <p className="text-xs text-rose-700 dark:text-rose-300">
+                  Clear your entire library
+                </p>
               </div>
             </div>
             <button

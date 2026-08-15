@@ -86,7 +86,7 @@ export function ProfilePicker() {
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {candidate.name}
                   </span>
-                  <BookOpen size={18} className="ml-auto text-gray-300" />
+                  <BookOpen size={18} className="ml-auto text-gray-300 dark:text-gray-600" />
                 </button>
                 <button
                   onClick={() => void handleDelete(candidate)}

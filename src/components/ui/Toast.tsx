@@ -6,8 +6,16 @@ import type { ToastKind } from './toastStore';
 const DISMISS_AFTER_MS = 6000;
 
 const STYLES: Record<ToastKind, { wrapper: string; icon: typeof AlertCircle }> = {
-  error: { wrapper: 'bg-red-50 border-red-100 text-red-700', icon: AlertCircle },
-  success: { wrapper: 'bg-emerald-50 border-emerald-100 text-emerald-700', icon: CheckCircle },
+  error: {
+    wrapper:
+      'bg-red-50 border-red-100 text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200',
+    icon: AlertCircle,
+  },
+  success: {
+    wrapper:
+      'bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:border-emerald-900 dark:text-emerald-200',
+    icon: CheckCircle,
+  },
   info: {
     wrapper:
       'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300',

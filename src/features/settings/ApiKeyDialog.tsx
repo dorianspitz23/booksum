@@ -63,7 +63,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
         />
 
         {message && (
-          <p className="flex items-start gap-2 p-4 bg-red-50 text-red-700 text-sm rounded-xl border border-red-100">
+          <p className="flex items-start gap-2 p-4 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm rounded-xl border border-red-100 dark:border-red-900">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" /> {message}
           </p>
         )}

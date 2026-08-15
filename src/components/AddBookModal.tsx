@@ -280,7 +280,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
           )}
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+            <div className="p-4 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-300 text-sm rounded-xl border border-red-100 dark:border-red-900">
               {error}
             </div>
           )}

@@ -43,7 +43,7 @@ const formatInline = (text: string) => {
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return (
-        <em key={i} className="italic text-gray-800">
+        <em key={i} className="italic text-gray-800 dark:text-gray-200">
           {part.slice(1, -1)}
         </em>
       );
@@ -61,7 +61,7 @@ const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
   const blocks = cleanText.split(/\n\n+/);
 
   return (
-    <div className="space-y-4 text-gray-800 leading-relaxed text-lg">
+    <div className="space-y-4 text-gray-800 dark:text-gray-200 leading-relaxed text-lg">
       {blocks.map((block, idx) => {
         const trimmed = block.trim();
         if (!trimmed) return null;
@@ -407,7 +407,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 ) : (
                   <button
                     onClick={() => toggleStatus('Want to Read')}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl font-bold transition-all active:scale-95 text-sm"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 rounded-xl font-bold transition-all active:scale-95 text-sm"
                   >
                     <RotateCcw size={16} />
                     Move back to Queue
@@ -452,7 +452,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                     <button
                       onClick={handleMasterclassClick}
                       disabled={isGeneratingDeepDive}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 active:scale-95"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 dark:shadow-none active:scale-95"
                     >
                       {isGeneratingDeepDive ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -568,7 +568,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                   <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 flex items-center justify-center font-bold text-sm">
                     {idx + 1}
                   </span>
-                  <p className="text-gray-800 leading-relaxed">{insight}</p>
+                  <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{insight}</p>
                 </li>
               ))}
             </ul>
@@ -583,10 +583,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               {(summary?.actionableSteps ?? []).map((step, idx) => (
                 <div
                   key={idx}
-                  className="flex gap-4 items-center p-4 rounded-xl bg-amber-50/30 border border-amber-100"
+                  className="flex gap-4 items-center p-4 rounded-xl bg-amber-50/30 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900"
                 >
                   <div className="w-2 h-2 rounded-full bg-amber-400" />
-                  <p className="text-gray-800 font-medium">{step}</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-medium">{step}</p>
                 </div>
               ))}
             </div>
@@ -606,17 +606,19 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 placeholder="Write down your thoughts, ideas for application, or things you want to remember..."
                 className="w-full h-48 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-lg leading-relaxed text-gray-800 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
-              <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900/80 px-2 py-1 rounded-md backdrop-blur">
+              <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-gray-900/80 px-2 py-1 rounded-md backdrop-blur">
                 Auto-saves when you click away
               </div>
             </div>
           </section>
 
           {isGeneratingDeepDive && (
-            <div className="bg-stone-50 rounded-2xl p-12 text-center space-y-4 border-2 border-dashed border-stone-200 animate-pulse">
+            <div className="bg-stone-50 dark:bg-stone-900 rounded-2xl p-12 text-center space-y-4 border-2 border-dashed border-stone-200 dark:border-stone-700 animate-pulse">
               <div className="w-12 h-12 border-4 border-stone-900 border-t-transparent rounded-full animate-spin mx-auto" />
-              <h3 className="text-xl font-bold text-stone-900">Synthesizing Full Summary...</h3>
-              <p className="text-stone-500 max-w-md mx-auto">
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100">
+                Synthesizing Full Summary...
+              </h3>
+              <p className="text-stone-500 dark:text-stone-400 max-w-md mx-auto">
                 Our AI is analyzing the full depth of this book to prepare your e-reader experience.
               </p>
             </div>

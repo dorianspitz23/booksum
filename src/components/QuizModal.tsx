@@ -188,16 +188,18 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
 
                   if (isAnswered) {
                     if (isCorrect) {
-                      buttonStyle = 'bg-emerald-100 border-emerald-300 text-emerald-800';
+                      buttonStyle =
+                        'bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-200';
                     } else if (isSelected) {
-                      buttonStyle = 'bg-red-100 border-red-300 text-red-800';
+                      buttonStyle =
+                        'bg-red-100 border-red-300 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200';
                     } else {
                       buttonStyle =
                         'opacity-50 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500';
                     }
                   } else if (isSelected) {
                     buttonStyle =
-                      'border-orange-500 bg-orange-50 dark:bg-orange-950 text-orange-800';
+                      'border-orange-500 bg-orange-50 dark:bg-orange-950 text-orange-800 dark:text-orange-200';
                   }
 
                   return (
@@ -213,7 +215,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
                             ? 'border-emerald-500 bg-emerald-500 text-white'
                             : isAnswered && isSelected && !isCorrect
                               ? 'border-red-500 bg-red-500 text-white'
-                              : 'border-gray-300'
+                              : 'border-gray-300 dark:border-gray-600'
                         }`}
                       >
                         {isAnswered && isCorrect && <CheckCircle2 size={12} />}
@@ -226,7 +228,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
               </div>
 
               {isAnswered && (
-                <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-bottom-2">
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-bottom-2">
                   <p className="font-bold text-sm mb-1">Explanation:</p>
                   <p className="text-sm leading-relaxed opacity-90">
                     {questions[currentQuestionIndex].explanation}
@@ -240,7 +242,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
               <button
                 onClick={handleNext}
                 disabled={!isAnswered}
-                className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
               >
                 {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
                 <ArrowRight size={18} />

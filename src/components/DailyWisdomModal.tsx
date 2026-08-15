@@ -39,7 +39,7 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 p-2 bg-white dark:bg-gray-900/20 hover:bg-white dark:hover:bg-gray-900/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
+          className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
         >
           <X size={20} />
         </button>
@@ -87,7 +87,7 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
           <div className="flex gap-3 w-full">
             <button
               onClick={onReadMore}
-              className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:scale-[1.02] hover:bg-black transition-all flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 rounded-xl font-bold shadow-lg shadow-gray-200 dark:shadow-none hover:scale-[1.02] hover:bg-black dark:hover:bg-white transition-all flex items-center justify-center gap-2"
             >
               <Sparkles size={18} /> Read Summary
             </button>

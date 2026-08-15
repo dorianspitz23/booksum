@@ -7,7 +7,7 @@ export function ErrorBoundary() {
 
   return (
     <div className="min-h-screen bg-parchment dark:bg-night flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+      <div className="w-16 h-16 bg-red-50 dark:bg-red-950 rounded-full flex items-center justify-center mb-6">
         <AlertCircle size={32} className="text-red-500" />
       </div>
       <h1 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 mb-2">

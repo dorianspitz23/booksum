@@ -31,11 +31,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
   const getPriorityColor = (p?: string) => {
     switch (p) {
       case 'High':
-        return 'bg-rose-100 text-rose-700 border-rose-200';
+        return 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800';
       case 'Medium':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
+        return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800';
       default:
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800';
     }
   };
 
@@ -63,7 +63,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
           </span>
         </div>
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <div className="bg-white dark:bg-gray-900/95 backdrop-blur shadow-xl px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] text-orange-700 dark:text-orange-400 w-fit">
+          <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-xl px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] text-orange-700 dark:text-orange-400 w-fit">
             {book.category}
           </div>
           {book.status === 'Want to Read' && book.priority && (
@@ -85,7 +85,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
           by {book.author}
         </p>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 pl-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed italic border-l-2 border-orange-100 dark:border-orange-900 pl-4">
           {book.oneSentenceTakeaway ? `"${book.oneSentenceTakeaway}"` : 'Not summarised yet'}
         </p>
 
@@ -95,9 +95,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
             <span>{book.readingTimeMinutes} min read</span>
           </div>
           {book.status === 'Finished' && (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-md">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 dark:bg-amber-950 rounded-md">
               <Star size={12} className="text-amber-500 fill-amber-500" />
-              <span className="font-black text-amber-700 text-[10px]">{book.rating}/5</span>
+              <span className="font-black text-amber-700 dark:text-amber-300 text-[10px]">
+                {book.rating}/5
+              </span>
             </div>
           )}
         </div>

@@ -212,7 +212,7 @@ const StatCard: React.FC<{
   >
     <div
       className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-        isActive ? 'bg-white dark:bg-gray-900/20' : 'bg-gray-50 dark:bg-gray-800'
+        isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-gray-800'
       }`}
     >
       {icon}

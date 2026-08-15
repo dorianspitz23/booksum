@@ -143,7 +143,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
               <div
                 className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
                   msg.role === 'user'
-                    ? 'bg-gray-200 text-gray-600 dark:text-gray-400'
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     : 'bg-orange-600 text-white'
                 }`}
               >
@@ -152,7 +152,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
               <div
                 className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 rounded-tr-none shadow-sm'
+                    ? 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tr-none shadow-sm'
                     : 'bg-orange-600 text-white rounded-tl-none shadow-md'
                 }`}
               >

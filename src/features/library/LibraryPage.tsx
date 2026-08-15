@@ -150,14 +150,14 @@ export function LibraryPage() {
           <button
             onClick={() => setStatusFilter('Finished')}
             aria-pressed={statusFilter === 'Finished'}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Finished' ? 'bg-white dark:bg-gray-900 text-emerald-700 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-700'}`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Finished' ? 'bg-white dark:bg-gray-900 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-700'}`}
           >
             <CheckCircle size={16} /> Finished
           </button>
           <button
             onClick={() => setStatusFilter('Want to Read')}
             aria-pressed={statusFilter === 'Want to Read'}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Want to Read' ? 'bg-white dark:bg-gray-900 text-amber-700 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-amber-700'}`}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'Want to Read' ? 'bg-white dark:bg-gray-900 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-amber-700'}`}
           >
             <Bookmark size={16} /> Want to Read
           </button>
@@ -175,7 +175,7 @@ export function LibraryPage() {
               aria-pressed={activeCategory === cat}
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border ${
                 activeCategory === cat
-                  ? 'bg-gray-900 text-white border-gray-900 shadow-lg'
+                  ? 'bg-gray-900 text-white border-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:border-gray-100 shadow-lg'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
               }`}
             >
@@ -194,7 +194,7 @@ export function LibraryPage() {
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-            <Library size={40} className="text-gray-300" />
+            <Library size={40} className="text-gray-300 dark:text-gray-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Your library is quiet
