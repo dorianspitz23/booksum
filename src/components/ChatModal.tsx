@@ -36,18 +36,28 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
 
   useFocusTrap(panelRef, { active: true, onClose });
 
+  // Read through a ref so the effect below can key on ids without eslint
+  // demanding the objects themselves as dependencies.
+  const contextRef = useRef({ book, summary });
+  contextRef.current = { book, summary };
+
   useEffect(() => {
     // createBookChatSession is the only synchronous AI entry point, so an
     // unhandled throw here escapes to the route error boundary and takes the
     // whole app down. The commonest cause is simply having no key stored.
     try {
-      chatSession.current = createBookChatSession(book, summary);
+      const { book: currentBook, summary: currentSummary } = contextRef.current;
+      chatSession.current = createBookChatSession(currentBook, currentSummary);
       setStartupError(null);
     } catch (error) {
       chatSession.current = null;
       setStartupError(onAiError(error));
     }
-  }, [book, summary, onAiError]);
+    // Keyed on the identity of the *content*, not of the objects. Depending on
+    // `[book, summary]` rebuilt the session — discarding the conversation the
+    // user was in the middle of — every time an unrelated library write handed
+    // this component a freshly deserialised Summary.
+  }, [book.id, summary.id, summary.generatedAt, onAiError]);
 
   useEffect(() => {
     scrollToBottom();

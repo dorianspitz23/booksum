@@ -19,6 +19,20 @@ export function parseReadDate(raw: string | undefined): string | undefined {
   return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
 }
 
+/**
+ * The local calendar day as a stable `YYYY-MM-DD` string.
+ *
+ * Used as a once-per-day marker. `Date.toDateString()` was used before, which is
+ * locale-formatted — so a browser language change altered the stored value and
+ * re-triggered a card that had already been dismissed.
+ */
+export function localDayStamp(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /** Books finished in the calendar month containing `now`, in local time. */
 export function finishedInMonth(books: Book[], now: Date = new Date()): Book[] {
   const year = now.getFullYear();

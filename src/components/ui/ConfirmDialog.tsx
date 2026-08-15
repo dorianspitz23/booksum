@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { Dialog } from './Dialog';
 
@@ -19,11 +27,26 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((next) => {
+    // Settle any prompt still waiting before replacing it. Overwriting the
+    // resolver outright left the earlier promise pending forever, so whichever
+    // code path was awaiting it simply never continued — no error, no timeout.
+    resolverRef.current?.(false);
+    resolverRef.current = null;
+
     setOptions(next);
     return new Promise<boolean>((resolve) => {
       resolverRef.current = resolve;
     });
   }, []);
+
+  // Unmounting with a prompt open would strand it the same way.
+  useEffect(
+    () => () => {
+      resolverRef.current?.(false);
+      resolverRef.current = null;
+    },
+    [],
+  );
 
   const settle = useCallback((value: boolean) => {
     resolverRef.current?.(value);

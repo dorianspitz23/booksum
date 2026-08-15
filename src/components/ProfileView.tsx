@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import type { Book, LibraryExport, Profile } from '../types';
 import { toast } from './ui/toastStore';
 import { useConfirm } from './ui/ConfirmDialog';
@@ -75,10 +75,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     return { finishedCount, progressPercent, joinedDate, topGenres, undatedCount };
   }, [books, profile]);
 
+  /**
+   * Writes only the fields this form owns, merged onto the *current* profile.
+   *
+   * `editedProfile` is a snapshot taken when the component mounted. Saving the
+   * whole snapshot meant that anything changed elsewhere in the meantime was
+   * silently reverted — most visibly the theme, which ThemeToggle writes
+   * straight to the profile a few centimetres below this form.
+   */
   const handleSave = () => {
-    onUpdate(editedProfile);
+    onUpdate({
+      ...profile,
+      bio: editedProfile.bio,
+      monthlyGoal: editedProfile.monthlyGoal,
+      favoriteVoice: editedProfile.favoriteVoice,
+    });
     setIsEditing(false);
   };
+
+  // Re-sync the draft whenever the underlying profile changes and the user is not
+  // mid-edit, so opening the form always starts from current values.
+  useEffect(() => {
+    if (!isEditing) setEditedProfile(profile);
+  }, [profile, isEditing]);
 
   const getInitials = (name: string) => {
     return name

@@ -14,6 +14,8 @@ import { ShellContext } from './ShellContext';
 import type { ShellApi } from './ShellContext';
 import { toAiError } from '../lib/ai/errors';
 import { ToastHost } from '../components/ui/Toast';
+import { dailyWisdomKey } from '../lib/storageKeys';
+import { localDayStamp } from '../lib/stats';
 import type { Book, Summary } from '../types';
 
 const NAV_ITEMS = [
@@ -97,9 +99,9 @@ export function AppShell() {
   useEffect(() => {
     if (!profile || books.length === 0 || wisdomCheckedRef.current) return;
 
-    const key = `booksum_daily_wisdom_${profile.id}`;
+    const key = dailyWisdomKey(profile.id);
     const lastSeen = localStorage.getItem(key);
-    const today = new Date().toDateString();
+    const today = localDayStamp();
     wisdomCheckedRef.current = true;
 
     if (lastSeen === today) return;
@@ -129,7 +131,7 @@ export function AppShell() {
   const closeWisdom = () => {
     setShowDailyWisdom(false);
     if (profile) {
-      localStorage.setItem(`booksum_daily_wisdom_${profile.id}`, new Date().toDateString());
+      localStorage.setItem(dailyWisdomKey(profile.id), localDayStamp());
     }
   };
 

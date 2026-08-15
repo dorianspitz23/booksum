@@ -75,6 +75,14 @@ function useLibraryState() {
     [reload],
   );
 
+  /** Empties the active profile's library. Returns how many books were removed. */
+  const clearLibrary = useCallback(async (): Promise<number> => {
+    if (!profile) return 0;
+    const removed = await bookRepo.removeAllForProfile(profile.id);
+    await reload();
+    return removed;
+  }, [profile, reload]);
+
   const getSummary = useCallback((bookId: string) => summaryRepo.getByBook(bookId), []);
 
   const saveSummary = useCallback(
@@ -196,6 +204,7 @@ function useLibraryState() {
     addBook,
     updateBook,
     removeBook,
+    clearLibrary,
     getSummary,
     saveSummary,
     exportLibrary,

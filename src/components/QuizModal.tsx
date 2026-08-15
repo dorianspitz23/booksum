@@ -38,37 +38,60 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
   const [isAnswered, setIsAnswered] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
+  // Read through a ref so the effect can key on ids rather than on the objects,
+  // which are freshly deserialised on every library reload.
+  const contextRef = useRef({ book, summary });
+  contextRef.current = { book, summary };
+
   useEffect(() => {
+    let cancelled = false;
+
     const loadQuiz = async () => {
+      const { book: currentBook, summary: currentSummary } = contextRef.current;
       try {
-        const quizData = await generateBookQuiz(book, summary);
+        const quizData = await generateBookQuiz(currentBook, currentSummary);
+        if (cancelled) return;
         setQuestions(quizData);
 
         // Every generated question becomes a review card, skipping any question
         // already stored for this book so retaking a quiz cannot duplicate them.
-        const seen = new Set((await reviewCards.listByBook(book.id)).map((c) => c.question));
-        for (const question of quizData) {
-          if (seen.has(question.question)) continue;
-          await reviewCards.upsert(
-            newCard({
-              profileId: book.profileId,
-              bookId: book.id,
-              question: question.question,
-              options: question.options,
-              correctAnswerIndex: question.correctAnswerIndex,
-              explanation: question.explanation,
-            }),
-          );
-        }
+        const existing = await reviewCards.listByBook(currentBook.id);
+        const seen = new Set(existing.map((c) => c.question));
+
+        // One transaction's worth of independent writes, issued together rather
+        // than serialised one awaited round trip at a time.
+        await Promise.all(
+          quizData
+            .filter((question) => !seen.has(question.question))
+            .map((question) =>
+              reviewCards.upsert(
+                newCard({
+                  profileId: currentBook.profileId,
+                  bookId: currentBook.id,
+                  question: question.question,
+                  options: question.options,
+                  correctAnswerIndex: question.correctAnswerIndex,
+                  explanation: question.explanation,
+                }),
+              ),
+            ),
+        );
       } catch (error) {
-        console.error('Failed to generate quiz', error);
+        if (cancelled) return;
+        console.error('[booksum] could not generate the quiz', error);
         toast.error(toAiError(error).message);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-    loadQuiz();
-  }, [book, summary]);
+
+    void loadQuiz();
+    return () => {
+      cancelled = true;
+    };
+    // Keyed on content identity. Depending on `[book, summary]` fired another
+    // paid generateContent call every time the parent handed down a new object.
+  }, [book.id, summary.id, summary.generatedAt]);
 
   const handleOptionClick = (index: number) => {
     if (isAnswered) return;

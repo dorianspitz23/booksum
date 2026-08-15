@@ -42,6 +42,12 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
           (duplicates > 0 ? `, skipped ${duplicates} already in your library.` : '.'),
       );
       onDone();
+    } catch (error) {
+      // try/finally with no catch meant a failed import — a quota-exceeded
+      // IndexedDB write on a 300-book file is the obvious case — just stopped
+      // the spinner. No toast, no books, no way to tell success from failure.
+      console.error('[booksum] Goodreads import failed', error);
+      toast.error('Could not import that library. Nothing was added.');
     } finally {
       setIsImporting(false);
     }

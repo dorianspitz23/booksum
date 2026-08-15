@@ -4,7 +4,8 @@ import { migrateLegacyData } from '../../lib/storage/migrate';
 import { profiles as profileRepo } from '../../lib/storage/repo';
 import type { Profile } from '../../types';
 
-export const ACTIVE_PROFILE_KEY = 'booksum.activeProfile';
+export { ACTIVE_PROFILE as ACTIVE_PROFILE_KEY } from '../../lib/storageKeys';
+import { ACTIVE_PROFILE as ACTIVE_PROFILE_KEY } from '../../lib/storageKeys';
 
 interface ProfileContextValue {
   profile: Profile | null;

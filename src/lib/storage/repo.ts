@@ -120,6 +120,25 @@ export const books = {
     await removeBookWithin(tx, id);
     await tx.done;
   },
+
+  /**
+   * Empties a profile's library in one transaction, keeping the profile itself.
+   * Removing books one at a time meant one full cascade and one library reload
+   * per book — 300 concurrent reads of a shrinking library for a 300-book
+   * import, with no atomicity if any of them failed.
+   */
+  async removeAllForProfile(profileId: string): Promise<number> {
+    const db = await getDb();
+    const tx = db.transaction(CASCADE_STORES, 'readwrite');
+
+    const bookIds = await tx.objectStore('books').index('by-profile').getAllKeys(profileId);
+    for (const bookId of bookIds) {
+      await removeBookWithin(tx, bookId);
+    }
+
+    await tx.done;
+    return bookIds.length;
+  },
 };
 
 export const reviewCards = {

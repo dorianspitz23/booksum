@@ -1,6 +1,5 @@
 import type { Recommendation } from '../../lib/ai/recommend';
 
-export const RECS_CACHE_KEY = 'booksum.recs';
 export const RECS_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Shown before the user has generated their own. ISBN-based cover URLs are stable. */

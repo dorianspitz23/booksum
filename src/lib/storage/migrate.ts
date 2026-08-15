@@ -3,9 +3,10 @@ import { newId } from '../id';
 import { blobs, books, profiles, summaries } from './repo';
 import type { BookStatus, Priority, VoiceName } from '../../types';
 
-export const MIGRATION_MARKER = 'booksum.migratedAt';
+export { MIGRATION_MARKER } from '../storageKeys';
+import { MIGRATION_MARKER, LEGACY_LIBRARY_PREFIX, legacyProfileKey } from '../storageKeys';
 
-const LIBRARY_KEY_PREFIX = 'booksum_library_';
+const LIBRARY_KEY_PREFIX = LEGACY_LIBRARY_PREFIX;
 
 export interface MigrationResult {
   migrated: boolean;
@@ -105,7 +106,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
 
   for (const userId of userIds) {
     try {
-      const legacyProfile = readJson<LegacyProfile>(`booksum_profile_${userId}`);
+      const legacyProfile = readJson<LegacyProfile>(legacyProfileKey(userId));
       const profile = await profiles.create({
         name: legacyProfile?.name?.trim() || 'Reader',
         bio: legacyProfile?.bio,

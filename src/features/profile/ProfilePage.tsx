@@ -3,10 +3,12 @@ import { ProfileView } from '../../components/ProfileView';
 import { useProfile } from './ProfileContext';
 import { useLibrary } from '../library/useLibrary';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { toast } from '../../components/ui/toastStore';
+import { perProfileKeys } from '../../lib/storageKeys';
 
 export function ProfilePage() {
   const { profile, updateProfile } = useProfile();
-  const { books, removeBook, exportLibrary, importLibrary } = useLibrary();
+  const { books, clearLibrary, exportLibrary, importLibrary } = useLibrary();
   const confirm = useConfirm();
   const navigate = useNavigate();
 
@@ -21,10 +23,24 @@ export function ProfilePage() {
     });
     if (!confirmed) return;
 
-    await Promise.all(books.map((book) => removeBook(book.id)));
-    localStorage.removeItem(`booksum.recs.${profile.id}`);
-    localStorage.removeItem(`booksum_daily_wisdom_${profile.id}`);
-    void navigate('/');
+    try {
+      // One transaction, one reload. This used to be Promise.all over
+      // removeBook, each of which re-read the whole library afterwards — 300
+      // concurrent reads of a shrinking library for a 300-book import, and no
+      // atomicity if any one of them failed part-way.
+      const removed = await clearLibrary();
+
+      // Built from the same helpers the writers use. These were hardcoded string
+      // literals here, so renaming the constant elsewhere would have compiled
+      // cleanly and silently stopped reset from clearing anything.
+      for (const key of perProfileKeys(profile.id)) localStorage.removeItem(key);
+
+      toast.success(`Removed ${removed} book${removed === 1 ? '' : 's'}.`);
+      void navigate('/');
+    } catch (error) {
+      console.error('[booksum] could not clear the library', error);
+      toast.error('Could not clear your library. Nothing was removed.');
+    }
   };
 
   return (

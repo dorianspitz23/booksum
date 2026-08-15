@@ -36,7 +36,9 @@ describe('smoke', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
     );
-    expect(screen.getByText(/your library is quiet/i)).toBeInTheDocument();
+    // The empty state now waits for IndexedDB rather than flashing before it, so
+    // this is genuinely asynchronous.
+    await waitFor(() => expect(screen.getByText(/your library is quiet/i)).toBeInTheDocument());
   });
 
   it('makes no network call to Gemini on boot', async () => {
@@ -70,7 +72,9 @@ describe('smoke', () => {
       expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /add your first book/i }));
+    // The library skeleton resolves before the empty-state call to action exists.
+    const addFirst = await screen.findByRole('button', { name: /add your first book/i });
+    await userEvent.click(addFirst);
     await userEvent.type(screen.getByPlaceholderText(/sapiens, atomic habits/i), 'Deep Work');
     await userEvent.click(screen.getByRole('button', { name: /generate insights/i }));
 
@@ -82,7 +86,21 @@ describe('smoke', () => {
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
 
-  it('exposes indexedDB to tests', () => {
-    expect(globalThis.indexedDB).toBeDefined();
+  it('shows a loading placeholder before the library resolves, not an empty state', async () => {
+    // The empty state used to render on every visit while IndexedDB was still
+    // answering, so a returning user with 200 books saw "your library is quiet"
+    // and an Add Your First Book button before their shelves appeared.
+    renderApp();
+    await waitFor(() => expect(screen.getByLabelText(/your name/i)).toBeInTheDocument());
+    await userEvent.type(screen.getByLabelText(/your name/i), 'Dorian');
+    await userEvent.click(screen.getByRole('button', { name: /start reading/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
+    );
+    await waitFor(() => expect(screen.getByText(/your library is quiet/i)).toBeInTheDocument());
+
+    // Once resolved the busy placeholder is gone.
+    expect(screen.queryByLabelText(/loading your library/i)).not.toBeInTheDocument();
   });
 });

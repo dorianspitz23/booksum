@@ -1,4 +1,5 @@
-export const API_KEY_STORAGE_KEY = 'booksum.apiKey';
+export { API_KEY as API_KEY_STORAGE_KEY } from '../storageKeys';
+import { API_KEY as API_KEY_STORAGE_KEY } from '../storageKeys';
 
 const listeners = new Set<() => void>();
 

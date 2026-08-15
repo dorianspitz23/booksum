@@ -10,12 +10,13 @@ import { summarizeBook } from '../../lib/ai/summarize';
 import { getAIRecommendations } from '../../lib/ai/recommend';
 import type { Recommendation } from '../../lib/ai/recommend';
 import { toast } from '../../components/ui/toastStore';
-import { RECOMMENDED_BOOKS, RECS_CACHE_KEY, RECS_TTL_MS } from './recommendationDefaults';
+import { RECOMMENDED_BOOKS, RECS_TTL_MS } from './recommendationDefaults';
+import { recommendationsKey } from '../../lib/storageKeys';
 import type { BookStatus } from '../../types';
 
 export function LibraryPage() {
   const { profile } = useProfile();
-  const { books, addBook, getSummary } = useLibrary();
+  const { books, isLoading, addBook, getSummary } = useLibrary();
   const { openAddBook, handleAiError } = useShell();
   const navigate = useNavigate();
 
@@ -29,7 +30,7 @@ export function LibraryPage() {
   // Cached recommendations. No AI call fires on load — refreshing is explicit.
   useEffect(() => {
     if (!profile) return;
-    const cached = localStorage.getItem(`${RECS_CACHE_KEY}.${profile.id}`);
+    const cached = localStorage.getItem(recommendationsKey(profile.id));
     if (!cached) return;
     try {
       const parsed = JSON.parse(cached) as { at: number; items: Recommendation[] };
@@ -37,7 +38,7 @@ export function LibraryPage() {
         setRecommendations(parsed.items);
       }
     } catch {
-      localStorage.removeItem(`${RECS_CACHE_KEY}.${profile.id}`);
+      localStorage.removeItem(recommendationsKey(profile.id));
     }
   }, [profile]);
 
@@ -72,7 +73,7 @@ export function LibraryPage() {
       if (next.length > 0) {
         setRecommendations(next);
         localStorage.setItem(
-          `${RECS_CACHE_KEY}.${profile.id}`,
+          recommendationsKey(profile.id),
           JSON.stringify({ at: Date.now(), items: next }),
         );
       }
@@ -103,11 +104,17 @@ export function LibraryPage() {
 
   if (!profile) return null;
 
-  const showRecommendations =
-    recommendations.length > 0 &&
-    !searchQuery &&
-    statusFilter === 'All' &&
-    activeCategory === 'All';
+  const isFiltered = Boolean(searchQuery) || statusFilter !== 'All' || activeCategory !== 'All';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('All');
+    setActiveCategory('All');
+  };
+
+  // The carousel is hidden while the library is still resolving, so it does not
+  // flash a set of hardcoded defaults before the user's own cache arrives.
+  const showRecommendations = !isLoading && recommendations.length > 0 && !isFiltered;
 
   return (
     <div className="max-w-7xl mx-auto space-y-10">
@@ -185,7 +192,29 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {filteredBooks.length > 0 ? (
+      {/* isLoading was never consulted, so every single visit painted a full
+          "your library is quiet" screen — Add Your First Book and all — before
+          IndexedDB answered and the real library replaced it. */}
+      {isLoading ? (
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+          aria-busy="true"
+          aria-label="Loading your library"
+        >
+          {Array.from({ length: 8 }, (_, index) => (
+            <div
+              key={index}
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-pulse"
+            >
+              <div className="aspect-[3/4.5] bg-gray-100 dark:bg-gray-800" />
+              <div className="p-6 space-y-3">
+                <div className="h-5 w-3/4 rounded bg-gray-100 dark:bg-gray-800" />
+                <div className="h-4 w-1/2 rounded bg-gray-100 dark:bg-gray-800" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredBooks.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {filteredBooks.map((book) => (
             <BookCard key={book.id} book={book} onClick={() => void navigate(`/book/${book.id}`)} />
@@ -197,21 +226,21 @@ export function LibraryPage() {
             <Library size={40} className="text-gray-300 dark:text-gray-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Your library is quiet
+            {isFiltered ? 'Nothing matches those filters' : 'Your library is quiet'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-8">
-            {statusFilter !== 'All'
-              ? `You don't have any books marked as "${statusFilter}" that match your filters.`
+            {isFiltered
+              ? 'Try widening your search, or clear the filters to see everything.'
               : 'Start adding your favorite books and let AI extract the wisdom for you.'}
           </p>
-          {!searchQuery && (
-            <button
-              onClick={openAddBook}
-              className="bg-orange-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg"
-            >
-              Add Your First Book
-            </button>
-          )}
+          {/* Telling someone with 200 books who filtered to an empty set to "add
+              your first book" was simply the wrong action. */}
+          <button
+            onClick={isFiltered ? clearFilters : openAddBook}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-colors"
+          >
+            {isFiltered ? 'Clear filters' : 'Add Your First Book'}
+          </button>
         </div>
       )}
 
