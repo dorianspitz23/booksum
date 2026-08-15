@@ -13,7 +13,7 @@ function Probe() {
       <p data-testid="active">{profile?.name ?? 'none'}</p>
       <p data-testid="count">{allProfiles.length}</p>
       <button onClick={() => void createProfile('Dorian')}>create</button>
-      <button onClick={() => void selectProfile(allProfiles[0]!.id)}>select first</button>
+      <button onClick={() => void selectProfile(allProfiles[0].id)}>select first</button>
       <button onClick={signOut}>sign out</button>
     </div>
   );

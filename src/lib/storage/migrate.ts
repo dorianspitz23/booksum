@@ -133,7 +133,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
       // field read off it downstream inherited that lie.
       const legacyProfile: LegacyProfile =
         rawProfile !== null && typeof rawProfile === 'object' && !Array.isArray(rawProfile)
-          ? (rawProfile as LegacyProfile)
+          ? rawProfile
           : {};
       const profile = await profiles.create({
         name: legacyProfile?.name?.trim() || 'Reader',
@@ -191,7 +191,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
             category: str(legacy.category) ?? 'Other',
             status,
             priority: PRIORITIES.includes(legacy.priority as Priority)
-              ? (legacy.priority as Priority)
+              ? legacy.priority
               : undefined,
             rating: num(legacy.rating, 0, 5) ?? 0,
             personalNotes: str(legacy.personalNotes),

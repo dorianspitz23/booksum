@@ -5,6 +5,7 @@ export type AiErrorKind =
   | 'quota'
   | 'safety'
   | 'bad-request'
+  | 'model-unavailable'
   | 'server'
   | 'network'
   | 'malformed'
@@ -35,11 +36,31 @@ const MESSAGES: Record<AiErrorKind, string> = {
   quota: 'Your Gemini quota is used up. Check your usage in Google AI Studio.',
   safety: 'Gemini blocked this request under its safety filters. Try a different book or wording.',
   'bad-request': 'Gemini rejected the request. If you uploaded a PDF, it may be too large.',
+  'model-unavailable':
+    'This BookSum build asks for a Gemini model that no longer exists. Update the model IDs in src/lib/ai/models.ts.',
   server: 'Google is having trouble right now. Try again in a moment.',
   network: 'Could not reach Google. Check your connection and try again.',
   malformed: 'Gemini returned a response BookSum could not read. Try again.',
   unknown: 'Something went wrong talking to Gemini. Try again.',
 };
+
+/**
+ * A readable string for anything that is not an Error. `String(value)` on a
+ * plain object yields "[object Object]", which every substring check below then
+ * fails to match — so an SDK that rejects with a bare object rather than an
+ * Error would classify as `unknown` regardless of what it actually said.
+ */
+function describe(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    // Circular structures throw, and there is nothing useful left to extract.
+    return '';
+  }
+}
 
 function statusOf(error: unknown): number | undefined {
   // Guarded: this used to dereference `error` directly, so toAiError(null) threw
@@ -62,7 +83,7 @@ function statusOf(error: unknown): number | undefined {
 export function toAiError(error: unknown): AiError {
   if (error instanceof AiError) return error;
 
-  const message = error instanceof Error ? error.message : String(error ?? '');
+  const message = error instanceof Error ? error.message : describe(error);
   const lower = message.toLowerCase();
   const status = statusOf(error);
 
@@ -75,6 +96,11 @@ export function toAiError(error: unknown): AiError {
 
   if (status === 429) kind = 'rate-limited';
   else if (status === 401 || status === 403) kind = 'invalid-key';
+  // Every model this app uses is a `-preview` build, and Google retires those on
+  // its own schedule. A clone that sat for a few months answers 404 on every AI
+  // action — which fell through to the generic message and told the user nothing
+  // about the one thing that would fix it.
+  else if (status === 404) kind = 'model-unavailable';
   else if (looksLikeSafety) kind = 'safety';
   // 400 is a malformed or oversized request, not a bad key. Reporting it as one
   // sent people off to regenerate a key that was working fine.

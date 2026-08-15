@@ -51,7 +51,7 @@ export function ApiKeyDialog({ onClose, onSaved }: ApiKeyDialogProps) {
         Get a free key <ExternalLink size={14} />
       </a>
 
-      <form onSubmit={handleSave} className="space-y-4">
+      <form onSubmit={(event) => void handleSave(event)} className="space-y-4">
         <input
           type="password"
           autoComplete="off"

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { getOrCreateNarration } from '../lib/ai/narration';
 import { toast } from './ui/toastStore';
-import { toAiError } from '../lib/ai/errors';
+import { reportAiError } from '../features/settings/keyDialog';
 import { useFocusTrap } from './ui/useFocusTrap';
 import type { AudioTrack } from './AudioPlayer';
 
@@ -263,7 +263,7 @@ export const EReader: React.FC<EReaderProps> = ({
         coverUrl: book.coverImageUrl,
       });
     } catch (error) {
-      toast.error(toAiError(error).message);
+      toast.error(reportAiError(error));
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -333,7 +333,7 @@ export const EReader: React.FC<EReaderProps> = ({
         <div className="flex items-center justify-end gap-3 w-1/3">
           {/* Audio Player - Prominent Button */}
           <button
-            onClick={handlePlayAudio}
+            onClick={() => void handlePlayAudio()}
             disabled={isGeneratingAudio}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold tracking-wide transition-all shadow-md hover:shadow-lg active:scale-95 ${
               theme === 'sepia'

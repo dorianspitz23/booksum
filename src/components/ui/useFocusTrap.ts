@@ -44,8 +44,8 @@ export function useFocusTrap(
       const items = focusable();
       if (items.length === 0) return;
 
-      const first = items[0]!;
-      const last = items[items.length - 1]!;
+      const first = items[0];
+      const last = items[items.length - 1];
       const active = document.activeElement;
 
       if (event.shiftKey && active === first) {

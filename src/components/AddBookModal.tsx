@@ -141,7 +141,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
       {mode === 'goodreads' ? (
         <GoodreadsImport onDone={onClose} />
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Reading Status

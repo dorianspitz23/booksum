@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, RotateCw, X, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { toast } from './ui/toastStore';
 
 export interface AudioTrack {
   src: string; // Blob URL or remote URL
@@ -47,7 +48,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        // play() rejects when autoplay policy blocks it, or when the source is
+        // an object URL that has since been revoked. Unhandled, that surfaced as
+        // an uncaught rejection in the console and a button that silently did
+        // nothing; now the state stays honest and the user is told.
+        void audioRef.current.play().catch(() => {
+          setIsPlaying(false);
+          toast.error('Could not start playback.');
+        });
       }
       setIsPlaying(!isPlaying);
     }

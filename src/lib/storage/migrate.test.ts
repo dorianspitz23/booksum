@@ -102,7 +102,7 @@ describe('migrateLegacyData', () => {
     await migrateLegacyData();
 
     const [profile] = await profiles.list();
-    const migrated = await books.listByProfile(profile!.id);
+    const migrated = await books.listByProfile(profile.id);
     expect(migrated).toHaveLength(2);
 
     const atomic = migrated.find((b) => b.title === 'Atomic Habits');
@@ -122,7 +122,7 @@ describe('migrateLegacyData', () => {
     await migrateLegacyData();
 
     const [profile] = await profiles.list();
-    const migrated = await books.listByProfile(profile!.id);
+    const migrated = await books.listByProfile(profile.id);
     const atomic = migrated.find((b) => b.title === 'Atomic Habits');
 
     const pdf = await blobs.get(atomic!.id, 'pdf');
@@ -204,7 +204,7 @@ describe('migrateLegacyData with unreadable legacy data', () => {
     expect(result.blobs).toBe(0);
 
     const [profile] = await profiles.list();
-    const migrated = await books.listByProfile(profile!.id);
+    const migrated = await books.listByProfile(profile.id);
     expect(migrated).toHaveLength(2);
   });
 
@@ -213,7 +213,7 @@ describe('migrateLegacyData with unreadable legacy data', () => {
     await migrateLegacyData();
 
     const [profile] = await profiles.list();
-    const migrated = await books.listByProfile(profile!.id);
+    const migrated = await books.listByProfile(profile.id);
     const corrupt = migrated.find((b) => b.title === 'Corrupt Attachment');
 
     // hasPdf used to be copied from the legacy record, leaving a book that
@@ -240,7 +240,7 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     await migrateLegacyData();
 
     const [profile] = await profiles.list();
-    const all = await books.listByProfile(profile!.id);
+    const all = await books.listByProfile(profile.id);
     const atomic = all.find((book) => book.title === 'Atomic Habits');
 
     // The regression this guards: a migrated book carried a summaryId but no
@@ -259,14 +259,14 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     const result = await migrateLegacyData();
 
     const [profile] = await profiles.list();
-    const [book] = await books.listByProfile(profile!.id);
+    const [book] = await books.listByProfile(profile.id);
     // Every legacy book used to get a summaryId plus a Summary made of empty
     // strings, so "has a summary?" answered yes and "what does it say?" answered
     // nothing -- and the AI features that need a summary offered themselves anyway.
     expect(book?.summaryId).toBeUndefined();
     expect(book?.oneSentenceTakeaway).toBeUndefined();
     expect(result.summaries).toBe(0);
-    await expect(summaries.listByBook(book!.id)).resolves.toHaveLength(0);
+    await expect(summaries.listByBook(book.id)).resolves.toHaveLength(0);
   });
 
   it('survives a profile record that is not an object', async () => {
@@ -283,7 +283,7 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     expect(result.profiles).toBe(1);
     const [profile] = await profiles.list();
     expect(profile?.name).toBe('Reader');
-    await expect(books.listByProfile(profile!.id)).resolves.toHaveLength(1);
+    await expect(books.listByProfile(profile.id)).resolves.toHaveLength(1);
   });
 
   it('survives a library record that is not an array', async () => {

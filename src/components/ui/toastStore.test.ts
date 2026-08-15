@@ -22,12 +22,12 @@ describe('toastStore', () => {
     toast.success('one');
     toast.success('two');
     const [a, b] = getToasts();
-    expect(a!.id).not.toBe(b!.id);
+    expect(a.id).not.toBe(b.id);
   });
 
   it('dismisses by id', () => {
     toast.error('gone soon');
-    dismissToast(getToasts()[0]!.id);
+    dismissToast(getToasts()[0].id);
     expect(getToasts()).toHaveLength(0);
   });
 

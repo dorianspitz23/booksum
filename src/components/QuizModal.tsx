@@ -16,7 +16,7 @@ import { generateBookQuiz } from '../lib/ai/quiz';
 import { reviewCards } from '../lib/storage/repo';
 import { newCard } from '../lib/srs';
 import { toast } from './ui/toastStore';
-import { toAiError } from '../lib/ai/errors';
+import { reportAiError } from '../features/settings/keyDialog';
 
 interface QuizModalProps {
   book: Book;
@@ -79,7 +79,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
       } catch (error) {
         if (cancelled) return;
         console.error('[booksum] could not generate the quiz', error);
-        toast.error(toAiError(error).message);
+        toast.error(reportAiError(error));
       } finally {
         if (!cancelled) setIsLoading(false);
       }

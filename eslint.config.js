@@ -12,12 +12,17 @@ export default tseslint.config(
   // browser globals below do not apply to them.
   { ignores: ['dist', 'node_modules', 'coverage', '.worktrees', 'audit-reports'] },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  // The type-checked tier, not the syntactic one. `recommended` alone cannot see
+  // types, so every rule that needs them — floating promises, unnecessary
+  // conditions, unsafe `any` flowing through a call — was installed and inert.
+  // This is an app whose whole risk surface is unvalidated model JSON.
+  ...tseslint.configs.recommendedTypeChecked,
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       globals: { ...globals.browser },
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
     plugins: { 'react-hooks': reactHooks },
     rules: {
@@ -39,5 +44,11 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': ['error', { patterns: ['react', 'react-dom', 'react/*'] }],
     },
+  },
+  {
+    // Config files are outside the app's tsconfig, so type-aware rules have no
+    // program for them.
+    files: ['*.config.{js,ts}', 'eslint.config.js'],
+    ...tseslint.configs.disableTypeChecked,
   },
 );

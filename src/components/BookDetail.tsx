@@ -23,7 +23,7 @@ import { getOrCreateNarration, clearNarration } from '../lib/ai/narration';
 import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
 import { toast } from './ui/toastStore';
-import { toAiError } from '../lib/ai/errors';
+import { reportAiError } from '../features/settings/keyDialog';
 import { bookToMarkdown } from '../lib/markdown';
 import { downloadText, slugify } from '../lib/download';
 import type { AudioTrack } from './AudioPlayer';
@@ -214,7 +214,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       onSummaryUpdate(updated);
       onOpenReader(book);
     } catch (error) {
-      toast.error(toAiError(error).message);
+      toast.error(reportAiError(error));
     } finally {
       setIsGeneratingDeepDive(false);
     }
@@ -437,7 +437,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 {summary && (
                   <>
                     <button
-                      onClick={() => handlePlayAudio('short')}
+                      onClick={() => void handlePlayAudio('short')}
                       disabled={isGeneratingAudio}
                       className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 text-sm"
                     >
@@ -450,7 +450,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                     </button>
 
                     <button
-                      onClick={handleMasterclassClick}
+                      onClick={() => void handleMasterclassClick()}
                       disabled={isGeneratingDeepDive}
                       className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-stone-900 hover:bg-black text-white dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 rounded-xl font-semibold transition-all disabled:opacity-50 text-sm shadow-lg shadow-stone-100 dark:shadow-none active:scale-95"
                     >

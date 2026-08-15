@@ -176,7 +176,7 @@ export function parseLibraryExport(value: unknown): ParseResult {
   if (typeof value.version !== 'number' || !SUPPORTED_VERSIONS.includes(value.version)) {
     return {
       ok: false,
-      reason: `That backup is version ${String(value.version ?? 'unknown')}, and this version of BookSum can import ${SUPPORTED_VERSIONS.join(' and ')}.`,
+      reason: `That backup is version ${num(value.version) || str(value.version) ? String(value.version) : 'unknown'}, and this version of BookSum can import ${SUPPORTED_VERSIONS.join(' and ')}.`,
     };
   }
   if (!Array.isArray(value.books)) {

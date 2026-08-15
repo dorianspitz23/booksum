@@ -48,7 +48,7 @@ export async function getAIRecommendations(userBooks: Book[]): Promise<Recommend
     );
 
     return settled.map((result, index) => {
-      const rec = usable[index]!;
+      const rec = usable[index];
       return result.status === 'fulfilled'
         ? result.value
         : { ...rec, description: rec.description ?? '', coverUrl: placeholderCover(rec.title) };

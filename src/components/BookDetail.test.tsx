@@ -119,18 +119,16 @@ describe('BookDetail summarise action', () => {
   it('calls back when pressed and shows progress', async () => {
     const onSummarise = renderDetail(undefined);
 
-    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]!);
+    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]);
 
     expect(onSummarise).toHaveBeenCalledTimes(1);
   });
 
   it('surfaces a failure instead of leaving the button spinning', async () => {
-    const failing = vi.fn(async () => {
-      throw new Error('nope');
-    });
+    const failing = vi.fn(() => Promise.reject(new Error('nope')));
     renderDetail(undefined, failing);
 
-    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]!);
+    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]);
 
     await waitFor(() =>
       expect(screen.getAllByRole('button', { name: /summarise this book/i })[0]).toBeEnabled(),

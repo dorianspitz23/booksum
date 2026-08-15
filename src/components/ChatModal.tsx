@@ -188,7 +188,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
               {startupError}
             </p>
           )}
-          <form onSubmit={handleSend} className="relative flex items-center gap-2">
+          <form
+            onSubmit={(event) => void handleSend(event)}
+            className="relative flex items-center gap-2"
+          >
             <input
               type="text"
               value={input}

@@ -5,6 +5,7 @@ import App from '../App';
 import { ProfileProvider } from '../features/profile/ProfileContext';
 import { resetDb } from '../lib/storage/db';
 import type * as AiClientModule from '../lib/ai/client';
+import { requestUrl } from './fetchSpy';
 
 /**
  * getClient is the choke point every AI capability goes through, so a spy on it
@@ -60,7 +61,7 @@ describe('smoke', () => {
   });
 
   it('makes no network call to Gemini on boot', async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchSpy = vi.fn((input: RequestInfo | URL) => {
       void input;
       return new Response('{}', { status: 200 });
     });
@@ -82,7 +83,7 @@ describe('smoke', () => {
     // the client module entirely.
     expect(aiClient.getClient).not.toHaveBeenCalled();
     const geminiCalls = fetchSpy.mock.calls
-      .map((call) => String(call[0]))
+      .map((call) => requestUrl(call[0]))
       .filter((url) => url.includes('generativelanguage'));
     expect(geminiCalls).toEqual([]);
     vi.unstubAllGlobals();

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchCover } from './index';
 import { placeholderCover } from './placeholder';
+import { requestUrl } from '../../test/fetchSpy';
 
 function mockFetch(handler: (url: string) => unknown) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const result = handler(String(input));
+    vi.fn((input: RequestInfo | URL) => {
+      const result = handler(requestUrl(input));
       if (result === null) return new Response('', { status: 404 });
       return new Response(JSON.stringify(result), { status: 200 });
     }),
@@ -53,15 +54,13 @@ describe('fetchCover', () => {
   it('falls back to the placeholder when the network throws', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => {
-        throw new TypeError('Failed to fetch');
-      }),
+      vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
     );
     await expect(fetchCover('Offline', 'Nobody')).resolves.toBe(placeholderCover('Offline'));
   });
 
   it('contacts only the two free cover providers, never Gemini', async () => {
-    const spy = vi.fn(async (input: RequestInfo | URL) => {
+    const spy = vi.fn((input: RequestInfo | URL) => {
       void input;
       return new Response(JSON.stringify({ items: [], docs: [] }));
     });
@@ -72,7 +71,7 @@ describe('fetchCover', () => {
     // A positive allow-list, not a loop asserting no recorded call contained
     // 'generativelanguage'. That loop ran zero assertions whenever nothing was
     // fetched, and it would have waved through any other third-party or paid host.
-    const hosts = [...new Set(spy.mock.calls.map((call) => new URL(String(call[0])).host))];
+    const hosts = [...new Set(spy.mock.calls.map((call) => new URL(requestUrl(call[0])).host))];
     expect(hosts.length).toBeGreaterThan(0);
     expect(hosts.sort()).toEqual(['openlibrary.org', 'www.googleapis.com']);
   });

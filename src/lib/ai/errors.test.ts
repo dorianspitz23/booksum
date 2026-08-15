@@ -93,10 +93,29 @@ describe('toAiError', () => {
   });
 
   it('never tells the user to visit a screen that does not exist', () => {
-    // 'invalid-key' used to say "Check it in Settings", and there is no settings
-    // surface for the key.
+    // 'invalid-key' used to say "Check it in Settings" when nothing of the kind
+    // existed. There is a key card on the profile page now, but these errors all
+    // open the key dialog directly, so sending the user hunting is still wrong.
     for (const status of [400, 401, 403, 429, 500]) {
       expect(toAiError(apiError(status)).message).not.toMatch(/in settings/i);
     }
+  });
+
+  it('reports a retired model as a retired model', () => {
+    // Every model this app uses is a -preview build, and Google withdraws those
+    // on its own schedule. A clone that sat for months answers 404 on every AI
+    // action; that used to fall through to the generic message, which named
+    // nothing the user or a contributor could act on.
+    const error = toAiError(apiError(404));
+
+    expect(error.kind).toBe('model-unavailable');
+    expect(error.message).toMatch(/models\.ts/);
+  });
+
+  it('does not mistake a retired model for a bad key or an oversized file', () => {
+    const message = toAiError(apiError(404)).message;
+
+    expect(message).not.toMatch(/key/i);
+    expect(message).not.toMatch(/pdf/i);
   });
 });

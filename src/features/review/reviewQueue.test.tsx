@@ -159,7 +159,7 @@ describe('useReviewQueue', () => {
 
     const [stored] = await reviewCards.listByProfile(profile.id);
     expect(stored?.id).toBe(seeded.id);
-    expect(Date.parse(stored!.dueAt)).toBeGreaterThan(Date.now());
+    expect(Date.parse(stored.dueAt)).toBeGreaterThan(Date.now());
     expect(stored?.reviewCount).toBe(1);
   });
 
@@ -176,7 +176,7 @@ describe('useReviewQueue', () => {
 
     const [stored] = await reviewCards.listByProfile(profile.id);
     expect(stored?.intervalDays).toBe(1);
-    expect(Date.parse(stored!.dueAt)).toBeGreaterThan(Date.now());
+    expect(Date.parse(stored.dueAt)).toBeGreaterThan(Date.now());
   });
 
   it('works through several cards in order', async () => {

@@ -7,6 +7,7 @@ import { libraryToMarkdown } from '../lib/markdown';
 import { parseLibraryExport } from '../lib/storage/libraryExport';
 import { downloadText } from '../lib/download';
 import { monthlyProgress } from '../lib/stats';
+import { ApiKeyCard } from '../features/settings/ApiKeyCard';
 import type { VoiceName } from '../types';
 
 const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
@@ -342,6 +343,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <FileJson size={24} className="text-gray-400 dark:text-gray-500" /> Data Management
         </h2>
 
+        <ApiKeyCard />
+
         <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex-1">
@@ -356,7 +359,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div className="flex items-center gap-4">
               <button
-                onClick={handleExport}
+                onClick={() => void handleExport()}
                 className="flex items-center gap-2 px-5 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 rounded-xl font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               >
                 <Download size={18} /> Export JSON

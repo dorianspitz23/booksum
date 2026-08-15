@@ -101,7 +101,7 @@ export function ProfilePicker() {
         )}
 
         {isCreating ? (
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={(event) => void handleCreate(event)} className="space-y-4">
             <label className="block">
               <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Your name

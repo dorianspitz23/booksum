@@ -11,7 +11,7 @@ import { useLibrary } from '../features/library/useLibrary';
 import { useReviewQueue } from '../features/review/useReviewQueue';
 import { ShellContext } from './ShellContext';
 import type { ShellApi } from './ShellContext';
-import { toAiError } from '../lib/ai/errors';
+import { keyDialog, reportAiError } from '../features/settings/keyDialog';
 import { ToastHost } from '../components/ui/Toast';
 import { dailyWisdomKey } from '../lib/storageKeys';
 import { localDayStamp } from '../lib/stats';
@@ -83,16 +83,24 @@ export function AppShell() {
   // The reader is a full-bleed view, so the chrome steps aside for it.
   const isReader = location.pathname.endsWith('/read');
 
-  const handleAiError = useCallback((error: unknown): string => {
-    const aiError = toAiError(error);
-    if (aiError.kind === 'missing-key' || aiError.kind === 'invalid-key') {
-      // Close whatever asked for the key first: two aria-modal dialogs on screen
-      // means two competing focus traps.
-      setShowAddBook(false);
-      setShowKeyDialog(true);
-    }
-    return aiError.message;
-  }, []);
+  /**
+   * The shell owns the dialog, but not the decision to show it. Any call site
+   * can now ask via `reportAiError`, including the three that were never given
+   * the prop and so could only ever show a toast telling the user to add a key
+   * with nowhere to add one.
+   */
+  useEffect(
+    () =>
+      keyDialog.subscribe(() => {
+        // Close whatever asked for the key first: two aria-modal dialogs on
+        // screen means two competing focus traps.
+        setShowAddBook(false);
+        setShowKeyDialog(true);
+      }),
+    [],
+  );
+
+  const handleAiError = useCallback((error: unknown): string => reportAiError(error), []);
 
   useEffect(() => {
     if (!profile || books.length === 0 || wisdomCheckedRef.current) return;

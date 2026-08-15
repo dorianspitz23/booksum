@@ -13,7 +13,9 @@ afterEach(() => {
 
 describe('fetchJsonOrNull', () => {
   it('returns the parsed body on success', async () => {
-    globalThis.fetch = vi.fn(async () => new Response('{"ok":true}', { status: 200 })) as never;
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(new Response('{"ok":true}', { status: 200 })),
+    );
 
     await expect(fetchJsonOrNull<{ ok: boolean }>('https://example.test')).resolves.toEqual({
       ok: true,
@@ -21,13 +23,15 @@ describe('fetchJsonOrNull', () => {
   });
 
   it('returns null on a non-2xx response', async () => {
-    globalThis.fetch = vi.fn(async () => new Response('nope', { status: 503 })) as never;
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response('nope', { status: 503 })));
 
     await expect(fetchJsonOrNull('https://example.test')).resolves.toBeNull();
   });
 
   it('returns null when the body is not JSON', async () => {
-    globalThis.fetch = vi.fn(async () => new Response('<html>rate limited</html>')) as never;
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(new Response('<html>rate limited</html>')),
+    );
 
     // Providers answer 200 with an HTML error page often enough that this needs
     // to be a fallback rather than an exception the caller has to catch.
@@ -35,9 +39,7 @@ describe('fetchJsonOrNull', () => {
   });
 
   it('returns null when the network rejects', async () => {
-    globalThis.fetch = vi.fn(async () => {
-      throw new TypeError('Failed to fetch');
-    }) as never;
+    globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
 
     await expect(fetchJsonOrNull('https://example.test')).resolves.toBeNull();
   });
@@ -57,7 +59,7 @@ describe('fetchJsonOrNull', () => {
   });
 
   it('passes an abort signal so the request is actually cancelled', async () => {
-    const spy = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'));
+    const spy = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response('{}')));
     globalThis.fetch = spy as never;
 
     await fetchJsonOrNull('https://example.test');
