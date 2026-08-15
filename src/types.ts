@@ -49,6 +49,12 @@ export interface Book {
   /** Absent until an AI summary has been generated for this book. */
   summaryId?: string;
   hasPdf: boolean;
+  /**
+   * Zero-based section the reader was last on. The reader already computed and
+   * displayed "% Complete" but never stored it, so it always reopened at the
+   * first section — the progress bar was showing a number that survived nothing.
+   */
+  lastReadSection?: number;
 }
 
 export interface Summary {

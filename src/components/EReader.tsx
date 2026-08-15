@@ -13,6 +13,7 @@ import {
 import { getOrCreateNarration } from '../lib/ai/narration';
 import { toast } from './ui/toastStore';
 import { toAiError } from '../lib/ai/errors';
+import { useFocusTrap } from './ui/useFocusTrap';
 import type { AudioTrack } from './AudioPlayer';
 
 interface EReaderProps {
@@ -22,6 +23,8 @@ interface EReaderProps {
   onClose: () => void;
   onPlayAudio: (track: AudioTrack) => void;
   hasAudioPlayer?: boolean;
+  /** Persists the section the reader is on, so it reopens where it left off. */
+  onProgress?: (sectionIndex: number) => void;
 }
 
 type Theme = 'light' | 'sepia' | 'dark';
@@ -169,14 +172,18 @@ export const EReader: React.FC<EReaderProps> = ({
   onClose,
   onPlayAudio,
   hasAudioPlayer,
+  onProgress,
 }) => {
-  const [currentPage, setCurrentPage] = useState(0);
+  // Resumes where the reader was left. Clamped when the sections are known,
+  // since a regenerated summary can be shorter than the one last read.
+  const [currentPage, setCurrentPage] = useState(book.lastReadSection ?? 0);
   const [theme, setTheme] = useState<Theme>('light');
   const [fontSize, setFontSize] = useState<FontSize>('text-lg');
   const [showSettings, setShowSettings] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Pagination Logic
   const pages = useMemo(() => {
@@ -189,12 +196,59 @@ export const EReader: React.FC<EReaderProps> = ({
     return sections;
   }, [summary?.detailedSummary]);
 
+  /**
+   * Clamped here rather than corrected in an effect. A regenerated summary can
+   * have fewer sections than the one last read, and effects run *after* render —
+   * so a stored index past the end dereferenced a missing section and threw
+   * before any correction could run.
+   */
+  const page = pages.length > 0 ? Math.min(currentPage, pages.length - 1) : 0;
+
   // Scroll to top on page change
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
-  }, [currentPage]);
+  }, [page]);
+
+  // Persisted on change rather than on close, so closing the tab keeps the spot.
+  useEffect(() => {
+    if (pages.length > 0 && page !== (book.lastReadSection ?? 0)) {
+      onProgress?.(page);
+    }
+  }, [page, pages.length, book.lastReadSection, onProgress]);
+
+  /**
+   * The reader covers the whole viewport, so it is a modal surface in every way
+   * that matters to the user — but it had no Escape handler and no focus trap,
+   * so the only way out was clicking one specific icon, and Tab wandered off
+   * into the page underneath that the reader was covering.
+   */
+  useFocusTrap(panelRef, { active: true, onClose });
+
+  /**
+   * Arrow keys turn pages, which is the first thing anyone who has used an
+   * e-reader will try. Ignored while focus is in a field, so typing still works.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable === true
+      ) {
+        return;
+      }
+
+      if (event.key === 'ArrowRight')
+        setCurrentPage((page) => Math.min(pages.length - 1, page + 1));
+      if (event.key === 'ArrowLeft') setCurrentPage((page) => Math.max(0, page - 1));
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [pages.length]);
 
   const handlePlayAudio = async () => {
     if (!summary) return;
@@ -250,6 +304,10 @@ export const EReader: React.FC<EReaderProps> = ({
 
   return (
     <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Reading ${book.title}`}
       className={`fixed inset-0 z-50 flex flex-col transition-colors duration-500 ease-in-out ${themeStyles[theme]} ${hasAudioPlayer ? 'pb-24 md:pb-28' : ''}`}
     >
       {/* --- Top Navigation Bar --- */}
@@ -389,19 +447,15 @@ export const EReader: React.FC<EReaderProps> = ({
         <div
           className={`max-w-2xl mx-auto px-6 py-12 md:py-20 ${fontSize} transition-all duration-300`}
         >
-          <div key={currentPage} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <RenderFormattedContent
-              content={pages[currentPage]}
-              isFirstPage={currentPage === 0}
-              theme={theme}
-            />
+          <div key={page} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <RenderFormattedContent content={pages[page]} isFirstPage={page === 0} theme={theme} />
           </div>
 
           {/* Chapter End Navigation (In-Flow) */}
           <div className="mt-20 pt-10 border-t border-dashed border-current opacity-20" />
 
           <div className="flex flex-col gap-4 mt-10 mb-20">
-            {currentPage < pages.length - 1 ? (
+            {page < pages.length - 1 ? (
               <button
                 onClick={nextPage}
                 className={`w-full py-8 rounded-2xl border-2 border-dashed ${activeUI.border} ${activeUI.hover} transition-all group flex flex-col items-center justify-center gap-2`}
@@ -440,7 +494,7 @@ export const EReader: React.FC<EReaderProps> = ({
         <div className="w-24">
           <button
             onClick={prevPage}
-            disabled={currentPage === 0}
+            disabled={page === 0}
             className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-0 ${activeUI.hover} py-2 px-3 rounded-lg`}
           >
             <ChevronLeft size={14} /> Back
@@ -453,18 +507,18 @@ export const EReader: React.FC<EReaderProps> = ({
           >
             <div
               className={`h-full rounded-full transition-all duration-500 ${theme === 'dark' ? 'bg-orange-500' : 'bg-orange-600'}`}
-              style={{ width: `${((currentPage + 1) / pages.length) * 100}%` }}
+              style={{ width: `${((page + 1) / pages.length) * 100}%` }}
             />
           </div>
           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
-            {Math.round(((currentPage + 1) / pages.length) * 100)}% Complete
+            {Math.round(((page + 1) / pages.length) * 100)}% Complete
           </span>
         </div>
 
         <div className="w-24 flex justify-end">
           <button
             onClick={nextPage}
-            disabled={currentPage === pages.length - 1}
+            disabled={page === pages.length - 1}
             className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-0 ${activeUI.hover} py-2 px-3 rounded-lg`}
           >
             Next <ChevronRight size={14} />
