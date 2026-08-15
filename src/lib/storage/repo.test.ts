@@ -6,7 +6,8 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from './db';
-import { blobs, books, profiles, summaries } from './repo';
+import { blobs, books, profiles, reviewCards, summaries } from './repo';
+import { newCard } from '../srs';
 
 beforeEach(async () => {
   await resetDb();
@@ -125,5 +126,133 @@ describe('blobs', () => {
 
     const stored = await blobs.get(book.id, 'audio-short');
     expect(await stored?.text()).toBe('two-longer');
+  });
+});
+
+/**
+ * The cascades used to span four (book) and N+1 (profile) independent
+ * transactions, so a failure part-way through left orphaned rows keyed to
+ * something that no longer existed. They are now one transaction each.
+ */
+describe('cascading deletes are complete', () => {
+  async function seedFullBook() {
+    const profile = await seedProfile();
+    const book = await books.create(bookInput(profile.id));
+    await summaries.upsert({
+      id: 'sum-1',
+      bookId: book.id,
+      oneSentenceTakeaway: 'x',
+      summary: 'y',
+      keyInsights: [],
+      actionableSteps: [],
+      generatedAt: new Date().toISOString(),
+      model: 'test',
+    });
+    await blobs.put(book.id, 'pdf', new Blob(['pdf']));
+    await blobs.put(book.id, 'audio-short', new Blob(['wav']));
+    await reviewCards.upsert(
+      newCard({
+        profileId: profile.id,
+        bookId: book.id,
+        question: 'Q?',
+        options: ['a', 'b'],
+        correctAnswerIndex: 0,
+        explanation: 'because',
+      }),
+    );
+    return { profile, book };
+  }
+
+  it('removing a book takes its review cards with it', async () => {
+    const { book } = await seedFullBook();
+    await books.remove(book.id);
+    await expect(reviewCards.listByBook(book.id)).resolves.toHaveLength(0);
+  });
+
+  it('removing a book takes every blob kind, not just the pdf', async () => {
+    const { book } = await seedFullBook();
+    await books.remove(book.id);
+    await expect(blobs.get(book.id, 'pdf')).resolves.toBeUndefined();
+    await expect(blobs.get(book.id, 'audio-short')).resolves.toBeUndefined();
+  });
+
+  it('removing a book deletes every summary row it carries, not only the first', async () => {
+    const { book } = await seedFullBook();
+    // A second row is what importing a backup over an existing library produced.
+    await summaries.upsert({
+      id: 'sum-2',
+      bookId: book.id,
+      oneSentenceTakeaway: 'duplicate',
+      summary: 'duplicate',
+      keyInsights: [],
+      actionableSteps: [],
+      generatedAt: new Date().toISOString(),
+      model: 'test',
+    });
+    await expect(summaries.listByBook(book.id)).resolves.toHaveLength(2);
+
+    await books.remove(book.id);
+
+    await expect(summaries.listByBook(book.id)).resolves.toHaveLength(0);
+  });
+
+  it('removing a profile takes its review cards with it', async () => {
+    const { profile, book } = await seedFullBook();
+
+    await profiles.remove(profile.id);
+
+    await expect(profiles.get(profile.id)).resolves.toBeUndefined();
+    await expect(books.listByProfile(profile.id)).resolves.toHaveLength(0);
+    await expect(reviewCards.listByProfile(profile.id)).resolves.toHaveLength(0);
+    await expect(summaries.listByBook(book.id)).resolves.toHaveLength(0);
+    await expect(blobs.get(book.id, 'pdf')).resolves.toBeUndefined();
+  });
+
+  it('leaves another profile untouched', async () => {
+    const { profile } = await seedFullBook();
+    const other = await seedProfile('Someone else');
+    const theirs = await books.create(bookInput(other.id, { title: 'Deep Work' }));
+
+    await profiles.remove(profile.id);
+
+    await expect(books.listByProfile(other.id)).resolves.toHaveLength(1);
+    await expect(books.get(theirs.id)).resolves.toBeDefined();
+  });
+});
+
+describe('reviewCards index-backed lookups', () => {
+  const card = (profileId: string, question: string) =>
+    newCard({
+      profileId,
+      bookId: 'b1',
+      question,
+      options: ['a', 'b'],
+      correctAnswerIndex: 0,
+      explanation: '',
+    });
+
+  it('scopes listByProfile to one profile', async () => {
+    const mine = await seedProfile('Mine');
+    const other = await seedProfile('Other');
+    await reviewCards.upsert(card(mine.id, 'Mine'));
+    await reviewCards.upsert(card(other.id, 'Theirs'));
+
+    const found = await reviewCards.listByProfile(mine.id);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.question).toBe('Mine');
+  });
+
+  it('returns only cards already due, at the boundary', async () => {
+    const profile = await seedProfile();
+    const at = (dueAt: string, question: string) =>
+      reviewCards.upsert({ ...card(profile.id, question), dueAt });
+
+    const now = new Date('2026-06-15T12:00:00.000Z');
+    await at('2026-06-15T11:59:59.999Z', 'past');
+    await at('2026-06-15T12:00:00.000Z', 'exactly now');
+    await at('2026-06-15T12:00:00.001Z', 'future');
+
+    const due = await reviewCards.listDue(profile.id, now);
+    expect(due.map((c) => c.question).sort()).toEqual(['exactly now', 'past']);
   });
 });

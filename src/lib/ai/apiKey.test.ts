@@ -1,3 +1,8 @@
+/**
+ * @vitest-environment node
+ *
+ * Needs localStorage but no DOM; setup.ts supplies an in-memory Storage.
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   API_KEY_STORAGE_KEY,

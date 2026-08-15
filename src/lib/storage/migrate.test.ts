@@ -1,3 +1,8 @@
+/**
+ * @vitest-environment node
+ *
+ * Needs localStorage but no DOM; setup.ts supplies an in-memory Storage.
+ */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from './db';
 import { migrateLegacyData, MIGRATION_MARKER } from './migrate';
