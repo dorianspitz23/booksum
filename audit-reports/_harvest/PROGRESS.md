@@ -97,6 +97,42 @@ implementation so it observes without changing behaviour. **Falsification was
 checked**: injecting a `getClient()` call into `importGoodreadsRows` fails
 exactly that test.
 
+### Wave 2, later batches (continued)
+
+- **Review queue** — `isDue` is now the single definition of due-ness, with
+  `listDue` documented as its indexed form. An unparseable `dueAt` used to make a
+  card invisible in both directions at once (`NaN <= n` is false, and a non-ISO
+  string sorts past every index cutoff); it now reads as due and heals on the
+  next grade. `repo.upsert` normalises `dueAt` on the way in, the queue skips
+  unanswerable cards, and the import parser rejects all three poisoned shapes.
+- **Backups** — v3 carries profile settings and review cards. v2 still imports.
+  Cards are re-pointed at the active profile; a card already present keeps its
+  local schedule rather than being reset to the backup's older one.
+- **Reader** — reuses `useFocusTrap` (it had no Escape and no trap at all),
+  arrow-key paging, and `lastReadSection` so it reopens where you left it.
+- **Type-aware lint** — `recommendedTypeChecked` was never on, so every rule
+  needing types was inert. 53 findings; the ones that mattered were 8 async
+  handlers whose rejections nothing caught, a floating `audio.play()`, and five
+  `String(value)` calls on possible objects.
+- **AI layer tests** — 21, faked at `getClient`. Falsification checked.
+- **Goodreads** — `Bookshelves` → category (everything used to import as
+  'Other'), size gate before reading bytes, and a wrong file now says so instead
+  of reporting an empty library.
+- **aria-modal completed** — the trap held Tab but left the page behind readable
+  to a screen reader. Ancestors' siblings are now `inert` + `aria-hidden`.
+
+**Lessons that generalise:**
+
+- **Effects run after render.** Clamping an out-of-range stored index in a
+  `useEffect` was too late — the first render already dereferenced a missing
+  section and threw. Derive at render time instead.
+- **A test failing to *find* an element can be the fix working.** After the
+  `inert` change, `getByRole` could no longer see the background button; role
+  queries resolve against the same tree a screen reader reads.
+- **`String()` is not a safe stringifier.** `fetch` accepts a `Request`, and
+  `String(someRequest)` is `'[object Object]'` — every host assertion built on it
+  would have passed for a request to anywhere.
+
 ## Waves 2 (remaining) - 4
 
 438 findings. Wave 2 (high, 102) is dominated by three clusters:
