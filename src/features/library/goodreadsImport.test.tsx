@@ -5,6 +5,22 @@ import { books as bookRepo, profiles } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { LibraryProvider, useLibrary } from './useLibrary';
 import { parseGoodreadsCsv } from '../../lib/goodreads';
+import type * as AiClientModule from '../../lib/ai/client';
+
+/**
+ * getClient is the single choke point every AI capability goes through, so a spy
+ * on it catches an accidental AI call from anywhere — which a fetch spy cannot,
+ * since a path that issues no fetch leaves nothing to assert against.
+ */
+const aiClient = vi.hoisted(() => ({ getClient: vi.fn() }));
+
+vi.mock('../../lib/ai/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof AiClientModule>();
+  // Delegates to the real implementation — this observes, it does not change
+  // behaviour, so no other test in this file is affected by its presence.
+  aiClient.getClient.mockImplementation(actual.getClient);
+  return { ...actual, getClient: aiClient.getClient };
+});
 
 const CSV = [
   'Book Id,Title,Author,My Rating,Exclusive Shelf,ISBN13,Date Read',
@@ -36,6 +52,7 @@ async function renderLibrary() {
 beforeEach(async () => {
   await resetDb();
   localStorage.clear();
+  aiClient.getClient.mockClear();
 });
 
 describe('Goodreads import', () => {
@@ -78,22 +95,17 @@ describe('Goodreads import', () => {
   });
 
   it('makes no Gemini call while importing', async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
-      void input;
-      return new Response('{}', { status: 200 });
-    });
-    vi.stubGlobal('fetch', fetchSpy);
-
     await renderLibrary();
     const { rows } = parseGoodreadsCsv(CSV);
     await act(async () => {
       await api.importGoodreadsRows(rows);
     });
 
-    for (const call of fetchSpy.mock.calls) {
-      expect(String(call[0])).not.toContain('generativelanguage');
-    }
-    vi.unstubAllGlobals();
+    // This used to loop over a fetch spy's recorded calls asserting none hit the
+    // Gemini host. The import path issues no fetch at all, so the loop body never
+    // ran, zero assertions executed, and the test passed unconditionally --
+    // guarding the project's headline promise with something that could not fail.
+    expect(aiClient.getClient).not.toHaveBeenCalled();
   });
 
   it('imports a large library without any AI cost', async () => {

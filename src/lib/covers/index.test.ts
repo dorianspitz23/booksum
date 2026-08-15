@@ -60,7 +60,7 @@ describe('fetchCover', () => {
     await expect(fetchCover('Offline', 'Nobody')).resolves.toBe(placeholderCover('Offline'));
   });
 
-  it('never calls a Gemini endpoint', async () => {
+  it('contacts only the two free cover providers, never Gemini', async () => {
     const spy = vi.fn(async (input: RequestInfo | URL) => {
       void input;
       return new Response(JSON.stringify({ items: [], docs: [] }));
@@ -69,9 +69,12 @@ describe('fetchCover', () => {
 
     await fetchCover('Anything', 'Anyone');
 
-    for (const call of spy.mock.calls) {
-      expect(String(call[0])).not.toContain('generativelanguage');
-    }
+    // A positive allow-list, not a loop asserting no recorded call contained
+    // 'generativelanguage'. That loop ran zero assertions whenever nothing was
+    // fetched, and it would have waved through any other third-party or paid host.
+    const hosts = [...new Set(spy.mock.calls.map((call) => new URL(String(call[0])).host))];
+    expect(hosts.length).toBeGreaterThan(0);
+    expect(hosts.sort()).toEqual(['openlibrary.org', 'www.googleapis.com']);
   });
 });
 

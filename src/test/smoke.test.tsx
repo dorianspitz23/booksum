@@ -4,6 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { ProfileProvider } from '../features/profile/ProfileContext';
 import { resetDb } from '../lib/storage/db';
+import type * as AiClientModule from '../lib/ai/client';
+
+/**
+ * getClient is the choke point every AI capability goes through, so a spy on it
+ * catches an accidental call from anywhere — unlike a fetch spy, which records
+ * nothing at all when the path under test issues no request.
+ */
+const aiClient = vi.hoisted(() => ({ getClient: vi.fn() }));
+
+vi.mock('../lib/ai/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof AiClientModule>();
+  // Delegates to the real implementation — this observes, it does not change
+  // behaviour. A stub that threw its own error broke the key-dialog test, which
+  // depends on getClient throwing MissingKeyError specifically.
+  aiClient.getClient.mockImplementation(actual.getClient);
+  return { ...actual, getClient: aiClient.getClient };
+});
 
 function renderApp() {
   return render(
@@ -16,6 +33,7 @@ function renderApp() {
 beforeEach(async () => {
   await resetDb();
   localStorage.clear();
+  aiClient.getClient.mockClear();
 });
 
 describe('smoke', () => {
@@ -57,9 +75,16 @@ describe('smoke', () => {
       expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
     );
 
-    for (const call of fetchSpy.mock.calls) {
-      expect(String(call[0])).not.toContain('generativelanguage');
-    }
+    // Both halves matter. The client spy is the falsifiable one — it fails if any
+    // code path asks for an AI client. The fetch assertion below used to be a
+    // loop that ran zero assertions when nothing was fetched; as a filter it at
+    // least states the invariant, and it also catches a direct call that bypasses
+    // the client module entirely.
+    expect(aiClient.getClient).not.toHaveBeenCalled();
+    const geminiCalls = fetchSpy.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes('generativelanguage'));
+    expect(geminiCalls).toEqual([]);
     vi.unstubAllGlobals();
   });
 
