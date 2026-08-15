@@ -15,10 +15,15 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
     const finished = books.filter((b) => b.status === 'Finished');
     const wantToRead = books.filter((b) => b.status === 'Want to Read');
     const totalTime = finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0);
+
+    // Only books the user actually rated. Averaging in the zeros dragged the
+    // headline figure toward 0.0 for anyone who imported a finished-but-unrated
+    // library from Goodreads.
+    const rated = finished.filter((b) => b.rating > 0);
     const avgRating =
-      finished.length > 0
-        ? (finished.reduce((acc, b) => acc + b.rating, 0) / finished.length).toFixed(1)
-        : 0;
+      rated.length > 0
+        ? (rated.reduce((acc, b) => acc + b.rating, 0) / rated.length).toFixed(1)
+        : '—';
 
     const categoryMap: Record<string, number> = {};
     books.forEach((b) => {
@@ -26,6 +31,8 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
     });
 
     const categoryData = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
+    // 'Other' is what every Goodreads import lands in, so it says nothing.
+    const topCategory = categoryData.find(([name]) => name !== 'Other')?.[0];
 
     return {
       total: books.length,
@@ -33,7 +40,9 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
       wantToRead,
       totalTime,
       avgRating,
+      ratedCount: rated.length,
       categoryData,
+      topCategory,
     };
   }, [books]);
 
@@ -91,7 +100,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
           icon={<Star className="text-rose-500" />}
           label="Avg. Rating"
           value={stats.avgRating}
-          subValue="Personal preference"
+          subValue={stats.ratedCount > 0 ? `across ${stats.ratedCount} rated` : 'none rated yet'}
         />
       </div>
 
@@ -167,23 +176,30 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
           <div className="bg-orange-900 text-white p-8 rounded-3xl shadow-xl flex flex-col justify-between">
             <div>
               <TrendingUp size={40} className="mb-6 text-orange-400" />
-              <h3 className="text-2xl font-serif font-bold mb-4 italic">Wisdom Milestone</h3>
+              <h3 className="text-2xl font-serif font-bold mb-4 italic">Your Reading</h3>
+              {/*
+                This card used to assert that anyone with more than five finished
+                books had a focus "shifting towards more productivity-centric
+                topics" — a hardcoded sentence with no connection to their actual
+                categories. It now states only what the data says.
+              */}
               <p className="text-orange-100 leading-relaxed mb-6">
-                You've accumulated enough knowledge to discuss deep concepts for over{' '}
-                {Math.floor(stats.totalTime / 60)} hours straight.
-                {stats.finished.length > 5
-                  ? ' Your focus is shifting towards more productivity-centric topics recently.'
-                  : ' Keep adding more to see your personal knowledge map evolve.'}
+                {stats.finished.length === 0
+                  ? 'Finish a book to start building your knowledge map.'
+                  : `${stats.finished.length} book${stats.finished.length === 1 ? '' : 's'} finished` +
+                    (stats.topCategory ? `, most often in ${stats.topCategory}.` : '.')}
               </p>
             </div>
-            <div className="pt-6 border-t border-orange-800">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-                <span className="font-bold uppercase tracking-widest text-orange-300">
-                  Continuous Learner
-                </span>
+            {stats.totalTime > 0 && (
+              <div className="pt-6 border-t border-orange-800">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-orange-400" />
+                  <span className="font-bold uppercase tracking-widest text-orange-300">
+                    {stats.totalTime} minutes of summaries
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -199,40 +215,47 @@ const StatCard: React.FC<{
   onClick?: () => void;
   isActive?: boolean;
   colorClass?: string;
-}> = ({ icon, label, value, subValue, onClick, isActive, colorClass }) => (
-  <div
-    onClick={onClick}
-    className={`p-6 rounded-3xl border transition-all duration-300 group ${
-      onClick ? 'cursor-pointer hover:shadow-xl active:scale-95' : ''
-    } ${
-      isActive
-        ? `border-transparent shadow-lg ${colorClass} text-white`
-        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-sm text-gray-900 dark:text-gray-100'
-    }`}
-  >
-    <div
-      className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-        isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-gray-800'
+}> = ({ icon, label, value, subValue, onClick, isActive, colorClass }) => {
+  // Two of these four cards are the page's only filtering control, and this was
+  // a <div onClick> with no role, tabIndex or key handler — so the stats filters
+  // could not be reached or activated from the keyboard at all.
+  const Tag = onClick ? 'button' : 'div';
+
+  return (
+    <Tag
+      {...(onClick ? { type: 'button' as const, onClick, 'aria-pressed': Boolean(isActive) } : {})}
+      className={`w-full text-left p-6 rounded-3xl border transition-all duration-300 group focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+        onClick ? 'cursor-pointer hover:shadow-xl active:scale-95' : ''
+      } ${
+        isActive
+          ? `border-transparent shadow-lg ${colorClass} text-white`
+          : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-sm text-gray-900 dark:text-gray-100'
       }`}
     >
-      {icon}
-    </div>
-    <p
-      className={`text-sm font-bold uppercase tracking-widest mb-1 transition-colors ${
-        isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'
-      }`}
-    >
-      {label}
-    </p>
-    <div className="flex items-baseline gap-2">
-      <h4 className="text-3xl font-bold">{value}</h4>
       <span
-        className={`text-xs font-medium transition-colors ${
-          isActive ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'
+        className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+          isActive ? 'bg-white/20' : 'bg-gray-50 dark:bg-gray-800'
         }`}
       >
-        {subValue}
+        {icon}
       </span>
-    </div>
-  </div>
-);
+      <span
+        className={`block text-sm font-bold uppercase tracking-widest mb-1 transition-colors ${
+          isActive ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'
+        }`}
+      >
+        {label}
+      </span>
+      <span className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold">{value}</span>
+        <span
+          className={`text-xs font-medium transition-colors ${
+            isActive ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'
+          }`}
+        >
+          {subValue}
+        </span>
+      </span>
+    </Tag>
+  );
+};

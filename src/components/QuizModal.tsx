@@ -137,8 +137,6 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
           </div>
         ) : isFinished ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-orange-500 to-rose-600 text-white relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-
             <div className="w-24 h-24 bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-400 rounded-full flex items-center justify-center shadow-xl mb-6 animate-in zoom-in duration-500">
               <Trophy size={48} fill="currentColor" />
             </div>

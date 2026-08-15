@@ -39,10 +39,31 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
     }
   };
 
+  /*
+   * This was a bare <div onClick> with no role, tabIndex or key handler, and it
+   * is the only way to open a book from the library grid and from the stats
+   * drill-down — so a keyboard or screen-reader user could search and filter
+   * their library but could not open anything in it.
+   *
+   * role/tabIndex/onKeyDown rather than a <button>: the card's interior is a
+   * nested div structure containing a heading, and neither is valid inside a
+   * button element.
+   */
+  const open = () => onClick(book);
+
   return (
     <div
-      onClick={() => onClick(book)}
-      className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 dark:border-gray-800 flex flex-col h-full"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${book.title} by ${book.author}`}
+      onClick={open}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open();
+        }
+      }}
+      className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 dark:border-gray-800 flex flex-col h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
     >
       <div className="relative aspect-[3/4.5] overflow-hidden bg-gray-50 dark:bg-gray-800">
         {!imageLoaded && (
@@ -57,9 +78,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
           onError={handleError}
           className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-5">
+        {/* An unsummarised import used to advertise a masterclass that does not
+            exist, one line above a body correctly reading 'Not summarised yet'. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300 flex items-end p-5">
           <span className="text-white text-sm font-bold flex items-center gap-2 tracking-wide">
-            Read Masterclass <ArrowRight size={16} />
+            {book.oneSentenceTakeaway ? 'Read Masterclass' : 'Summarise this book'}
+            <ArrowRight size={16} />
           </span>
         </div>
         <div className="absolute top-4 left-4 flex flex-col gap-2">

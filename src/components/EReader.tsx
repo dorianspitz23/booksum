@@ -389,7 +389,7 @@ export const EReader: React.FC<EReaderProps> = ({
         <div
           className={`max-w-2xl mx-auto px-6 py-12 md:py-20 ${fontSize} transition-all duration-300`}
         >
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 key={currentPage}">
+          <div key={currentPage} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <RenderFormattedContent
               content={pages[currentPage]}
               isFirstPage={currentPage === 0}
