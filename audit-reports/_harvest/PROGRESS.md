@@ -69,6 +69,34 @@ taken with this hazard present. Reruns since show `29 passed (29)`, which does
 mean all 29 ran — the parenthesised total counts files that started, so a
 shortfall would have shown as a smaller number plus an `Errors` line.
 
+### Wave 2, later batches
+
+- **Storage layer** — cascades are one transaction, card lookups are index-backed
+  (`DB_VERSION` bumped), DB-open failure surfaces instead of hanging.
+- **Legacy JSON shape** — `readJson<T>()` was an assertion, not a check. A profile
+  key holding a string, or a library key holding an object, was handed downstream
+  as a typed value; the object case threw out of `for...of` and aborted the whole
+  migration. Now `unknown` + per-call-site checks, 5 new tests.
+- **No page load contacts a third party.** Fonts self-hosted via `@fontsource`
+  (was `fonts.googleapis.com`). Tailwind's auto source detection was scanning
+  `audit-reports/`, whose JSON quotes class names verbatim — enough to emit a rule
+  embedding a `transparenttextures.com` URL for a class no element uses. Scanning
+  is now `source(none)` + explicit `@source`. The only `https://` left in `dist/`
+  is Tailwind's own licence banner.
+- **Theme** — applied in `App`, not `AppShell` (which never renders on the picker
+  screen), plus a pre-paint inline script reading a localStorage mirror, so dark
+  mode no longer flashes white. Profile record stays the source of truth.
+- **Cover fetches** — shared `fetchJsonOrNull` with an 8s abort; a hung provider
+  used to leave the add-book spinner running forever, 6 tests.
+
+**Three tests replaced that could not fail.** Each looped over a fetch spy's
+recorded calls asserting none hit the Gemini host — zero calls means zero
+assertions. The Goodreads path issues no fetch at all, so the loop body never
+ran. Now asserted against `getClient`, with the mock delegating to the real
+implementation so it observes without changing behaviour. **Falsification was
+checked**: injecting a `getClient()` call into `importGoodreadsRows` fails
+exactly that test.
+
 ## Waves 2 (remaining) - 4
 
 438 findings. Wave 2 (high, 102) is dominated by three clusters:
