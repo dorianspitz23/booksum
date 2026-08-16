@@ -155,7 +155,7 @@ and the mouse-only controls (`BookCard`, `StatCard`, the PDF drop zone —
 Two of the 102 are feature requests recorded in `FEATURE-REQUESTS.md` rather than
 built. See the counter caveat above.
 
-## Wave 3 — medium (188): in progress, 101 closed
+## Wave 3 — medium (188): in progress, 107 closed
 
 Landed so far: CI's format gate, the GitHub Pages deploy and Dependabot
 workflows, `.gitattributes`, notes flushed on unmount, per-toast dismissal
