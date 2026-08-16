@@ -315,4 +315,30 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
       .map((book) => book.title);
     expect(titles).toContain('Survivor');
   });
+
+  /**
+   * The original app interpolated a missing cover into a URL string, so records
+   * carry the literal text 'null'. `<img src="null">` resolves against the
+   * page's own directory and the request succeeds enough that onError never
+   * fires — the user sees a broken-image icon, not the initials placeholder.
+   * Normalising during migration means a library migrated today is clean.
+   */
+  it.each(['null', 'undefined'])('normalises a stringified %s cover to empty', async (junk) => {
+    localStorage.setItem(
+      'booksum_db_users',
+      JSON.stringify([{ id: LEGACY_USER_ID, name: 'Dorian' }]),
+    );
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([
+        { id: 'b1', title: 'Atomic Habits', author: 'James Clear', coverImageUrl: junk },
+      ]),
+    );
+
+    await migrateLegacyData();
+
+    const [profile] = await profiles.list();
+    const [book] = await books.listByProfile(profile.id);
+    expect(book.coverImageUrl).toBe('');
+  });
 });

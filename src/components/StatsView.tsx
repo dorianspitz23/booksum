@@ -14,7 +14,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
   const stats = useMemo(() => {
     const finished = books.filter((b) => b.status === 'Finished');
     const wantToRead = books.filter((b) => b.status === 'Want to Read');
-    const totalTime = finished.reduce((acc, b) => acc + b.readingTimeMinutes, 0);
+    // Only the summariser sets `readingTimeMinutes`, so it is 0 on every
+    // imported and hand-added book. Summing those in made "Total Learning" read
+    // 0m for an entire imported library — a real number stated with confidence
+    // and no basis. Count what has an estimate, and say how many that was.
+    const timed = finished.filter((b) => b.readingTimeMinutes > 0);
+    const totalTime = timed.reduce((acc, b) => acc + b.readingTimeMinutes, 0);
 
     // Only books the user actually rated. Averaging in the zeros dragged the
     // headline figure toward 0.0 for anyone who imported a finished-but-unrated
@@ -39,6 +44,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
       finished,
       wantToRead,
       totalTime,
+      timedCount: timed.length,
       avgRating,
       ratedCount: rated.length,
       categoryData,
@@ -93,8 +99,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
         <StatCard
           icon={<Timer className="text-blue-500" />}
           label="Total Learning"
-          value={`${stats.totalTime}m`}
-          subValue="Active reading time"
+          value={stats.timedCount > 0 ? `${stats.totalTime}m` : '—'}
+          subValue={
+            stats.timedCount > 0
+              ? `Across ${stats.timedCount} summarised ${stats.timedCount === 1 ? 'book' : 'books'}`
+              : 'Summarise a book to estimate this'
+          }
         />
         <StatCard
           icon={<Star className="text-rose-500" />}

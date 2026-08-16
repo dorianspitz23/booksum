@@ -10,9 +10,23 @@ interface DialogProps {
   children: ReactNode;
   /** Tailwind max-width class for the panel. */
   size?: string;
+  /**
+   * Set while the dialog holds input the user would be sorry to lose. Clicking
+   * the backdrop is the one dismissal that happens by accident — a click that
+   * lands a few pixels outside the panel — so it is ignored while this is true.
+   * Escape and the close button stay live, because those are deliberate.
+   */
+  hasUnsavedInput?: boolean;
 }
 
-export function Dialog({ open, title, onClose, children, size = 'max-w-xl' }: DialogProps) {
+export function Dialog({
+  open,
+  title,
+  onClose,
+  children,
+  size = 'max-w-xl',
+  hasUnsavedInput = false,
+}: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -25,7 +39,7 @@ export function Dialog({ open, title, onClose, children, size = 'max-w-xl' }: Di
       <div
         data-testid="dialog-backdrop"
         className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={hasUnsavedInput ? undefined : onClose}
       />
       <div
         ref={panelRef}

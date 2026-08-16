@@ -162,7 +162,15 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
   };
 
   return (
-    <Dialog open title="Add New Insight" onClose={onClose}>
+    <Dialog
+      open
+      title="Add New Insight"
+      onClose={onClose}
+      // A typed title, an author, or a chosen PDF is work the user would have to
+      // redo. Losing it to a stray click just outside the panel is the kind of
+      // small betrayal people remember; Escape and the X still close.
+      hasUnsavedInput={query.trim() !== '' || author.trim() !== '' || file !== null}
+    >
       <div className="flex gap-4 mb-8 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
         <button
           onClick={() => setMode('search')}

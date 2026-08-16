@@ -96,9 +96,17 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
         </p>
 
         <div className="mt-auto pt-5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          {/* `readingTimeMinutes` is an estimate the summariser produces, so it
+              is 0 on every imported and hand-added book. Rendering that as
+              "0 min read" asserts something about the book that is not true, so
+              the chip waits until there is a real figure. */}
           <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest">
-            <Clock size={14} className="text-orange-500" />
-            <span>{book.readingTimeMinutes} min read</span>
+            {book.readingTimeMinutes > 0 && (
+              <>
+                <Clock size={14} className="text-orange-500" />
+                <span>{book.readingTimeMinutes} min read</span>
+              </>
+            )}
           </div>
           {book.status === 'Finished' && (
             <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 dark:bg-amber-950 rounded-md">

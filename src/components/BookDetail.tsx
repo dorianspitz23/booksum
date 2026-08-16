@@ -392,8 +392,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                   <span className="text-xs font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 mb-1 block">
                     Length
                   </span>
+                  {/* 0 means "no estimate yet" — only the summariser sets this —
+                      so it reads as an em dash rather than claiming 0 minutes. */}
                   <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {book.readingTimeMinutes} mins
+                    {book.readingTimeMinutes > 0 ? `${book.readingTimeMinutes} mins` : '—'}
                   </p>
                 </div>
               </div>

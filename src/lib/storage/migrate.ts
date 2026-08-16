@@ -73,6 +73,17 @@ const num = (value: unknown, min: number, max: number): number | undefined =>
     ? Math.min(max, Math.max(min, value))
     : undefined;
 
+/**
+ * The original app built cover URLs by string interpolation without checking
+ * for a missing value, so records carry the literal text 'null' (and sometimes
+ * 'undefined') where a URL belongs. `<img src="null">` requests the page's own
+ * directory, which resolves, so the browser shows a broken-image icon rather
+ * than firing onError. Normalising here means a migration performed today
+ * yields clean records instead of pushing the workaround into every renderer.
+ */
+const normaliseCoverUrl = (value: string | undefined): string =>
+  !value || value === 'null' || value === 'undefined' ? '' : value;
+
 const strArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
@@ -189,7 +200,11 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
               : undefined,
             rating: num(legacy.rating, 0, 5) ?? 0,
             personalNotes: str(legacy.personalNotes),
-            coverImageUrl: str(legacy.coverImageUrl) ?? '',
+            // The original app stringified a missing cover, so records carry the
+            // literal text 'null' as a URL. Normalising it here means a fresh
+            // migration produces clean data; `BookCover` still guards the render
+            // path for libraries migrated before this existed.
+            coverImageUrl: normaliseCoverUrl(str(legacy.coverImageUrl)),
             readingTimeMinutes: num(legacy.readingTimeMinutes, 0, 100_000) ?? 5,
             addedAt,
             // Denormalised onto Book so list views render without loading the

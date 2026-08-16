@@ -4,11 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Dialog } from './Dialog';
 
-function Harness({ onClose = vi.fn() }: { onClose?: () => void }) {
+function Harness({
+  onClose = vi.fn(),
+  hasUnsavedInput = false,
+}: {
+  onClose?: () => void;
+  hasUnsavedInput?: boolean;
+}) {
   return (
     <>
       <button>outside</button>
-      <Dialog open title="Add a book" onClose={onClose}>
+      <Dialog open title="Add a book" onClose={onClose} hasUnsavedInput={hasUnsavedInput}>
         <button>first</button>
         <button>second</button>
       </Dialog>
@@ -116,5 +122,40 @@ describe('Dialog', () => {
     // Left hidden, the whole app would be unreachable to a screen reader after
     // the first dialog anyone opened.
     expect(document.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
+  });
+});
+
+/**
+ * A backdrop click is the only dismissal that happens by accident — a click
+ * aimed at the panel that lands a few pixels outside it. When the dialog holds
+ * typed input, obeying that click throws the work away with no warning and no
+ * undo. Escape and the close button are deliberate, so they keep working.
+ */
+describe('Dialog backdrop dismissal', () => {
+  it('closes on a backdrop click when there is nothing to lose', async () => {
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} />);
+
+    await userEvent.click(screen.getByTestId('dialog-backdrop'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a backdrop click while the dialog holds unsaved input', async () => {
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} hasUnsavedInput />);
+
+    await userEvent.click(screen.getByTestId('dialog-backdrop'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('still closes on Escape with unsaved input, because that is deliberate', async () => {
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} hasUnsavedInput />);
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
