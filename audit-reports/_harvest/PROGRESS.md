@@ -155,7 +155,7 @@ and the mouse-only controls (`BookCard`, `StatCard`, the PDF drop zone —
 Two of the 102 are feature requests recorded in `FEATURE-REQUESTS.md` rather than
 built. See the counter caveat above.
 
-## Wave 3 — medium (188): in progress, 107 closed
+## Wave 3 — medium (188): in progress, 141 closed
 
 Landed so far: CI's format gate, the GitHub Pages deploy and Dependabot
 workflows, `.gitattributes`, notes flushed on unmount, per-toast dismissal
@@ -186,3 +186,26 @@ the catch-all route, broken-cover fallbacks, and the "0 min read" untruths.
   0 as "no estimate", not as a measurement.
 - Falsification is now routine: every guard added this wave was confirmed by
   reintroducing the bug and checking that exactly its own test fails.
+
+### Wave 3, later batches
+
+- **Cross-profile import theft** was the worst thing found in this wave. Book ids
+  are preserved on import so summaries and cards re-link, but `books.create` is a
+  `put` and the duplicate guard only sees the importing profile. Two profiles
+  importing one backup meant the second silently took the first's books. Fixed
+  with an id map; anything pointing at a re-keyed book is redirected.
+- **The denormalised takeaway had no owner.** `saveSummary` updated `summaryId`
+  alone and `addBook` never derived it at all — every caller copied it by hand.
+  `useLibrary` is now the single place it is maintained. `readingTimeMinutes`
+  deliberately stays out: it lives on `Book` only and `Summary` does not carry it.
+- **Cover lookups are cached per session**, keyed on title+author, caching the
+  *promise* so simultaneous asks collapse into one set of calls. The existing
+  tests reuse one title across different provider outcomes, so they clear the
+  cache between cases.
+- **"Quick Listen" narrated the whole summary body** — longer than the deep dive
+  beside it. TTS bills per character, so the label was wrong and the cost double.
+- **An empty chat reply is now an error.** A declined completion streams zero
+  chunks and resolves normally, leaving a blank bubble indistinguishable from a
+  reply still arriving.
+- `no-non-null-assertion` is on. It cost three fixes, all in tests, all resolved
+  by asserting rather than silencing.
