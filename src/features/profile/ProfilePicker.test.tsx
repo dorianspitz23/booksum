@@ -5,7 +5,7 @@ import { ConfirmProvider } from '../../components/ui/ConfirmDialog';
 import { resetDb } from '../../lib/storage/db';
 import { books as bookRepo, profiles } from '../../lib/storage/repo';
 import { ProfilePicker } from './ProfilePicker';
-import { ProfileProvider } from './ProfileContext';
+import { ACTIVE_PROFILE_KEY, ProfileProvider } from './ProfileContext';
 
 function mount() {
   render(
@@ -91,5 +91,37 @@ describe('ProfilePicker delete', () => {
       expect(screen.getByRole('heading', { name: /delete sam\?/i })).toBeInTheDocument(),
     );
     expect(screen.getByText(/sam's entire library/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Choosing a profile is the entire point of this screen and nothing tested it.
+ * Selection is what scopes every subsequent read and write, so if it silently
+ * failed — an unknown id, a write that never landed — the user would be handed
+ * someone else's library, or a blank one, with no error anywhere.
+ */
+describe('ProfilePicker selection', () => {
+  it('remembers the profile that was chosen', async () => {
+    const first = await seedProfileWithABook('Dorian');
+    const second = await seedProfileWithABook('Someone Else');
+    mount();
+
+    await waitFor(() => expect(screen.getByText('Someone Else')).toBeInTheDocument());
+    // Exact, not a substring: 'Delete profile Someone Else' also contains the name.
+    await userEvent.click(screen.getByRole('button', { name: 'Someone Else' }));
+
+    // Persisted, so a reload lands in the same library rather than back here.
+    await waitFor(() => expect(localStorage.getItem(ACTIVE_PROFILE_KEY)).toBe(second.id));
+    expect(localStorage.getItem(ACTIVE_PROFILE_KEY)).not.toBe(first.id);
+  });
+
+  it('lists every profile as its own way in', async () => {
+    await seedProfileWithABook('Dorian');
+    await seedProfileWithABook('Someone Else');
+    mount();
+
+    await waitFor(() => expect(screen.getByText('Dorian')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Dorian' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Someone Else' })).toBeInTheDocument();
   });
 });

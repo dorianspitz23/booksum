@@ -80,7 +80,12 @@ export function ProfilePicker() {
                   onClick={() => void selectProfile(candidate.id)}
                   className="flex-1 flex items-center gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm hover:border-orange-200 hover:shadow-md transition-all text-left"
                 >
-                  <span className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 font-bold flex items-center justify-center">
+                  {/* Decorative — it is the name's own first letter, so without
+                      this the button announces as "D Dorian". */}
+                  <span
+                    aria-hidden="true"
+                    className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400 font-bold flex items-center justify-center"
+                  >
                     {candidate.name.charAt(0).toUpperCase()}
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
