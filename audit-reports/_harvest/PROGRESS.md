@@ -133,6 +133,18 @@ exactly that test.
   `String(someRequest)` is `'[object Object]'` — every host assertion built on it
   would have passed for a request to anywhere.
 
+### Counter caveat
+
+`closed.mjs` marks a finding closed when any commit message on this branch
+mentions its id. That is a proxy, and it over-counts in one direction: the commit
+closing F037 also *named* F010 and F020 while explaining that they are feature
+requests deliberately not built. So the high tally reads 102/102 when the honest
+number is 100 fixed, 2 recorded in `FEATURE-REQUESTS.md`.
+
+It under-counts too — a fix landing inside a larger batch without naming its id
+reads as open, which is what the `verified-closed.json` pass was for. Treat the
+number as a progress signal, not a certificate.
+
 ## Waves 2 (remaining) - 4
 
 438 findings. Wave 2 (high, 102) is dominated by three clusters:
