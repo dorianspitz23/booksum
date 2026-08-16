@@ -1,0 +1,134 @@
+[
+  {
+    "id": "S142",
+    "what": "correctAnswerIndex bounded INTEGER in schema",
+    "n": 3,
+    "ok": true
+  },
+  {
+    "id": "S143",
+    "what": "schema required list present",
+    "n": 5,
+    "ok": true
+  },
+  {
+    "id": "S183",
+    "what": "deadlock assertion now written",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "S049",
+    "what": "AudioPlayer play button is bg-white/text-black with no dark: variants, correct against permanently-dark chrome",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "S013",
+    "what": "migrate: summaryId only when a summary exists",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "S002",
+    "what": "import idempotency test",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F011",
+    "what": "BookCard single encoding",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F012",
+    "what": "BookDetail modals gated on summary",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F014",
+    "what": "ProfileView saves merged fields not snapshot",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F015",
+    "what": "QuizModal reached only with a summary",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F016",
+    "what": "quiz validated before persist",
+    "n": 2,
+    "ok": true
+  },
+  {
+    "id": "F022",
+    "what": "import parsed before use",
+    "n": 2,
+    "ok": true
+  },
+  {
+    "id": "F029",
+    "what": "error kind keyed on status first",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F030",
+    "what": "recommendations survive one bad entry",
+    "n": 2,
+    "ok": true
+  },
+  {
+    "id": "F034",
+    "what": "no fabricated book from empty completion",
+    "n": 3,
+    "ok": true
+  },
+  {
+    "id": "F035",
+    "what": "no failure sentinel typed as success",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F043",
+    "what": "migrate denormalises the takeaway",
+    "n": 2,
+    "ok": true
+  },
+  {
+    "id": "F044",
+    "what": "legacy fields type-checked not nullish-checked",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F048",
+    "what": "repo fed only validated records",
+    "n": 2,
+    "ok": true
+  },
+  {
+    "id": "F050",
+    "what": "one encoding of summarised on Book",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F051",
+    "what": "LibraryExport produced by a parser",
+    "n": 1,
+    "ok": true
+  },
+  {
+    "id": "F052",
+    "what": "QuizQuestion built by a validator",
+    "n": 1,
+    "ok": true
+  }
+]
