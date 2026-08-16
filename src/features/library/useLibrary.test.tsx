@@ -286,6 +286,47 @@ describe('useLibrary.importLibrary', () => {
     expect(second).toBe(0);
     await expect(bookRepo.listByProfile(profile.id)).resolves.toHaveLength(1);
   });
+
+  /**
+   * Two profiles on one device, one backup file. Book ids are preserved on
+   * import so summaries and review cards can re-link by `bookId`, but
+   * `books.create` is a `put` and the duplicate guard only sees the *importing*
+   * profile's books. The second import therefore overwrote the record and moved
+   * the book — along with its summary, its PDF and its review cards — out of the
+   * first profile's library. Nothing warned; their book count simply went down.
+   */
+  it('does not steal a book from another profile that shares its id', async () => {
+    const other = await profiles.create({ name: 'Someone else' });
+    const theirs = await bookRepo.create({ ...draft('Deep Work'), profileId: other.id });
+
+    const profile = await renderLibrary();
+    let added = -1;
+    await act(async () => {
+      added = await api.importLibrary(
+        exportOf(
+          [{ ...theirs, profileId: 'whatever-the-backup-said' }],
+          [summaryFor(theirs.id, 'From the backup')],
+        ),
+      );
+    });
+
+    expect(added).toBe(1);
+
+    // The other profile still owns its original record, untouched.
+    const stillTheirs = await bookRepo.get(theirs.id);
+    expect(stillTheirs?.profileId).toBe(other.id);
+    await expect(bookRepo.listByProfile(other.id)).resolves.toHaveLength(1);
+
+    // And the importer got its own copy, under a fresh id.
+    const mine = await bookRepo.listByProfile(profile.id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].id).not.toBe(theirs.id);
+
+    // The summary followed that copy rather than being left pointing at a book
+    // belonging to someone else.
+    const summary = await summaryRepo.getByBook(mine[0].id);
+    expect(summary?.summary).toBe('From the backup');
+  });
 });
 
 describe('backup completeness', () => {

@@ -207,6 +207,14 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
             coverImageUrl: normaliseCoverUrl(str(legacy.coverImageUrl)),
             readingTimeMinutes: num(legacy.readingTimeMinutes, 0, 100_000) ?? 5,
             addedAt,
+            // The legacy app never recorded a completion date, so a migrated
+            // "Finished" book arrived with no `finishedAt` and was invisible to
+            // the Monthly Goal ring — someone with a full migrated library saw
+            // 0 of 8 and no way to fix it short of re-marking every book. The
+            // added date is the only evidence available and it is at least a
+            // date the book was in the library, so it is used as a stand-in and
+            // the goal counts what it can.
+            finishedAt: status === 'Finished' ? addedAt : undefined,
             // Denormalised onto Book so list views render without loading the
             // summary. Leaving it unset was why every migrated book showed
             // "Not summarised yet" despite carrying a summaryId.

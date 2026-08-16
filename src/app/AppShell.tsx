@@ -151,6 +151,18 @@ export function AppShell() {
   return (
     <ShellContext.Provider value={shellApi}>
       <div className="min-h-screen bg-parchment dark:bg-night text-gray-900 dark:text-gray-100 selection:bg-orange-100 dark:selection:bg-orange-950 selection:text-orange-900 pb-20">
+        {/* Visually hidden until focused. The nav is persistent and comes first
+            in the DOM, so without this a keyboard or screen-reader user tabbed
+            through the same five links before reaching the page content — on
+            every single navigation, forever. */}
+        {!isReader && (
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-xl focus:bg-orange-700 focus:text-white focus:font-semibold"
+          >
+            Skip to content
+          </a>
+        )}
         {!isReader && (
           <nav
             aria-label="Main"
@@ -224,6 +236,8 @@ export function AppShell() {
         )}
 
         <main
+          id="main-content"
+          tabIndex={-1}
           className={`${isReader ? '' : 'sm:ml-20 md:ml-64 pb-24 sm:pb-0'} min-h-screen p-6 sm:p-10 lg:p-16 ${
             activeAudioTrack ? 'pb-32' : ''
           }`}

@@ -112,7 +112,10 @@ describe('migrateLegacyData', () => {
     expect(atomic?.summaryId).toBeTruthy();
     expect('pdfData' in (atomic as object)).toBe(false);
 
-    const summary = await summaries.getByBook(atomic!.id);
+    // Asserted before use. If the book failed to migrate at all, this says so
+    // outright instead of throwing a TypeError three lines later.
+    expect(atomic).toBeDefined();
+    const summary = await summaries.getByBook(String(atomic?.id));
     expect(summary?.keyInsights).toEqual(['One', 'Two']);
     expect(summary?.model).toBe('legacy');
   });
@@ -125,7 +128,8 @@ describe('migrateLegacyData', () => {
     const migrated = await books.listByProfile(profile.id);
     const atomic = migrated.find((b) => b.title === 'Atomic Habits');
 
-    const pdf = await blobs.get(atomic!.id, 'pdf');
+    expect(atomic).toBeDefined();
+    const pdf = await blobs.get(String(atomic?.id), 'pdf');
     expect(await pdf?.text()).toBe('fake pdf bytes');
   });
 

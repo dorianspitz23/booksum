@@ -8,9 +8,7 @@ import { parseLibraryExport } from '../lib/storage/libraryExport';
 import { downloadText } from '../lib/download';
 import { monthlyProgress } from '../lib/stats';
 import { ApiKeyCard } from '../features/settings/ApiKeyCard';
-import type { VoiceName } from '../types';
-
-const VOICES: VoiceName[] = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'];
+import { VOICE_NAMES } from '../types';
 import {
   Settings,
   ShieldAlert,
@@ -27,6 +25,9 @@ import {
   FileJson,
   Check,
 } from 'lucide-react';
+
+/** Was a second, hand-maintained copy of the `VoiceName` union. */
+const VOICES = VOICE_NAMES;
 
 interface ProfileViewProps {
   profile: Profile;

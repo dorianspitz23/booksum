@@ -1,6 +1,13 @@
 export type BookStatus = 'Finished' | 'Want to Read';
 export type Priority = 'Low' | 'Medium' | 'High';
-export type VoiceName = 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir';
+/**
+ * The union is derived from the list rather than written twice. `ProfileView`
+ * kept its own `VOICES` array to render the picker, so adding a voice to the
+ * type and forgetting the array — or the reverse — compiled cleanly and shipped
+ * either a voice nobody could select or an option that failed at the API.
+ */
+export const VOICE_NAMES = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'] as const;
+export type VoiceName = (typeof VOICE_NAMES)[number];
 export type BlobKind = 'pdf' | 'audio-short' | 'audio-long';
 
 export enum Category {

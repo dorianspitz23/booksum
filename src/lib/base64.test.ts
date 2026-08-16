@@ -27,7 +27,12 @@ describe('base64', () => {
 
 describe('tryBase64ToBytes', () => {
   it('decodes valid input', () => {
-    expect(new TextDecoder().decode(tryBase64ToBytes('Qm9va1N1bQ==')!)).toBe('BookSum');
+    const bytes = tryBase64ToBytes('Qm9va1N1bQ==');
+    // Asserted rather than `!`-ed. Returning null for input it cannot decode is
+    // half of what this function is for, so "it returned something at all" is
+    // itself part of the behaviour under test.
+    expect(bytes).not.toBeNull();
+    expect(new TextDecoder().decode(bytes as Uint8Array)).toBe('BookSum');
   });
 
   it('returns null instead of throwing', () => {

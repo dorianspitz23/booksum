@@ -133,12 +133,34 @@ function useLibraryState() {
 
       const existing = new Set((await bookRepo.listByProfile(profile.id)).map((b) => b.id));
       const imported = new Set<string>();
+      /**
+       * Source id -> the id it was actually written under.
+       *
+       * Book ids are preserved on import, which is what lets summaries and
+       * review cards re-link by `bookId`. But `books.create` is a `put`, and the
+       * duplicate guard above only sees *this* profile's books — so importing
+       * one backup into two profiles on the same device overwrote the first
+       * profile's record and silently moved the book, its summary, its PDF and
+       * its review cards to the second. A book already held by someone else is
+       * therefore imported under a fresh id, and everything pointing at it is
+       * redirected through this map.
+       */
+      const idMap = new Map<string, string>();
       let added = 0;
 
       for (const book of payload.books ?? []) {
         if (existing.has(book.id)) continue;
-        await bookRepo.create({ ...book, profileId: profile.id });
-        imported.add(book.id);
+
+        const owner = await bookRepo.get(book.id);
+        const takenByAnotherProfile = owner !== undefined && owner.profileId !== profile.id;
+        const created = await bookRepo.create({
+          ...book,
+          id: takenByAnotherProfile ? undefined : book.id,
+          profileId: profile.id,
+        });
+
+        idMap.set(book.id, created.id);
+        imported.add(created.id);
         added += 1;
       }
 
@@ -149,12 +171,12 @@ function useLibraryState() {
       // Those orphans outlived the book itself, because books.remove only ever
       // found the first of them.
       for (const summary of payload.summaries ?? []) {
-        const book = await bookRepo.get(summary.bookId);
+        const bookId = idMap.get(summary.bookId) ?? summary.bookId;
+        const book = await bookRepo.get(bookId);
         if (!book || book.profileId !== profile.id) continue;
-        if (!imported.has(summary.bookId) && (await summaryRepo.getByBook(summary.bookId)))
-          continue;
+        if (!imported.has(bookId) && (await summaryRepo.getByBook(bookId))) continue;
 
-        await summaryRepo.upsert(summary);
+        await summaryRepo.upsert({ ...summary, bookId });
         if (book.summaryId !== summary.id) {
           await bookRepo.update({ ...book, summaryId: summary.id });
         }
@@ -169,10 +191,11 @@ function useLibraryState() {
       );
       for (const card of payload.reviewCards ?? []) {
         if (existingCards.has(card.id)) continue;
-        const book = await bookRepo.get(card.bookId);
+        const bookId = idMap.get(card.bookId) ?? card.bookId;
+        const book = await bookRepo.get(bookId);
         if (!book || book.profileId !== profile.id) continue;
 
-        await cardRepo.upsert({ ...card, profileId: profile.id });
+        await cardRepo.upsert({ ...card, bookId, profileId: profile.id });
       }
 
       // Settings are restored, but not `name`: the user just chose a name for the

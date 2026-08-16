@@ -30,6 +30,11 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // The 12 `!` assertions this repo used to carry are all gone, so enabling
+      // this costs nothing today and is the only thing that stops the next one.
+      // In an app whose inputs are model JSON and a user-supplied backup file,
+      // "trust me, this is not null" is exactly the assumption that breaks.
+      '@typescript-eslint/no-non-null-assertion': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-restricted-globals': [
         'error',
