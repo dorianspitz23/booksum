@@ -68,7 +68,18 @@ export function LibraryPage() {
   const categories = ['All', ...Array.from(new Set(books.map((b) => b.category)))];
 
   const refreshRecommendations = async () => {
-    if (!profile || books.length === 0 || isRefreshingRecs) return;
+    if (!profile || isRefreshingRecs) return;
+
+    // Recommendations are derived from what you have read, so there is nothing
+    // to derive from an empty library. The button used to return here in silence
+    // — the one case where it is guaranteed to do nothing was also the only case
+    // that explained nothing. The shelf below it is a fixed starter list, so
+    // saying so is more honest than leaving it looking personalised.
+    if (books.length === 0) {
+      toast.info('Add a book first — recommendations are based on what you have read.');
+      return;
+    }
+
     setIsRefreshingRecs(true);
     try {
       const next = await getAIRecommendations(books);
@@ -254,6 +265,9 @@ export function LibraryPage() {
           onRefresh={() => void refreshRecommendations()}
           onPreview={(rec) => void previewRecommendation(rec)}
           addingBookTitle={addingBookTitle}
+          // Identity comparison, not a length check: `recommendations` only
+          // stops being this exact array once a real generation replaces it.
+          isPersonalised={recommendations !== RECOMMENDED_BOOKS}
         />
       )}
     </div>

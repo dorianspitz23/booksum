@@ -43,7 +43,7 @@ const { summarizeBook, generateDetailedSummary, MAX_PDF_BYTES, summarizePdf } =
 const { generateBookQuiz } = await import('./quiz');
 const { getAIRecommendations } = await import('./recommend');
 const { generateAudioSummary } = await import('./tts');
-const { createBookChatSession } = await import('./chat');
+const { createBookChatSession, sendMessageStream } = await import('./chat');
 
 const book: Book = {
   id: 'book-1',
@@ -347,5 +347,50 @@ describe('createBookChatSession', () => {
     const config = JSON.stringify(gemini.createChat.mock.calls[0]?.[0]);
     expect(config).toContain('Atomic Habits');
     expect(config).toContain('gemini');
+  });
+});
+
+/** A fake Chat whose stream yields the given chunks and then ends. */
+function chatYielding(...chunks: string[]) {
+  return {
+    sendMessageStream: vi.fn(() =>
+      Promise.resolve(
+        (function* () {
+          for (const text of chunks) yield { text };
+        })(),
+      ),
+    ),
+  } as unknown as Parameters<typeof sendMessageStream>[0];
+}
+
+describe('sendMessageStream', () => {
+  it('accumulates chunks and reports the text so far as it goes', async () => {
+    const seen: string[] = [];
+
+    const full = await sendMessageStream(chatYielding('Hello', ' there'), 'hi', (soFar) => {
+      seen.push(soFar);
+    });
+
+    expect(full).toBe('Hello there');
+    expect(seen).toEqual(['Hello', 'Hello there']);
+  });
+
+  /**
+   * A completion the model declines to produce streams zero chunks and resolves
+   * normally. That used to return '' straight into the transcript, leaving an
+   * empty assistant bubble that never filled — which a user cannot tell apart
+   * from a reply still on its way, so they wait for something that is never
+   * coming instead of rephrasing.
+   */
+  it('raises rather than resolving to an empty reply', async () => {
+    await expect(sendMessageStream(chatYielding(), 'hi', () => {})).rejects.toThrow(
+      /returned nothing/i,
+    );
+  });
+
+  it('treats whitespace-only output as empty too', async () => {
+    await expect(sendMessageStream(chatYielding('  ', '\n'), 'hi', () => {})).rejects.toThrow(
+      /returned nothing/i,
+    );
   });
 });

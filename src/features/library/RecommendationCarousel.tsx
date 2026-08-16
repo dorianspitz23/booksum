@@ -10,6 +10,14 @@ interface RecommendationCarouselProps {
   onRefresh: () => void;
   onPreview: (rec: Recommendation) => void;
   addingBookTitle: string | null;
+  /**
+   * False while these are the built-in starter list rather than anything derived
+   * from the user's library. The heading read "Recommended For You" either way,
+   * which claimed a personalisation that had not happened — and did so most
+   * confidently to the person with an empty library, who had given the app
+   * nothing to personalise from.
+   */
+  isPersonalised: boolean;
 }
 
 function coverFallback(rec: Recommendation) {
@@ -27,6 +35,7 @@ export function RecommendationCarousel({
   onRefresh,
   onPreview,
   addingBookTitle,
+  isPersonalised,
 }: RecommendationCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +50,7 @@ export function RecommendationCarousel({
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Sparkles className="text-orange-500 fill-orange-500" size={20} />
-          Recommended For You{' '}
+          {isPersonalised ? 'Recommended For You' : 'A Few To Start With'}{' '}
           {isRefreshing && <Loader2 size={16} className="animate-spin text-gray-300" />}
         </h2>
         <div className="flex gap-2">

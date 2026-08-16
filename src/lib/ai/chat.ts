@@ -3,7 +3,7 @@ import type { Chat } from '@google/genai';
 /** Re-exported so UI code never imports the SDK directly. */
 export type { Chat };
 import { getClient } from './client';
-import { toAiError } from './errors';
+import { AiError, toAiError } from './errors';
 import { MODELS } from './models';
 import { chatSystemInstruction } from './prompts';
 import type { Book, Summary } from '../../types';
@@ -31,6 +31,15 @@ export async function sendMessageStream(
     for await (const chunk of stream) {
       text += chunk.text ?? '';
       onChunk(text);
+    }
+
+    // A completion the model declines to produce streams zero chunks and
+    // resolves normally, so this used to return '' and leave an empty assistant
+    // bubble sitting there for good — indistinguishable from a reply still on
+    // its way. Raised as a typed failure so it reaches the same error path as
+    // everything else and the user learns that something actually happened.
+    if (!text.trim()) {
+      throw new AiError('safety', 'The model returned nothing. Try rephrasing your question.');
     }
     return text;
   } catch (error) {
