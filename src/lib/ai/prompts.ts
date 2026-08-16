@@ -76,7 +76,18 @@ export const chatSystemInstruction = (book: Book, summary: Summary) =>
       - Be concise, encouraging, and clear.
       `;
 
+/**
+ * Text-to-speech bills by the character, so the length of these scripts is a
+ * direct cost every time one is generated.
+ *
+ * "Quick Listen" used to narrate the takeaway *and the whole 350-500 word
+ * summary body* — longer than the deep dive sitting beside it, and not remotely
+ * quick. It is now the takeaway plus the key insights: the shape of the book in
+ * about a minute, which is what the button offers. The deep dive keeps the full
+ * body and the actionable steps, so the two are genuinely different lengths and
+ * each label describes what you actually get.
+ */
 export const audioScript = (book: Book, summary: Summary, type: 'short' | 'long') =>
   type === 'short'
-    ? `Here is your summary of ${book.title}. ${summary.oneSentenceTakeaway}. ${summary.summary}`
-    : `Welcome to the deep dive of ${book.title} by ${book.author}. Let's explore the key insights. ${summary.keyInsights.join('. ')}. Now, here is how you can apply this. ${summary.actionableSteps.join('. ')}`;
+    ? `Here is the short version of ${book.title}. ${summary.oneSentenceTakeaway}. Here are the key insights. ${summary.keyInsights.join('. ')}`
+    : `Welcome to the deep dive of ${book.title} by ${book.author}. ${summary.summary} Let's explore the key insights. ${summary.keyInsights.join('. ')}. Now, here is how you can apply this. ${summary.actionableSteps.join('. ')}`;

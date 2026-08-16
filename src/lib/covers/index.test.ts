@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchCover } from './index';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearCoverCache, fetchCover } from './index';
 import { placeholderCover } from './placeholder';
 import { requestUrl } from '../../test/fetchSpy';
 
@@ -13,6 +13,13 @@ function mockFetch(handler: (url: string) => unknown) {
     }),
   );
 }
+
+beforeEach(() => {
+  // The lookup cache is module-level, so without this each test would inherit
+  // whatever the previous one resolved for the same title — and these tests
+  // deliberately reuse "Atomic Habits" to exercise different provider outcomes.
+  clearCoverCache();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -74,6 +81,82 @@ describe('fetchCover', () => {
     const hosts = [...new Set(spy.mock.calls.map((call) => new URL(requestUrl(call[0])).host))];
     expect(hosts.length).toBeGreaterThan(0);
     expect(hosts.sort()).toEqual(['openlibrary.org', 'www.googleapis.com']);
+  });
+});
+
+/**
+ * A miss costs two round trips and then returns a locally-generated placeholder,
+ * and the same book is asked for by more than one surface — the recommendation
+ * carousel and the add-book flow both resolve covers. Without a cache, every one
+ * of those asks repeated both requests, including the ones already known to fail.
+ */
+describe('fetchCover caching', () => {
+  it('asks the network once for a title it has already resolved', async () => {
+    mockFetch((url) =>
+      url.includes('googleapis.com')
+        ? { items: [{ volumeInfo: { imageLinks: { large: 'https://books.test/a.jpg' } } }] }
+        : null,
+    );
+
+    await fetchCover('Atomic Habits', 'James Clear');
+    const afterFirst = vi.mocked(fetch).mock.calls.length;
+    await fetchCover('Atomic Habits', 'James Clear');
+
+    expect(vi.mocked(fetch).mock.calls.length).toBe(afterFirst);
+  });
+
+  it('caches a miss too, so a placeholder is not re-earned every time', async () => {
+    mockFetch(() => null);
+
+    await expect(fetchCover('Unknown Book', 'Nobody')).resolves.toBe(
+      placeholderCover('Unknown Book'),
+    );
+    const afterFirst = vi.mocked(fetch).mock.calls.length;
+    expect(afterFirst).toBeGreaterThan(0);
+
+    await fetchCover('Unknown Book', 'Nobody');
+    expect(vi.mocked(fetch).mock.calls.length).toBe(afterFirst);
+  });
+
+  it('collapses simultaneous asks for the same title into one set of calls', async () => {
+    mockFetch((url) =>
+      url.includes('googleapis.com')
+        ? { items: [{ volumeInfo: { imageLinks: { large: 'https://books.test/b.jpg' } } }] }
+        : null,
+    );
+
+    const results = await Promise.all([
+      fetchCover('Deep Work', 'Cal Newport'),
+      fetchCover('Deep Work', 'Cal Newport'),
+      fetchCover('Deep Work', 'Cal Newport'),
+    ]);
+
+    expect(new Set(results).size).toBe(1);
+    expect(vi.mocked(fetch).mock.calls.length).toBe(1);
+  });
+
+  it('treats casing and surrounding space as the same book', async () => {
+    mockFetch((url) =>
+      url.includes('googleapis.com')
+        ? { items: [{ volumeInfo: { imageLinks: { large: 'https://books.test/c.jpg' } } }] }
+        : null,
+    );
+
+    await fetchCover('Sapiens', 'Yuval Noah Harari');
+    const afterFirst = vi.mocked(fetch).mock.calls.length;
+    await fetchCover('  sapiens  ', 'YUVAL NOAH HARARI');
+
+    expect(vi.mocked(fetch).mock.calls.length).toBe(afterFirst);
+  });
+
+  it('looks up a different title separately', async () => {
+    mockFetch(() => null);
+
+    await fetchCover('One Title', 'An Author');
+    const afterFirst = vi.mocked(fetch).mock.calls.length;
+    await fetchCover('Another Title', 'An Author');
+
+    expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(afterFirst);
   });
 });
 
