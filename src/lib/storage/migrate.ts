@@ -1,4 +1,4 @@
-import { base64ToBytes } from '../base64';
+import { tryBase64ToBytes } from '../base64';
 import { newId } from '../id';
 import { blobs, books, profiles, summaries } from './repo';
 import type { BookStatus, Priority, VoiceName } from '../../types';
@@ -90,16 +90,10 @@ function readJson(key: string): unknown {
 /**
  * Legacy attachments are base64 written by the original app. `atob` throws on
  * anything outside the alphabet, so this returns null rather than propagating
- * and taking the whole migration down with it.
+ * and taking the whole migration down with it. The guard now lives in
+ * `tryBase64ToBytes`, since every caller was hand-rolling this same wrapper.
  */
-function decodeAttachment(base64: string | undefined): Uint8Array<ArrayBuffer> | null {
-  if (!base64) return null;
-  try {
-    return base64ToBytes(base64);
-  } catch {
-    return null;
-  }
-}
+const decodeAttachment = tryBase64ToBytes;
 
 function legacyUserIds(): string[] {
   const ids: string[] = [];
