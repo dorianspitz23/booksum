@@ -145,15 +145,44 @@ It under-counts too — a fix landing inside a larger batch without naming its i
 reads as open, which is what the `verified-closed.json` pass was for. Treat the
 number as a progress signal, not a certificate.
 
-## Waves 2 (remaining) - 4
+## Wave 2 — high (102): complete
 
-438 findings. Wave 2 (high, 102) is dominated by three clusters:
+All three clusters closed: the dark-mode codemod damage (~40 sites), unvalidated
+model JSON reaching IndexedDB (fixed upstream in `schemas.ts` plus `validate.ts`),
+and the mouse-only controls (`BookCard`, `StatCard`, the PDF drop zone —
+`RecommendationCarousel` was the in-repo reference implementation to copy).
 
-1. **Dark-mode codemod damage** (~40 sites) — opacity stranded on the dark half,
-   `dark:` appended after arbitrary-variant selectors, hardcoded dark surfaces
-   used as selected states. Several primary buttons vanish in one theme.
-2. **Unvalidated model JSON reaching IndexedDB** (~15) — root cause is upstream
-   in `schemas.ts`: `minItems`/`maxItems`/`minimum` are expressed as prose
-   descriptions rather than constraints (S141-S144).
-3. **Mouse-only interactive elements** (~5) — `BookCard`, `StatCard`, the PDF
-   drop zone. `RecommendationCarousel` is the in-repo reference implementation.
+Two of the 102 are feature requests recorded in `FEATURE-REQUESTS.md` rather than
+built. See the counter caveat above.
+
+## Wave 3 — medium (188): in progress, 101 closed
+
+Landed so far: CI's format gate, the GitHub Pages deploy and Dependabot
+workflows, `.gitattributes`, notes flushed on unmount, per-toast dismissal
+clocks, honest playback state, reader preferences persisted, the rating clamp,
+the catch-all route, broken-cover fallbacks, and the "0 min read" untruths.
+
+### Notes carried forward from Wave 3
+
+- **CI's format gate could never have passed.** `npm run format:check` runs
+  `prettier --check .`, and `.worktrees/` — ~30 full copies of this repo — was
+  never added to `.prettierignore`. ESLint and Vitest already excluded it;
+  Prettier was missed. It reported 605 files. `src/` itself was clean.
+- **`CLAUDE.md` carried two false claims**, both written by the overnight
+  automated fix session: that `format:check` "cannot pass as configured and never
+  could" because of a CRLF/LF mismatch, and that a worktree was "actively editing
+  `BookDetail.tsx`". Neither was true — zero CRLF in all 111 files under `src/`,
+  `core.autocrlf` is false, and nothing has run since 13 Aug. Both are gone.
+  Distrust confident claims in that file that name no verification command.
+  There genuinely was no `.gitattributes`, though, so the real gap is now closed.
+- **S130 refuted with evidence, not assumption.** The SDK sends the key as an
+  `x-goog-api-key` header on every REST call; its single `?key=` builds the
+  BidiGenerateMusic websocket URL, which this app never opens. `ApiError` carries
+  `message` and `status` and nothing else. No logged error can contain a key.
+- **An expression-body arrow inside `act()`** makes React pick its async overload
+  and hand back a thenable, tripping `no-floating-promises`. Use a block body.
+- **`readingTimeMinutes` is only ever set by the summariser**, so it is 0 on
+  every imported and hand-added book. Anything that renders or sums it must treat
+  0 as "no estimate", not as a measurement.
+- Falsification is now routine: every guard added this wave was confirmed by
+  reintroducing the bug and checking that exactly its own test fails.
