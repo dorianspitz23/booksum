@@ -170,3 +170,64 @@ describe('placeholderCover', () => {
     expect(decodeURIComponent(placeholderCover('   '))).toContain('>?<');
   });
 });
+
+/**
+ * Both providers reached their values through `fetchJsonOrNull<T>`, which is an
+ * assertion — it tells the compiler what to believe about a third party's JSON,
+ * and nothing checks. Google Books' `imageLinks` was declared
+ * `Record<string, string>`, so a number there hit `.replace` and threw;
+ * OpenLibrary's `cover_i` was declared `number`, so a string interpolated
+ * happily into the URL template and produced a plausible address that 404s.
+ * Both were survivable only because something further out happened to catch —
+ * an accidental guard, not an intended one.
+ */
+describe('cover providers against a response that is not what the type claims', () => {
+  it('skips a Google Books link that is not a string', async () => {
+    mockFetch((url) =>
+      url.includes('googleapis.com')
+        ? {
+            items: [
+              { volumeInfo: { imageLinks: { large: 42, thumbnail: { nested: 'object' } } } },
+              { volumeInfo: { imageLinks: { large: 'https://books.test/real.jpg' } } },
+            ],
+          }
+        : null,
+    );
+
+    // Falls through the junk to the entry that is genuinely a URL, rather than
+    // throwing on the first one.
+    await expect(fetchCover('Some Book', 'An Author')).resolves.toBe('https://books.test/real.jpg');
+  });
+
+  it('falls through to the placeholder when every Google link is junk', async () => {
+    mockFetch((url) =>
+      url.includes('googleapis.com')
+        ? { items: [{ volumeInfo: { imageLinks: { large: 42 } } }] }
+        : null,
+    );
+
+    await expect(fetchCover('Junk Only', 'An Author')).resolves.toBe(placeholderCover('Junk Only'));
+  });
+
+  it('ignores an OpenLibrary cover id that is not a positive integer', async () => {
+    mockFetch((url) => (url.includes('openlibrary.org') ? { docs: [{ cover_i: '12345' }] } : null));
+
+    await expect(fetchCover('String Id', 'An Author')).resolves.toBe(placeholderCover('String Id'));
+  });
+
+  it('ignores a negative OpenLibrary cover id', async () => {
+    mockFetch((url) => (url.includes('openlibrary.org') ? { docs: [{ cover_i: -1 }] } : null));
+
+    await expect(fetchCover('Negative Id', 'An Author')).resolves.toBe(
+      placeholderCover('Negative Id'),
+    );
+  });
+
+  it('survives a top-level shape that is not an object at all', async () => {
+    mockFetch(() => 'not an object');
+
+    await expect(fetchCover('Weird Response', 'An Author')).resolves.toBe(
+      placeholderCover('Weird Response'),
+    );
+  });
+});

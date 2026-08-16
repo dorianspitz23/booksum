@@ -5,7 +5,7 @@
  * builds. See src/test/setup.ts.
  */
 import { describe, expect, it } from 'vitest';
-import { pcmToWavBlob } from './wav';
+import { pcmRateFromMimeType, pcmToWavBlob } from './wav';
 
 async function headerOf(blob: Blob) {
   return new DataView(await blob.slice(0, 44).arrayBuffer());
@@ -37,5 +37,52 @@ describe('pcmToWavBlob', () => {
     expect(view.getUint32(24, true)).toBe(24_000);
     expect(view.getUint16(34, true)).toBe(16);
     expect(view.getUint32(28, true)).toBe(24_000 * 2);
+  });
+});
+
+/**
+ * The rate was hardcoded here while the model's reported MIME type was thrown
+ * away entirely. A change at Google's end would have written a header claiming
+ * 24kHz over samples at some other rate — narration that plays fast or slow with
+ * nothing anywhere reporting a fault. A codec change would have been worse: a
+ * RIFF header wrapped around Opus or MP3 is confident noise.
+ */
+describe('pcmRateFromMimeType', () => {
+  it('reads the rate Gemini actually reports', () => {
+    expect(pcmRateFromMimeType('audio/L16;codec=pcm;rate=24000')).toBe(24_000);
+    expect(pcmRateFromMimeType('audio/L16;codec=pcm;rate=48000')).toBe(48_000);
+  });
+
+  it('is case-insensitive, because a MIME type is', () => {
+    expect(pcmRateFromMimeType('AUDIO/L16;CODEC=PCM;RATE=16000')).toBe(16_000);
+  });
+
+  it('falls back to 24kHz when the type is PCM but carries no rate', () => {
+    expect(pcmRateFromMimeType('audio/L16;codec=pcm')).toBe(24_000);
+  });
+
+  it('falls back to 24kHz when nothing is reported at all', () => {
+    expect(pcmRateFromMimeType(undefined)).toBe(24_000);
+  });
+
+  it.each(['audio/mpeg', 'audio/ogg;codecs=opus', 'audio/webm', 'text/plain'])(
+    'refuses %s rather than wrapping it in a RIFF header',
+    (mime) => {
+      expect(pcmRateFromMimeType(mime)).toBeNull();
+    },
+  );
+});
+
+describe('pcmToWavBlob sample rate', () => {
+  it('writes the rate it is given into both header fields', async () => {
+    const view = await headerOf(pcmToWavBlob(new Uint8Array(new ArrayBuffer(8)), 48_000));
+    expect(view.getUint32(24, true)).toBe(48_000);
+    // Byte rate has to move with it or players read the duration wrong.
+    expect(view.getUint32(28, true)).toBe(48_000 * 2);
+  });
+
+  it('still defaults to 24kHz when no rate is passed', async () => {
+    const view = await headerOf(pcmToWavBlob(new Uint8Array(new ArrayBuffer(8))));
+    expect(view.getUint32(24, true)).toBe(24_000);
   });
 });
