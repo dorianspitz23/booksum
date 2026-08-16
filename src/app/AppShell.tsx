@@ -112,9 +112,14 @@ export function AppShell() {
 
     if (lastSeen === today) return;
 
-    const pool = books.filter((b) => b.status === 'Finished');
-    const targetPool = pool.length > 0 ? pool : books;
-    const randomBook = targetPool[Math.floor(Math.random() * targetPool.length)];
+    // Only books that actually have something to quote. The pool used to fall
+    // back to the whole library, so anyone whose books came from a Goodreads
+    // import — where none is summarised — got a "Daily Wisdom" card containing
+    // nothing, every day.
+    const summarised = books.filter((book) => book.oneSentenceTakeaway);
+    const finished = summarised.filter((book) => book.status === 'Finished');
+    const pool = finished.length > 0 ? finished : summarised;
+    const randomBook = pool[Math.floor(Math.random() * pool.length)];
     if (!randomBook) return;
 
     setDailyBook(randomBook);

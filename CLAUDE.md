@@ -5,35 +5,43 @@ for AI. No server, no accounts, no backend.
 
 ## ⚠️ Current state — read before starting work
 
-Phases 1–3 of the overhaul are **complete**. The next two steps, in order:
+Phases 1–3 of the overhaul are complete. A **defect sweep is in progress** on branch
+`fix/wave-1-criticals`, working an audit backlog of 441 findings by severity.
 
-1. **A refactor pass — the user is doing this themselves in a dedicated session.**
-   Do not start it unprompted. Scope and candidates:
-   `docs/superpowers/plans/2026-08-12-booksum-refactor-handover.md`
-2. **Phase 4 — open-source launch.** Agreed and scoped, blocked on the refactor landing.
-   LICENSE (MIT), README screenshots, CONTRIBUTING, SECURITY, issue templates, public repo at
-   `dorianspitz23/booksum`, GitHub Pages demo. The user reviews before anything is pushed.
+- `audit-reports/_harvest/PROGRESS.md` — what is done, what is next, and the traps hit so far.
+  **Read this first.**
+- `audit-reports/_harvest/live-findings.json` and `findings-session*.json` — the findings
+  themselves, each with a file, a line and a stated mechanism.
+- `node audit-reports/_harvest/closed.mjs` counts what is closed; `open.mjs <severity> <n>` lists
+  what remains. A finding counts as closed only when **its id is named in a commit message** —
+  keep doing that or the counter drifts.
+- `audit-reports/_harvest/FEATURE-REQUESTS.md` — findings that are feature requests rather than
+  defects. Deliberately not built. Do not implement these without asking.
+
+Still ahead: **Phase 4, the open-source launch** — LICENSE (MIT), README screenshots, CONTRIBUTING,
+SECURITY, issue templates, public repo at `dorianspitz23/booksum`, GitHub Pages demo. The user
+reviews before anything is pushed.
 
 History: `docs/superpowers/specs/` holds the design; `docs/superpowers/plans/` holds one plan per
 phase. Commit `670b5fe` is the untouched Google AI Studio original, so any change is a diff
 against it.
 
-### Audits in flight
+### The audit worktrees are dead — do not wait on them
 
-A read-only **type-safety audit** ran against `01fa100`. Read it before touching types, storage or
-any AI boundary — do not re-derive findings:
+`git worktree list` shows ~30 worktrees under `.worktrees/` on `audit/*` and `apply/*` branches.
+**None are running.** The Nighty Tidy plugin that created them stopped responding on every CLI
+route and its runs were killed mid-flight. They are frozen copies of the repo at older commits,
+kept only because four of them hold audit reports that were paid for.
 
-- `audit-reports/audit-type-safety/report.md` — entry point, sections 1–7 plus a 12-wave fix plan
-- `audit-reports/audit-type-safety/findings.json` — canonical; 159 findings, each with a
-  `suggestedPatch`, a reachability trace and a verifier note
-- **All 5 criticals are fixed** (see `git log --grep='\[F00\|\[RT-F'`). The 29 highs are open.
-
-Its headline: the repo has zero `any` and zero `ts-ignore`, and `tsc` is clean — the real weakness
-is unvalidated data crossing into typed code (61 of 159 findings) and `any` handed back by typed
-libraries. Enumerating `any` here is a dead end.
-
-Other audits sit unstarted on `audit/*` branches. **`apply/file-decomposition` is actively editing
-`BookDetail.tsx` and will conflict** — check `git worktree list` before large edits.
+- Those reports' verified findings are **already harvested** into `_harvest/live-findings.json`.
+  Do not go re-reading the worktrees for findings.
+- Each is a full copy of the source, so any tool that walks the tree scans ~30 codebases unless
+  told not to. ESLint, Vitest and Prettier are each configured to ignore `.worktrees`. If a check
+  suddenly reports hundreds of problems in files you never touched, that exclusion is the first
+  thing to check.
+- Nothing is concurrently editing this repo. An earlier version of this file claimed
+  `apply/file-decomposition` was "actively editing `BookDetail.tsx`". It is not, and has not been
+  since 13 Aug.
 
 ## Invariants — do not break these
 
@@ -50,12 +58,8 @@ Other audits sit unstarted on `audit/*` branches. **`apply/file-decomposition` i
 - **No `alert()` or `confirm()`.** Use `toast` and `useConfirm()`. ESLint enforces it.
 - **Goodreads import makes zero AI calls.** Importing a large library must stay free.
 - **Model IDs live only in `src/lib/ai/models.ts`.**
-- **Every commit leaves `typecheck`, `lint`, formatting and `test` green.**
-  ⚠️ `npm run format:check` **cannot pass as configured** and never could: git checks files out
-  with CRLF while Prettier 3 defaults to `endOfLine: "lf"`, so it reports every file in the repo
-  (753 in a clean checkout). This is not something you broke — do not "fix" it by reformatting the
-  codebase. Verify with `npx prettier --check --end-of-line auto .` instead. The real fix is one
-  line, `"endOfLine": "auto"` in `.prettierrc`, which nobody has taken a decision on yet.
+- **Every commit leaves `typecheck`, `lint`, `format:check` and `test` green.** All four pass
+  today; CI runs exactly these.
 
 ## Architecture
 
@@ -78,7 +82,10 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
   when the path contains a space, as this one does.
 - `testTimeout` is 20s and Testing Library's `asyncUtilTimeout` is 5s; IndexedDB round-trips
   overran the defaults under parallel load.
-- Dark mode is a `.dark` class on `<html>`, applied by `useTheme()` in `AppShell`.
+- Dark mode is a `.dark` class on `<html>`, applied by `useTheme()` in **`App`** — one level above
+  the shell, so the loading screen and the profile picker honour it too. A small inline script in
+  `index.html` reads the cached choice and sets the class before first paint; the stored theme
+  lives in IndexedDB and arrives too late to prevent a white flash on its own.
   `src/components/EReader.tsx` is deliberately excluded — it owns its own reader themes.
 - `src/lib/contrast.ts` exists to assert colour choices meet WCAG AA. Use it when changing colours.
 - AI failures reach the user through an `onAiError` prop threaded down from
@@ -98,12 +105,13 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
 - Hooks that depend on the profile must wait for `useProfile().isLoading` to settle, or they will
   act on a null profile and silently drop the write.
 - Never leave two `aria-modal` dialogs open at once — two focus traps fight each other.
-- The repo stores **LF**, but the working tree is CRLF. Some editing tools write the whole file back
-  with CRLF, which git then records as every line changed. Check `git diff --stat` before
-  committing: a whole-file diff for a small edit means normalise it first, or the change becomes
-  unreviewable and unrebaseable.
-- `vitest run` intermittently fails to start worker threads on this path, reporting fewer test files
-  than exist plus N "errors" — the tests that did run still pass. There are **24 test files**; if
-  the count is short, re-run before believing you caused a regression.
+- Line endings are **LF everywhere**, enforced by `.gitattributes` (`* text=auto eol=lf`). Without
+  it, a contributor whose git has `core.autocrlf=true` would rewrite every line of every file they
+  touched. If you ever see a whole-file diff for a one-line edit, that is the cause — normalise
+  before committing rather than landing an unreviewable diff.
+- `vitest run` can fail to start worker threads under memory pressure, reporting **fewer test files
+  than exist** plus N "errors". The tests that did run still pass, so a short run looks like a pass
+  unless you check the count. There are **33 test files** — if the run reports fewer, it did not
+  test what you think it did. Re-run before believing either a pass or a regression.
 - jsdom has no `scrollIntoView`; `src/test/setup.ts` stubs it. Without that, any component that
   scrolls a transcript into view throws on mount and is untestable.

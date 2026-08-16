@@ -8,7 +8,11 @@ export function downloadText(filename: string, contents: string, mimeType = 'tex
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
+
+  // Deferred by a tick. Revoking in the same task as click() races the browser's
+  // read of the URL, and a cancelled download looks to the user like a button
+  // that simply did nothing. The blob is still freed either way.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /** Filesystem-safe slug for export filenames. */

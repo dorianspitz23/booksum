@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Book, Priority, BookStatus, Summary, VoiceName } from '../types';
 import {
   ArrowLeft,
@@ -263,6 +263,27 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       onUpdate({ ...book, personalNotes: notes });
     }
   };
+
+  /**
+   * Notes saved on blur only, so navigating away or closing the tab while the
+   * caret was still in the box lost everything typed since it was focused —
+   * silently, with no draft anywhere to recover from.
+   *
+   * Read through refs so this runs exactly once, on unmount, with the latest
+   * values. Listing them as dependencies would make it fire on every keystroke.
+   */
+  const notesRef = useRef({ notes, book, onUpdate });
+  notesRef.current = { notes, book, onUpdate };
+
+  useEffect(
+    () => () => {
+      const { notes: latest, book: current, onUpdate: save } = notesRef.current;
+      if (latest !== (current.personalNotes ?? '')) {
+        save({ ...current, personalNotes: latest });
+      }
+    },
+    [],
+  );
 
   return (
     <div className="max-w-4xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">

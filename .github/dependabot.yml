@@ -1,0 +1,25 @@
+version: 2
+
+# Nothing was watching for advisories. This is a browser-only app with no
+# backend, so the realistic risk is a compromised build-time package rather
+# than a runtime CVE — which is exactly what a weekly npm check covers.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem rather than fifteen. Dev tooling moves fastest and
+      # breaks least, so it is safe to review as a batch.
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

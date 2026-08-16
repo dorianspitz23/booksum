@@ -135,3 +135,63 @@ describe('BookDetail summarise action', () => {
     );
   });
 });
+
+/**
+ * Notes used to persist on blur alone. Navigating away mid-sentence — clicking
+ * Back, following a link, closing the tab's route — unmounts the textarea
+ * without blurring it, and everything typed since the last blur was gone with
+ * no warning. Notes are the one thing in this app the user wrote themselves,
+ * so losing them is worse than losing any generated content.
+ */
+describe('BookDetail personal notes', () => {
+  it('saves notes typed since the last blur when the view unmounts', async () => {
+    const onUpdate = vi.fn();
+    const { unmount } = render(
+      <BookDetail
+        book={book}
+        summary={summary}
+        voice="Kore"
+        onSummaryUpdate={vi.fn()}
+        onBack={vi.fn()}
+        onDelete={vi.fn()}
+        onUpdate={onUpdate}
+        onOpenReader={vi.fn()}
+        onPlayAudio={vi.fn()}
+        onSummarise={vi.fn(async () => {})}
+        onAiError={vi.fn(() => 'ai error')}
+      />,
+    );
+
+    await userEvent.type(screen.getByPlaceholderText(/write down your thoughts/i), 'half a thou');
+    expect(onUpdate).not.toHaveBeenCalled(); // still focused — nothing saved yet
+
+    unmount();
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ personalNotes: 'half a thou' }),
+    );
+  });
+
+  it('does not write on unmount when the notes are unchanged', () => {
+    const onUpdate = vi.fn();
+    const { unmount } = render(
+      <BookDetail
+        book={{ ...book, personalNotes: 'already saved' }}
+        summary={summary}
+        voice="Kore"
+        onSummaryUpdate={vi.fn()}
+        onBack={vi.fn()}
+        onDelete={vi.fn()}
+        onUpdate={onUpdate}
+        onOpenReader={vi.fn()}
+        onPlayAudio={vi.fn()}
+        onSummarise={vi.fn(async () => {})}
+        onAiError={vi.fn(() => 'ai error')}
+      />,
+    );
+
+    unmount();
+
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+});

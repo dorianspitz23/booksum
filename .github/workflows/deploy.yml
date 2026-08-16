@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+# The README points at a hosted demo and nothing published one. Deploy runs only
+# after CI passes on main, so a broken build cannot replace a working demo.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Manual runs are useful for the very first deploy, before any CI run exists.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. `cancel-in-progress: false` because cancelling a live
+# deploy can leave Pages serving a half-uploaded artifact.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # A project page is served from /<repo>/, so assets and routes both need
+      # the base path baked in. Without it the deploy succeeds and the site
+      # loads a blank screen.
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      # Pages serves static files, so a deep link like /booksum/stats has no file
+      # behind it and 404s on refresh. Copying index.html to 404.html hands those
+      # requests back to the client router, which is what SPA hosting needs.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

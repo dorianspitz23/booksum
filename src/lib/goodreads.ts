@@ -157,7 +157,15 @@ export function categoryFromShelves(shelves: string): string | undefined {
   return undefined;
 }
 
-/** Free cover from an ISBN, when Goodreads gave us one. */
+/**
+ * Free cover from an ISBN, when Goodreads gave us one.
+ *
+ * `?default=false` makes OpenLibrary answer 404 for an ISBN it has no image for,
+ * instead of serving a blank 1×1 placeholder with a 200. Without it the image
+ * loads "successfully" and `BookCover`'s onError never fires, so an imported
+ * library showed rows of empty grey rectangles rather than the generated
+ * initials placeholder.
+ */
 export function coverForIsbn(isbn13: string | undefined): string | undefined {
-  return isbn13 ? `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg` : undefined;
+  return isbn13 ? `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg?default=false` : undefined;
 }

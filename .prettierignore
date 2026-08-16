@@ -5,3 +5,8 @@ package-lock.json
 # Generated audit output — machine-written artefacts, not source. Formatting
 # them would reflow generated report tables for no benefit.
 audit-reports
+
+# Audit worktrees created by the Nighty Tidy plugin. These are full copies of
+# the repo at older commits; formatting them is meaningless and makes
+# `format:check` (which CI runs) fail on 600+ files that are not source.
+.worktrees

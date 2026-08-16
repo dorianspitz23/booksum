@@ -157,9 +157,13 @@ describe('rejecting a file that is not a Goodreads export', () => {
 });
 
 describe('coverForIsbn', () => {
-  it('builds an OpenLibrary URL', () => {
+  // `?default=false` is load-bearing, not decoration: without it OpenLibrary
+  // serves a blank 1x1 placeholder with a 200 for an ISBN it has no cover for,
+  // so the <img> "succeeds", BookCover's onError never fires, and an imported
+  // library renders rows of empty rectangles instead of initials placeholders.
+  it('builds an OpenLibrary URL that 404s rather than serving a blank placeholder', () => {
     expect(coverForIsbn('9780735211292')).toBe(
-      'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg',
+      'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg?default=false',
     );
   });
 

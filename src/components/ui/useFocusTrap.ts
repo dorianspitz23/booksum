@@ -26,7 +26,20 @@ export function useFocusTrap(
     focusable()[0]?.focus();
 
     return () => {
-      restoreTo?.focus();
+      // A trigger that no longer exists — the delete button on a book the dialog
+      // just deleted, say — cannot take focus back, and calling focus() on a
+      // detached node silently drops the user to <body>: no visible focus ring,
+      // and Tab restarts from the top of the page. Falling back to the app root
+      // at least keeps them near where they were.
+      if (restoreTo?.isConnected) {
+        restoreTo.focus();
+        return;
+      }
+      const root = document.getElementById('root');
+      if (root) {
+        root.setAttribute('tabindex', '-1');
+        root.focus();
+      }
     };
   }, [active, focusable]);
 
