@@ -35,7 +35,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         // spinner forever, on every reload, with no way out from inside the app.
         await migrateLegacyData();
       } catch (error) {
-        console.error('Legacy migration failed; continuing without it', error);
+        console.error('[booksum] legacy migration failed; continuing without it', error);
       }
 
       try {
@@ -49,7 +49,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (!restored && storedId) localStorage.removeItem(ACTIVE_PROFILE_KEY);
         setProfile(restored);
       } catch (error) {
-        console.error('Could not load profiles', error);
+        console.error('[booksum] could not load profiles', error);
       } finally {
         if (!cancelled) setIsLoading(false);
       }

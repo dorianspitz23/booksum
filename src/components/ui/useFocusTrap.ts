@@ -14,10 +14,15 @@ export function useFocusTrap(
   panelRef: RefObject<HTMLElement | null>,
   { active, onClose }: { active: boolean; onClose: () => void },
 ) {
-  const focusable = useCallback(
-    () => Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []),
-    [panelRef],
-  );
+  const focusable = useCallback(() => {
+    // `querySelectorAll<HTMLElement>` is an assertion, not a check — the generic
+    // only tells TypeScript what to believe about a runtime selector string. The
+    // selector can match SVG-owned elements, which have no `.focus()`, so the
+    // narrowing is performed for real here. Everything downstream then genuinely
+    // has the method this hook calls on it.
+    const found = panelRef.current?.querySelectorAll(FOCUSABLE) ?? [];
+    return Array.from(found).filter((node): node is HTMLElement => node instanceof HTMLElement);
+  }, [panelRef]);
 
   useEffect(() => {
     if (!active) return;

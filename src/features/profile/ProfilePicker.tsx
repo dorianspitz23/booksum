@@ -26,7 +26,7 @@ export function ProfilePicker() {
     try {
       await createProfile(name);
     } catch (error) {
-      console.error('Could not create profile', error);
+      console.error('[booksum] could not create profile', error);
       toast.error('Could not create that profile. Try again.');
     } finally {
       setIsBusy(false);
@@ -47,7 +47,7 @@ export function ProfilePicker() {
       await deleteProfile(candidate.id);
       toast.success(`Deleted ${candidate.name}.`);
     } catch (error) {
-      console.error('Could not delete profile', error);
+      console.error('[booksum] could not delete profile', error);
       toast.error('Could not delete that profile. Try again.');
     }
   };

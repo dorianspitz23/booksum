@@ -80,8 +80,13 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
         generated = await summarizeBook(query, author);
       } else {
         if (!file) return;
-        const base64 = await convertFileToBase64(file);
-        generated = await summarizePdf(base64);
+        // Scoped so the base64 string — roughly 1.33x the file, up to ~13MB at
+        // the 10MB cap — becomes collectable before the storage write rather
+        // than being held alongside the File for the rest of the submit.
+        generated = await (async () => {
+          const base64 = await convertFileToBase64(file);
+          return summarizePdf(base64);
+        })();
         pdf = file;
       }
 
@@ -100,7 +105,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
       );
       onClose();
     } catch (err) {
-      console.error(err);
+      console.error('[booksum] could not add this book', err);
       setError(onAiError(err));
     } finally {
       setIsLoading(false);
@@ -145,7 +150,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
       });
       onClose();
     } catch (err) {
-      console.error(err);
+      console.error('[booksum] could not add a book without AI', err);
       setError('Could not add that book.');
     } finally {
       setIsLoading(false);

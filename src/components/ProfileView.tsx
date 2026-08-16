@@ -188,7 +188,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         setImportStatus('success');
         setTimeout(() => setImportStatus('idle'), 3000);
       } catch (err) {
-        console.error(err);
+        console.error('[booksum] could not read that backup file', err);
         toast.error('Could not read that backup file.');
         setImportStatus('error');
       }
