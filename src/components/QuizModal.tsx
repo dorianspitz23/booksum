@@ -187,6 +187,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close quiz"
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 <X size={20} />
@@ -248,9 +249,23 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
                 })}
               </div>
 
+              {/* Whether the answer was right is conveyed only by a colour and a
+                  tick or cross icon, neither of which a screen reader reports.
+                  Announcing it alongside the explanation — in one region, so it
+                  is read as a single result rather than two fragments — is the
+                  difference between taking the quiz and guessing at it. */}
               {isAnswered && (
-                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-bottom-2">
-                  <p className="font-bold text-sm mb-1">Explanation:</p>
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-bottom-2"
+                >
+                  <p className="font-bold text-sm mb-1">
+                    {selectedOption === questions[currentQuestionIndex].correctAnswerIndex
+                      ? 'Correct.'
+                      : 'Not quite.'}{' '}
+                    Explanation:
+                  </p>
                   <p className="text-sm leading-relaxed opacity-90">
                     {questions[currentQuestionIndex].explanation}
                   </p>

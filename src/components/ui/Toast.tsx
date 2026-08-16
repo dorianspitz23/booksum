@@ -23,41 +23,54 @@ const STYLES: Record<ToastKind, { wrapper: string; icon: typeof AlertCircle }> =
   },
 };
 
+/**
+ * One toast, owning its own dismissal countdown.
+ *
+ * The timers used to live in a single effect on the host keyed on the whole
+ * `toasts` array. Every push produced a new array, so the cleanup cleared every
+ * running timer and started them all again — a toast with one second left got a
+ * fresh six. Fire four errors in a row and the first one outlives the last.
+ * Per-instance effects with an empty dependency list cannot do that: a toast's
+ * clock starts when it mounts and is untouched by its neighbours.
+ */
+function Toast({ id, kind, message }: { id: string; kind: ToastKind; message: string }) {
+  useEffect(() => {
+    const timer = setTimeout(() => dismissToast(id), DISMISS_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [id]);
+
+  const style = STYLES[kind];
+  const Icon = style.icon;
+
+  return (
+    <div
+      role="status"
+      aria-live={kind === 'error' ? 'assertive' : 'polite'}
+      className={`flex items-start gap-3 p-4 rounded-2xl border shadow-lg animate-in slide-in-from-bottom-4 duration-200 ${style.wrapper}`}
+    >
+      <Icon size={18} className="mt-0.5 shrink-0" />
+      <p className="text-sm font-medium flex-1">{message}</p>
+      <button
+        onClick={() => dismissToast(id)}
+        aria-label="Dismiss notification"
+        className="p-1 rounded-full hover:bg-black/5 transition-colors shrink-0"
+      >
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
 export function ToastHost() {
   const toasts = useSyncExternalStore(subscribeToToasts, getToasts, getToasts);
-
-  useEffect(() => {
-    if (toasts.length === 0) return;
-    const timers = toasts.map((item) => setTimeout(() => dismissToast(item.id), DISMISS_AFTER_MS));
-    return () => timers.forEach(clearTimeout);
-  }, [toasts]);
 
   if (toasts.length === 0) return null;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[60] flex flex-col gap-3 w-[min(92vw,26rem)]">
-      {toasts.map((item) => {
-        const style = STYLES[item.kind];
-        const Icon = style.icon;
-        return (
-          <div
-            key={item.id}
-            role="status"
-            aria-live={item.kind === 'error' ? 'assertive' : 'polite'}
-            className={`flex items-start gap-3 p-4 rounded-2xl border shadow-lg animate-in slide-in-from-bottom-4 duration-200 ${style.wrapper}`}
-          >
-            <Icon size={18} className="mt-0.5 shrink-0" />
-            <p className="text-sm font-medium flex-1">{item.message}</p>
-            <button
-              onClick={() => dismissToast(item.id)}
-              aria-label="Dismiss notification"
-              className="p-1 rounded-full hover:bg-black/5 transition-colors shrink-0"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        );
-      })}
+      {toasts.map((item) => (
+        <Toast key={item.id} id={item.id} kind={item.kind} message={item.message} />
+      ))}
     </div>
   );
 }

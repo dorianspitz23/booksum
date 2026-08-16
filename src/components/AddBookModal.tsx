@@ -232,7 +232,14 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
                     max="5"
                     step="1"
                     value={rating}
-                    onChange={(e) => setRating(Number(e.target.value))}
+                    // min/max on a number input constrain the spinner arrows and
+                    // form validation, not typing — 99 and an empty field (NaN)
+                    // both reached state and then IndexedDB, where a 99/5 rating
+                    // skews every average the stats page computes.
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setRating(Number.isFinite(next) ? Math.min(5, Math.max(1, next)) : 1);
+                    }}
                     className="bg-transparent outline-none w-full font-bold text-gray-900 dark:text-gray-100"
                   />
                 </div>

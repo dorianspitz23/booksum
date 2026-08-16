@@ -17,7 +17,11 @@ interface AudioPlayerProps {
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPlay = true }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
+  // Starts false even when autoPlay is set. The <audio> element's own play,
+  // pause and ended events are the single source of truth below, so seeding
+  // this to `autoPlay` would claim playback that an autoplay policy may well
+  // refuse — leaving a Pause icon over silence with nothing to correct it.
+  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -27,7 +31,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
 
   useEffect(() => {
     if (autoPlay && audioRef.current) {
-      audioRef.current.play().catch((e) => console.error('Autoplay failed', e));
+      // A browser that refuses autoplay is doing its job, and it is not worth a
+      // toast — the user still has a visible play button. What matters is that
+      // the refusal is not mistaken for playback.
+      void audioRef.current.play().catch(() => setIsPlaying(false));
     }
   }, [track.src, autoPlay]);
 
@@ -43,22 +50,24 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
     }
   }, [playbackRate]);
 
+  /**
+   * Asks the element to change state and then says nothing about the outcome.
+   *
+   * `isPlaying` used to be written here as well as by the element's own events,
+   * so a `play()` the browser refused — blocked by autoplay policy, or pointed
+   * at an object URL that had since been revoked — still flipped the button to
+   * Pause over silence. With `onPlay`/`onPause`/`onEnded` as the only writers,
+   * the icon cannot disagree with what the audio is actually doing.
+   */
   const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        // play() rejects when autoplay policy blocks it, or when the source is
-        // an object URL that has since been revoked. Unhandled, that surfaced as
-        // an uncaught rejection in the console and a button that silently did
-        // nothing; now the state stays honest and the user is told.
-        void audioRef.current.play().catch(() => {
-          setIsPlaying(false);
-          toast.error('Could not start playback.');
-        });
-      }
-      setIsPlaying(!isPlaying);
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      return;
     }
+    void audio.play().catch(() => toast.error('Could not start playback.'));
   };
 
   const handleTimeUpdate = () => {
@@ -159,6 +168,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
             <div className="relative">
               <button
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                // "1x" is legible on screen but reads as the single character
+                // "1x" to a screen reader, with no clue it is a control.
+                aria-label={`Playback speed, currently ${playbackRate} times`}
+                aria-expanded={showSpeedMenu}
                 className="text-xs font-bold text-gray-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10"
                 title="Playback Speed"
               >
@@ -201,6 +214,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
 
             <button
               onClick={togglePlay}
+              // The only content is an icon, so without this the primary control
+              // of the whole player announces as an unnamed button.
+              aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
               className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/20"
             >
               {isPlaying ? (

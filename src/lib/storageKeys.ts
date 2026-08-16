@@ -25,6 +25,15 @@ export const MIGRATION_MARKER = 'booksum.migratedAt';
  */
 export const THEME_CACHE = 'booksum.theme';
 
+/**
+ * The reader's own display preferences. Deliberately global rather than
+ * per-profile and separate from the app theme: these are about reading comfort
+ * for whoever is holding the device, and the reader offers a sepia option the
+ * app has no equivalent for.
+ */
+export const READER_THEME = 'booksum.reader.theme';
+export const READER_FONT_SIZE = 'booksum.reader.fontSize';
+
 /** Cached AI recommendations, per profile. */
 export const recommendationsKey = (profileId: string) => `booksum.recs.${profileId}`;
 

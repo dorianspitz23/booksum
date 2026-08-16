@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Book, Summary, VoiceName } from '../types';
+import { READER_FONT_SIZE, READER_THEME } from '../lib/storageKeys';
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,6 +30,26 @@ interface EReaderProps {
 
 type Theme = 'light' | 'sepia' | 'dark';
 type FontSize = 'text-base' | 'text-lg' | 'text-xl' | 'text-2xl';
+
+const THEMES: readonly Theme[] = ['light', 'sepia', 'dark'];
+const FONT_SIZES: readonly FontSize[] = ['text-base', 'text-lg', 'text-xl', 'text-2xl'];
+
+/**
+ * With nothing stored, the reader follows whatever the app is currently showing
+ * — opening a reader from a dark app used to mean a full-screen white page.
+ * Once the user picks a reader theme it is theirs, including choosing light
+ * inside a dark app, which is why this only ever supplies the initial value.
+ */
+function readInitialReaderTheme(): Theme {
+  const stored = localStorage.getItem(READER_THEME);
+  if (stored && THEMES.includes(stored as Theme)) return stored as Theme;
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+}
+
+function readInitialFontSize(): FontSize {
+  const stored = localStorage.getItem(READER_FONT_SIZE);
+  return stored && FONT_SIZES.includes(stored as FontSize) ? (stored as FontSize) : 'text-lg';
+}
 
 /**
  * Text Formatting Utilities
@@ -177,10 +198,22 @@ export const EReader: React.FC<EReaderProps> = ({
   // Resumes where the reader was left. Clamped when the sections are known,
   // since a regenerated summary can be shorter than the one last read.
   const [currentPage, setCurrentPage] = useState(book.lastReadSection ?? 0);
-  const [theme, setTheme] = useState<Theme>('light');
-  const [fontSize, setFontSize] = useState<FontSize>('text-lg');
+  // Both used to be hardcoded, so every open reset the reader to light text-lg
+  // however the last session was left — and opening it from a dark app threw a
+  // full-screen white page at someone reading at night. The initial theme now
+  // follows the app when nothing has been chosen, and either choice sticks.
+  const [theme, setTheme] = useState<Theme>(readInitialReaderTheme);
+  const [fontSize, setFontSize] = useState<FontSize>(readInitialFontSize);
   const [showSettings, setShowSettings] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(READER_THEME, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(READER_FONT_SIZE, fontSize);
+  }, [fontSize]);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
