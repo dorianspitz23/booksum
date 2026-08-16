@@ -10,7 +10,7 @@ import { summarizeBook } from '../../lib/ai/summarize';
 import { getAIRecommendations } from '../../lib/ai/recommend';
 import type { Recommendation } from '../../lib/ai/recommend';
 import { toast } from '../../components/ui/toastStore';
-import { RECOMMENDED_BOOKS, RECS_TTL_MS } from './recommendationDefaults';
+import { RECOMMENDED_BOOKS, parseCachedRecommendations } from './recommendationDefaults';
 import { recommendationsKey } from '../../lib/storageKeys';
 import type { BookStatus } from '../../types';
 
@@ -32,12 +32,14 @@ export function LibraryPage() {
     if (!profile) return;
     const cached = localStorage.getItem(recommendationsKey(profile.id));
     if (!cached) return;
-    try {
-      const parsed = JSON.parse(cached) as { at: number; items: Recommendation[] };
-      if (Date.now() - parsed.at < RECS_TTL_MS && parsed.items?.length) {
-        setRecommendations(parsed.items);
-      }
-    } catch {
+
+    const items = parseCachedRecommendations(cached);
+    if (items) {
+      setRecommendations(items);
+    } else {
+      // Unparseable, expired, or not the shape this app writes. Either way it is
+      // never going to be usable, so it goes rather than being re-checked on
+      // every mount for the rest of the profile's life.
       localStorage.removeItem(recommendationsKey(profile.id));
     }
   }, [profile]);

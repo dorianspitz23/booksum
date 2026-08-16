@@ -109,6 +109,44 @@ describe('useLibrary', () => {
     expect((await bookRepo.get(created.id))?.summaryId).toBe(summary?.id);
   });
 
+  /**
+   * `oneSentenceTakeaway` is denormalised onto `Book` so the library grid can
+   * render without loading every summary — but `saveSummary` used to update
+   * `summaryId` alone. Regenerating a summary therefore left the copy behind,
+   * and the card quoted the old sentence while the book's own page quoted the
+   * new one, with nothing to say which was current.
+   */
+  it('re-syncs the takeaway denormalised onto the book when a summary is replaced', async () => {
+    await renderLibrary();
+    let created!: Book;
+    await act(async () => {
+      created = await api.addBook(draft(), {
+        summary: {
+          oneSentenceTakeaway: 'The first take.',
+          summary: 'Body',
+          keyInsights: [],
+          actionableSteps: [],
+          generatedAt: new Date().toISOString(),
+          model: 'test-model',
+        },
+      });
+    });
+
+    const original = await api.getSummary(created.id);
+    expect((await bookRepo.get(created.id))?.oneSentenceTakeaway).toBe('The first take.');
+
+    await act(async () => {
+      await api.saveSummary({
+        ...(original as Summary),
+        oneSentenceTakeaway: 'A completely different take.',
+      });
+    });
+
+    expect((await bookRepo.get(created.id))?.oneSentenceTakeaway).toBe(
+      'A completely different take.',
+    );
+  });
+
   it('removes a book and its blobs', async () => {
     await renderLibrary();
     let created!: Book;

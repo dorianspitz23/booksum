@@ -49,7 +49,17 @@ function useLibraryState() {
       if (!profile) throw new Error('No active profile');
 
       const summaryId = options.summary ? newId() : undefined;
-      const book = await bookRepo.create({ ...draft, profileId: profile.id, summaryId });
+      // Derived here rather than trusted from the draft. Every caller was
+      // expected to copy the takeaway across by hand, which worked only for as
+      // long as each of them remembered — and a book created with a summary but
+      // without the copy renders as "Not summarised yet" in the grid while its
+      // own page shows the summary in full.
+      const book = await bookRepo.create({
+        ...draft,
+        profileId: profile.id,
+        summaryId,
+        ...(options.summary && { oneSentenceTakeaway: options.summary.oneSentenceTakeaway }),
+      });
 
       if (options.summary && summaryId) {
         await summaryRepo.upsert({ ...options.summary, id: summaryId, bookId: book.id });
@@ -90,12 +100,31 @@ function useLibraryState() {
 
   const getSummary = useCallback((bookId: string) => summaryRepo.getByBook(bookId), []);
 
+  /**
+   * The one place a summary is written, and therefore the one place the fields
+   * denormalised onto `Book` are kept true.
+   *
+   * `oneSentenceTakeaway` is denormalised onto `Book` on purpose, so the library
+   * grid renders without loading every summary. But this used to update
+   * `summaryId` alone, so regenerating a summary left the copy behind: the card
+   * quoted the old takeaway while the book's own page quoted the new one, and
+   * the two visibly disagreed with no way to tell which was current.
+   */
   const saveSummary = useCallback(
     async (summary: Summary) => {
       await summaryRepo.upsert(summary);
       const book = await bookRepo.get(summary.bookId);
-      if (book && book.summaryId !== summary.id) {
-        await bookRepo.update({ ...book, summaryId: summary.id });
+      if (!book) return;
+
+      if (
+        book.summaryId !== summary.id ||
+        book.oneSentenceTakeaway !== summary.oneSentenceTakeaway
+      ) {
+        await bookRepo.update({
+          ...book,
+          summaryId: summary.id,
+          oneSentenceTakeaway: summary.oneSentenceTakeaway,
+        });
         await reload();
       }
     },

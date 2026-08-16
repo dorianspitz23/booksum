@@ -2,6 +2,51 @@ import type { Recommendation } from '../../lib/ai/recommend';
 
 export const RECS_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Rebuilds cached recommendations field by field, discarding anything that is
+ * not the shape this app writes, and returning null when nothing usable is left.
+ *
+ * The cache used to be `JSON.parse(raw) as { at: number; items: Recommendation[] }`
+ * rendered straight into the carousel. localStorage is writable by anything
+ * running on the origin and outlives every version of this app, so that cast was
+ * a promise the data had no obligation to keep: an `items` of `"nope"` still
+ * reached `.length`, and an entry whose `coverUrl` was an object still reached
+ * an `<img src>`.
+ */
+export function parseCachedRecommendations(raw: string): Recommendation[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const { at, items } = parsed as { at?: unknown; items?: unknown };
+
+  if (typeof at !== 'number' || !Number.isFinite(at)) return null;
+  if (Date.now() - at >= RECS_TTL_MS) return null;
+  if (!Array.isArray(items)) return null;
+
+  const clean = items.flatMap((item): Recommendation[] => {
+    if (typeof item !== 'object' || item === null) return [];
+    const { title, author, description, coverUrl } = item as Record<string, unknown>;
+    // A recommendation with no title or author is not a book, whatever else it
+    // carries. The two cosmetic fields degrade instead of disqualifying it.
+    if (typeof title !== 'string' || typeof author !== 'string') return [];
+    return [
+      {
+        title,
+        author,
+        description: typeof description === 'string' ? description : '',
+        coverUrl: typeof coverUrl === 'string' ? coverUrl : '',
+      },
+    ];
+  });
+
+  return clean.length > 0 ? clean : null;
+}
+
 /** Shown before the user has generated their own. ISBN-based cover URLs are stable. */
 export const RECOMMENDED_BOOKS: Recommendation[] = [
   {
