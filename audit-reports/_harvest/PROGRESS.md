@@ -155,7 +155,7 @@ and the mouse-only controls (`BookCard`, `StatCard`, the PDF drop zone —
 Two of the 102 are feature requests recorded in `FEATURE-REQUESTS.md` rather than
 built. See the counter caveat above.
 
-## Wave 3 — medium (188): in progress, 141 closed
+## Wave 3 — medium (188): in progress, 150 closed
 
 Landed so far: CI's format gate, the GitHub Pages deploy and Dependabot
 workflows, `.gitattributes`, notes flushed on unmount, per-toast dismissal
@@ -209,3 +209,26 @@ the catch-all route, broken-cover fallbacks, and the "0 min read" untruths.
   reply still arriving.
 - `no-non-null-assertion` is on. It cost three fixes, all in tests, all resolved
   by asserting rather than silencing.
+
+### Wave 3, final batches
+
+- **Third-party JSON is now checked, not declared.** Both cover providers took
+  their values through `fetchJsonOrNull<T>`, which asserts and never validates.
+  Google Books' `imageLinks` was typed `Record<string, string>` so a number there
+  reached `.replace`; OpenLibrary's `cover_i` was typed `number` so a string
+  interpolated into the URL template. Both survived only because something
+  further out happened to catch — accidental guards. Now `unknown` in the
+  interface and verified at use.
+- **TTS format is read rather than assumed.** The reported `mimeType` was
+  discarded and 24kHz PCM hardcoded, so a rate change would write a header
+  disagreeing with its own samples (narration at the wrong speed, nothing
+  reporting a fault) and a codec change would wrap Opus in a RIFF header.
+- Remaining mediums are dominated by **type-modelling** work: `F023`/`F069`/
+  `F071` all want loading state modelled as a discriminated union so the type
+  cannot permit acting on a null profile mid-load, and `LibraryApi` declared
+  rather than inferred from `ReturnType<typeof ...>`. Cohesive, but it touches
+  many call sites — worth doing as one deliberate change rather than piecemeal.
+- `S029` (base64 on the main thread) is deliberately **not** being fixed with a
+  Web Worker: the 10MB cap bounds the cost and the machinery is disproportionate.
+  The cheap half — letting the base64 string be collected before the storage
+  write — is done.
