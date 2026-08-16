@@ -36,14 +36,32 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * `reader.result` was asserted to be a string and its payload taken as
+   * `split(',')[1]` without checking either. Both assumptions can fail: an
+   * aborted read leaves `result` null, and a data URL with no comma yields
+   * `undefined`, which was then cast to `string` and handed to the AI layer as a
+   * PDF. The request failed somewhere much further downstream, reported as
+   * whatever the model made of an empty document.
+   */
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
+        const result = reader.result;
+        if (typeof result !== 'string') {
+          reject(new Error('That file could not be read.'));
+          return;
+        }
+        const payload = result.split(',')[1];
+        if (!payload) {
+          reject(new Error('That file could not be read.'));
+          return;
+        }
+        resolve(payload);
       };
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error('That file could not be read.'));
+      reader.onabort = () => reject(new Error('Reading that file was interrupted.'));
       reader.readAsDataURL(file);
     });
   };

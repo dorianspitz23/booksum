@@ -101,3 +101,50 @@ describe('EReader reading position', () => {
     await waitFor(() => expect(screen.getByText(/100% complete/i)).toBeInTheDocument());
   });
 });
+
+/**
+ * Every control in the settings panel was icon- or glyph-only. The three theme
+ * buttons announced as unnamed; the four size buttons all announced as "Aa",
+ * indistinguishable from each other; and which one was active was conveyed by a
+ * ring or by opacity, neither of which a screen reader reports.
+ */
+describe('EReader display settings', () => {
+  async function openSettings() {
+    renderReader();
+    await userEvent.click(screen.getByRole('button', { name: /display settings/i }));
+  }
+
+  it('names each theme and reports which is active', async () => {
+    await openSettings();
+
+    expect(screen.getByRole('button', { name: /light theme/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sepia theme/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /dark theme/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('distinguishes the four text sizes by name rather than by glyph', async () => {
+    await openSettings();
+
+    // Exact names, not substrings: "Large text" is a prefix of "Extra large
+    // text", and a substring match would pass while the two were still
+    // indistinguishable to anyone listening.
+    for (const name of ['Small text', 'Medium text', 'Large text', 'Extra large text']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('remembers a chosen theme, which used to reset to light on every open', async () => {
+    await openSettings();
+
+    await userEvent.click(screen.getByRole('button', { name: /sepia theme/i }));
+
+    expect(localStorage.getItem('booksum.reader.theme')).toBe('sepia');
+    expect(screen.getByRole('button', { name: /sepia theme/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+});

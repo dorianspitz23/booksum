@@ -35,6 +35,14 @@ type FontSize = 'text-base' | 'text-lg' | 'text-xl' | 'text-2xl';
 const THEMES: readonly Theme[] = ['light', 'sepia', 'dark'];
 const FONT_SIZES: readonly FontSize[] = ['text-base', 'text-lg', 'text-xl', 'text-2xl'];
 
+/** `glyph` sizes the visible "Aa"; `label` is what a screen reader hears. */
+const FONT_SIZE_OPTIONS: readonly { value: FontSize; label: string; glyph: string }[] = [
+  { value: 'text-base', label: 'Small', glyph: 'text-sm' },
+  { value: 'text-lg', label: 'Medium', glyph: 'text-lg' },
+  { value: 'text-xl', label: 'Large', glyph: 'text-xl' },
+  { value: 'text-2xl', label: 'Extra large', glyph: 'text-2xl' },
+];
+
 /**
  * With nothing stored, the reader follows whatever the app is currently showing
  * — opening a reader from a dark app used to mean a full-screen white page.
@@ -377,6 +385,8 @@ export const EReader: React.FC<EReaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowSettings(!showSettings)}
+              aria-label="Display settings"
+              aria-expanded={showSettings}
               className={`p-2 rounded-full transition-colors ${activeUI.hover} ${showSettings ? 'opacity-100' : 'opacity-60'}`}
             >
               <Type size={20} />
@@ -399,6 +409,11 @@ export const EReader: React.FC<EReaderProps> = ({
                       <button
                         key={t}
                         onClick={() => setTheme(t)}
+                        // Icon-only, and which one is active was shown by a ring
+                        // alone — so all three announced as unnamed buttons with
+                        // no way to tell the current setting from the others.
+                        aria-label={`${t.charAt(0).toUpperCase()}${t.slice(1)} theme`}
+                        aria-pressed={theme === t}
                         className={`flex-1 py-2 rounded-lg flex items-center justify-center transition-all ${theme === t ? 'shadow-sm ring-1 ring-black/5' : 'hover:bg-white/50'}`}
                         style={{
                           backgroundColor:
@@ -428,30 +443,24 @@ export const EReader: React.FC<EReaderProps> = ({
                   <div
                     className={`flex items-center justify-between px-4 py-3 rounded-xl border ${activeUI.border}`}
                   >
-                    <button
-                      onClick={() => setFontSize('text-base')}
-                      className={`hover:opacity-100 transition-opacity ${fontSize === 'text-base' ? 'opacity-100' : 'opacity-40'}`}
-                    >
-                      <span className="text-sm font-serif">Aa</span>
-                    </button>
-                    <button
-                      onClick={() => setFontSize('text-lg')}
-                      className={`hover:opacity-100 transition-opacity ${fontSize === 'text-lg' ? 'opacity-100' : 'opacity-40'}`}
-                    >
-                      <span className="text-lg font-serif">Aa</span>
-                    </button>
-                    <button
-                      onClick={() => setFontSize('text-xl')}
-                      className={`hover:opacity-100 transition-opacity ${fontSize === 'text-xl' ? 'opacity-100' : 'opacity-40'}`}
-                    >
-                      <span className="text-xl font-serif">Aa</span>
-                    </button>
-                    <button
-                      onClick={() => setFontSize('text-2xl')}
-                      className={`hover:opacity-100 transition-opacity ${fontSize === 'text-2xl' ? 'opacity-100' : 'opacity-40'}`}
-                    >
-                      <span className="text-2xl font-serif">Aa</span>
-                    </button>
+                    {/* Four hand-written buttons, every one of them reading "Aa",
+                        with the active size shown by opacity alone: four
+                        identically-named controls and no way to hear which was
+                        current. The visual glyph stays; the accessible name now
+                        says which size it sets. */}
+                    {FONT_SIZE_OPTIONS.map(({ value, label, glyph }) => (
+                      <button
+                        key={value}
+                        onClick={() => setFontSize(value)}
+                        aria-label={`${label} text`}
+                        aria-pressed={fontSize === value}
+                        className={`hover:opacity-100 transition-opacity ${fontSize === value ? 'opacity-100' : 'opacity-40'}`}
+                      >
+                        <span className={`${glyph} font-serif`} aria-hidden="true">
+                          Aa
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
