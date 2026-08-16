@@ -26,40 +26,24 @@ import { toast } from './ui/toastStore';
 import { BookCover } from './BookCover';
 import { reportAiError } from '../features/settings/keyDialog';
 import { bookToMarkdown } from '../lib/markdown';
+import { formatInline as formatInlineMarkdown, normaliseMarkdown } from './markdown';
 import { downloadText, slugify } from '../lib/download';
 import type { AudioTrack } from './AudioPlayer';
 import { ChatModal } from './ChatModal';
 import { QuizModal } from './QuizModal';
 
-// Helper for inline formatting (bold/italic)
-const formatInline = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-bold text-gray-900 dark:text-gray-100">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return (
-        <em key={i} className="italic text-gray-800 dark:text-gray-200">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    return part;
+/** Inline styling for this view: the app palette, unlike the reader's inherited colours. */
+const formatInline = (text: string) =>
+  formatInlineMarkdown(text, {
+    strong: 'font-bold text-gray-900 dark:text-gray-100',
+    em: 'italic text-gray-800 dark:text-gray-200',
   });
-};
 
 // Component to render Markdown-styled summaries (headers, paragraphs, lists)
 const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
 
-  // CRITICAL FIX: Replace literal "\n" string characters with actual newlines
-  const cleanText = text.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-  const blocks = cleanText.split(/\n\n+/);
+  const blocks = normaliseMarkdown(text).split(/\n\n+/);
 
   return (
     <div className="space-y-4 text-gray-800 dark:text-gray-200 leading-relaxed text-lg">

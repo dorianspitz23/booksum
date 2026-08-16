@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Book, Summary, VoiceName } from '../types';
 import { READER_FONT_SIZE, READER_THEME } from '../lib/storageKeys';
+import { formatInline as formatInlineMarkdown, normaliseMarkdown } from './markdown';
 import {
   ChevronLeft,
   ChevronRight,
@@ -52,34 +53,22 @@ function readInitialFontSize(): FontSize {
 }
 
 /**
- * Text Formatting Utilities
+ * Inline styling for the reader: colour is inherited from the page theme rather
+ * than set, so bold and italic stay legible in light, sepia and dark alike.
  */
-const formatInline = (text: string) => {
-  return text.split(/(\*\*.*?\*\*|\*.*?\*)/g).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-bold inherit-color">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return (
-        <em key={i} className="italic opacity-90">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    return part;
-  });
-};
+const formatInline = (text: string) =>
+  formatInlineMarkdown(text, { strong: 'font-bold inherit-color', em: 'italic opacity-90' });
 
 const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; theme: Theme }> = ({
   content,
   isFirstPage,
   theme,
 }) => {
-  const lines = content.split('\n');
+  // Was `content.split('\n')` on the raw string. The summariser routinely returns
+  // the two characters \ and n where a newline belongs, and only BookDetail
+  // undid that — so the same summary paginated correctly in one view and arrived
+  // as one unbroken block littered with `\n` in the other.
+  const lines = normaliseMarkdown(content).split('\n');
   const accentColor = theme === 'dark' ? 'text-orange-400' : 'text-orange-700';
   const headingColor = theme === 'dark' ? 'text-gray-100' : 'text-gray-900';
   const dropCapColor = theme === 'dark' ? 'text-orange-500' : 'text-orange-700';
@@ -101,7 +90,7 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
                 key={idx}
                 className={`text-4xl md:text-5xl font-serif font-bold ${headingColor} mt-12 mb-8 leading-[1.15]`}
               >
-                {text}
+                {formatInline(text)}
               </h1>
             );
           if (level === 2)
@@ -110,7 +99,7 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
                 key={idx}
                 className={`text-3xl font-serif font-bold ${headingColor} mt-10 mb-6 leading-tight border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200/60'} pb-2`}
               >
-                {text}
+                {formatInline(text)}
               </h2>
             );
           return (
@@ -118,7 +107,7 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
               key={idx}
               className={`text-xl font-serif font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-8 mb-4`}
             >
-              {text}
+              {formatInline(text)}
             </h3>
           );
         }

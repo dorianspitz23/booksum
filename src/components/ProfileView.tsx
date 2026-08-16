@@ -109,27 +109,42 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       .slice(0, 2);
   };
 
+  /**
+   * Both exports read IndexedDB, which can fail outright — a private-mode quota,
+   * a blocked version upgrade, a connection closed by the browser. Neither used
+   * to catch, so the button did nothing at all and the user was left to guess
+   * whether their backup had been written.
+   */
   const handleExportMarkdown = async () => {
-    const data = await buildExport();
-    const summaryById = new Map(data.summaries.map((s) => [s.bookId, s]));
-    const markdown = libraryToMarkdown(
-      data.books.map((b) => ({ book: b, summary: summaryById.get(b.id) })),
-    );
-    downloadText(`booksum-library-${new Date().toISOString().split('T')[0]}.md`, markdown);
-    toast.success('Library exported as Markdown.');
+    try {
+      const data = await buildExport();
+      const summaryById = new Map(data.summaries.map((s) => [s.bookId, s]));
+      const markdown = libraryToMarkdown(
+        data.books.map((b) => ({ book: b, summary: summaryById.get(b.id) })),
+      );
+      downloadText(`booksum-library-${new Date().toISOString().split('T')[0]}.md`, markdown);
+      toast.success('Library exported as Markdown.');
+    } catch {
+      toast.error('Could not export your library. Please try again.');
+    }
   };
 
   const handleExport = async () => {
-    const data = await buildExport();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `booksum-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const data = await buildExport();
+      // Was fifteen lines hand-rolling the anchor dance that `downloadText` — a
+      // helper this file already imports for the Markdown export — performs. The
+      // copy also revoked the object URL in the same task as click(), which is
+      // the race that silently cancels the download on some browsers.
+      downloadText(
+        `booksum-backup-${new Date().toISOString().split('T')[0]}.json`,
+        JSON.stringify(data, null, 2),
+        'application/json',
+      );
+      toast.success('Backup downloaded.');
+    } catch {
+      toast.error('Could not create a backup. Please try again.');
+    }
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
