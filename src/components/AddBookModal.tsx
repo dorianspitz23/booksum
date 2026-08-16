@@ -10,6 +10,7 @@ import {
   Star,
 } from 'lucide-react';
 import { MAX_PDF_BYTES, summarizeBook, summarizePdf } from '../lib/ai/summarize';
+import { fetchCover } from '../lib/covers';
 import type { GeneratedBook } from '../lib/ai/summarize';
 import type { AddBookOptions, BookDraft } from '../features/library/useLibrary';
 import { Dialog } from './ui/Dialog';
@@ -83,6 +84,51 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
     } catch (err) {
       console.error(err);
       setError(onAiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Adds the book with no AI call at all.
+   *
+   * The README says the library works without a key, and it did not: every add
+   * path except the Goodreads CSV tab went through `summarizeBook` or
+   * `summarizePdf`, so a keyless user could import three hundred books at once
+   * and not add one. The data model already supports an unsummarised book — that
+   * is exactly what an import produces — there was just no way to make one by
+   * hand, and the "Summarise this book" button on the detail page was
+   * unreachable for anything you typed yourself.
+   *
+   * The cover comes from the free Google Books / OpenLibrary chain, which needs
+   * no key. Bulk import deliberately does not use it: one request per book would
+   * mean three hundred for a large library, so that path stays ISBN-only.
+   */
+  const handleAddWithoutAi = async () => {
+    if (!query.trim()) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const title = query.trim();
+      const writer = author.trim() || 'Unknown';
+
+      await onAdd({
+        title,
+        author: writer,
+        category: 'Other',
+        status,
+        rating,
+        priority: status === 'Want to Read' ? priority : undefined,
+        coverImageUrl: await fetchCover(title, writer),
+        readingTimeMinutes: 0,
+        hasPdf: false,
+        finishedAt: status === 'Finished' ? new Date().toISOString() : undefined,
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError('Could not add that book.');
     } finally {
       setIsLoading(false);
     }
@@ -304,6 +350,22 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, onAi
               </>
             )}
           </button>
+
+          {mode === 'search' && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => void handleAddWithoutAi()}
+                disabled={isLoading || !query.trim()}
+                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-40 transition-colors underline underline-offset-4"
+              >
+                Add without AI
+              </button>
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                No API key needed. You can summarise it later from the book&rsquo;s page.
+              </p>
+            </div>
+          )}
         </form>
       )}
     </Dialog>
