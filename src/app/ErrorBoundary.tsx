@@ -1,9 +1,27 @@
-import { Link, useRouteError } from 'react-router';
+import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
 import { AlertCircle } from 'lucide-react';
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+
+  /**
+   * The raw message used to go straight onto the screen. That is either
+   * meaningless to the reader ("Cannot read properties of undefined") or too
+   * meaningful — SDK errors carry request URLs, and this renders whatever a
+   * crash happens to bring with it.
+   *
+   * A wrong URL is the common case and deserves its own words: with the
+   * catch-all route added alongside this, mistyping an address now says so
+   * instead of claiming the app broke.
+   */
+  const notFound = isRouteErrorResponse(error) && error.status === 404;
+  const title = notFound ? 'No such page' : 'Something went wrong';
+  const message = notFound
+    ? 'That address does not match anything in BookSum. It may be a link to a book you have since deleted.'
+    : 'This page failed to load. Your library is safe — nothing has been deleted.';
+
+  // Kept for whoever is debugging, out of the reader's way.
+  if (error) console.error('[booksum] route error', error);
 
   return (
     <div className="min-h-screen bg-parchment dark:bg-night flex flex-col items-center justify-center p-6 text-center">
@@ -11,7 +29,7 @@ export function ErrorBoundary() {
         <AlertCircle size={32} className="text-red-500" />
       </div>
       <h1 className="text-2xl font-serif font-bold text-gray-900 dark:text-gray-100 mb-2">
-        Something went wrong
+        {title}
       </h1>
       <p className="text-gray-500 dark:text-gray-400 max-w-md mb-8">{message}</p>
       <div className="flex gap-3">

@@ -4,7 +4,7 @@ import type { Book, Summary } from '../types';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { createBookChatSession, sendMessageStream } from '../lib/ai/chat';
 import type { Chat } from '../lib/ai/chat';
-import { toAiError } from '../lib/ai/errors';
+import { reportAiError } from '../features/settings/keyDialog';
 
 interface ChatModalProps {
   book: Book;
@@ -17,6 +17,8 @@ interface ChatModalProps {
 interface Message {
   role: 'user' | 'model';
   text: string;
+  /** Set when the stream failed, so the bubble can say so rather than look complete. */
+  failed?: boolean;
 }
 
 export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, onAiError }) => {
@@ -59,6 +61,19 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
     // this component a freshly deserialised Summary.
   }, [book.id, summary.id, summary.generatedAt, onAiError]);
 
+  /**
+   * False from the moment this unmounts, so an in-flight stream stops writing.
+   * The SDK's stream is not abortable here, so the request itself finishes — but
+   * its chunks no longer reach a component that is gone.
+   */
+  const isOpenRef = useRef(true);
+  useEffect(() => {
+    isOpenRef.current = true;
+    return () => {
+      isOpenRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -81,6 +96,10 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
       setMessages((prev) => [...prev, { role: 'model', text: '' }]);
 
       await sendMessageStream(chatSession.current, userMsg.text, (textSoFar) => {
+        // Dropped once the drawer is gone. The stream kept running after close
+        // and every chunk called setState on an unmounted component — React
+        // warns, and the work carried on being paid for with nothing to show it.
+        if (!isOpenRef.current) return;
         setMessages((prev) =>
           prev.map((message, index) =>
             index === prev.length - 1 && message.role === 'model'
@@ -90,14 +109,19 @@ export const ChatModal: React.FC<ChatModalProps> = ({ book, summary, onClose, on
         );
       });
     } catch (err) {
-      console.error('Chat error', err);
-      const message = toAiError(err).message;
+      const message = reportAiError(err);
       setMessages((prev) =>
-        prev.map((entry, index) =>
-          index === prev.length - 1 && entry.role === 'model' && entry.text === ''
-            ? { ...entry, text: message }
-            : entry,
-        ),
+        prev.map((entry, index) => {
+          if (index !== prev.length - 1 || entry.role !== 'model') return entry;
+          // A stream that failed *after* emitting text left a reply cut off
+          // mid-sentence with no indication anything had gone wrong — this only
+          // replaced the placeholder when it was still empty. A truncated answer
+          // that looks complete is worse than an error, because the user acts
+          // on it.
+          return entry.text
+            ? { ...entry, text: `${entry.text}\n\n_${message}_`, failed: true }
+            : { ...entry, text: message, failed: true };
+        }),
       );
     } finally {
       setIsLoading(false);

@@ -23,6 +23,7 @@ import { getOrCreateNarration, clearNarration } from '../lib/ai/narration';
 import { generateDetailedSummary } from '../lib/ai/summarize';
 import { blobs } from '../lib/storage/repo';
 import { toast } from './ui/toastStore';
+import { BookCover } from './BookCover';
 import { reportAiError } from '../features/settings/keyDialog';
 import { bookToMarkdown } from '../lib/markdown';
 import { downloadText, slugify } from '../lib/download';
@@ -278,9 +279,12 @@ export const BookDetail: React.FC<BookDetailProps> = ({
         <div className="md:col-span-4">
           <div className="sticky top-8">
             <div className="relative mb-6">
-              <img
-                src={book.coverImageUrl}
-                alt={book.title}
+              {/* Was a bare <img>, so a dead cover URL showed the browser's
+                  broken-image icon at full size on the book's own page, while
+                  the grid quietly fell back to a generated placeholder. */}
+              <BookCover
+                title={book.title}
+                url={book.coverImageUrl}
                 className="w-full rounded-2xl shadow-2xl"
               />
               {isPreview && (

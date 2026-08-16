@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppShell } from './AppShell';
 import { ErrorBoundary } from './ErrorBoundary';
+import { NotFoundPage } from './NotFoundPage';
 import { LibraryPage } from '../features/library/LibraryPage';
 import { BookDetailPage } from '../features/book/BookDetailPage';
 import { ReaderPage } from '../features/book/ReaderPage';
@@ -21,6 +22,10 @@ export const routeTable = [
       { path: 'review', element: <ReviewPage /> },
       { path: 'stats', element: <StatsPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      // Without this, any address that is not one of the above fell through to
+      // the error boundary and told the user the app had broken. It had not —
+      // they had mistyped a URL, or followed a bookmark to a deleted book.
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ];

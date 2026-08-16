@@ -234,7 +234,10 @@ export function AppShell() {
         */}
         {!isReader && (
           <nav
-            aria-label="Main"
+            // Distinct from the sidebar's "Main". Both are in the DOM at once —
+            // only CSS decides which is visible — so identical labels meant two
+            // landmarks a screen reader could not tell apart.
+            aria-label="Main (compact)"
             className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-stretch pb-[env(safe-area-inset-bottom)]"
           >
             {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (

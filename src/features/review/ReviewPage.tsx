@@ -95,7 +95,12 @@ export function ReviewPage() {
             const showWrong = isAnswered && index === selected && !isCorrect;
             return (
               <button
-                key={option}
+                // Keyed by position, not by text. Model-generated options are
+                // not guaranteed distinct, and two identical strings gave React
+                // two siblings with the same key — so selecting one highlighted
+                // the other, on the screen whose entire job is telling you
+                // whether you were right.
+                key={index}
                 onClick={() => !isAnswered && setSelected(index)}
                 disabled={isAnswered}
                 className={`w-full text-left p-4 rounded-xl border-2 font-medium transition-all flex items-start gap-3 ${

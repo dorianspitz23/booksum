@@ -96,4 +96,29 @@ describe('routing', () => {
     await seedAndRender();
     await waitFor(() => expect(window.location.pathname).toBe('/'));
   });
+
+  it('says "no such page" for an unknown address instead of claiming a crash', async () => {
+    window.history.pushState({}, '', '/not-a-real-page');
+    await seedAndRender();
+
+    // Without a catch-all route this fell through to the error boundary, which
+    // told the user the app had broken. It had not — they had mistyped a URL.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /no such page/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+  });
+
+  it('offers a way back from an unknown address', async () => {
+    window.history.pushState({}, '', '/not-a-real-page');
+    await seedAndRender();
+
+    // A wrong turn should not be a dead end. Asserted on the link rather than on
+    // the nav landmark: the Daily Wisdom modal opens on a timer, and while it is
+    // up the page behind it is correctly hidden from the accessibility tree — so
+    // a nav assertion here would pass or fail on timing rather than on routing.
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /back to your library/i })).toBeInTheDocument(),
+    );
+  });
 });

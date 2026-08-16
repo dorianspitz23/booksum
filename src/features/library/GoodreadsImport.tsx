@@ -27,6 +27,10 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
    */
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    // Cleared immediately so picking the *same* file again still fires a change
+    // event. Without this, anyone who hit an error, fixed the file and re-picked
+    // it got no response at all and no way to tell why.
+    event.target.value = '';
     if (!file) return;
 
     if (file.size > MAX_CSV_BYTES) {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Book } from '../types';
-import { placeholderCover } from '../lib/covers';
+import { BookCover } from './BookCover';
 import { Clock, Star, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
 interface BookCardProps {
@@ -10,23 +10,6 @@ interface BookCardProps {
 
 export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(book.coverImageUrl);
-
-  useEffect(() => {
-    // Immediate fallback if the URL is empty to prevent broken image flash
-    if (!book.coverImageUrl || book.coverImageUrl === 'null') {
-      setImgSrc(placeholderCover(book.title));
-      setImageLoaded(true);
-    } else {
-      setImgSrc(book.coverImageUrl);
-      setImageLoaded(false);
-    }
-  }, [book.coverImageUrl, book.title]);
-
-  const handleError = () => {
-    setImgSrc(placeholderCover(book.title));
-    setImageLoaded(true);
-  };
 
   const getPriorityColor = (p?: string) => {
     switch (p) {
@@ -71,11 +54,10 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onClick }) => {
             <Loader2 className="animate-spin" size={24} />
           </div>
         )}
-        <img
-          src={imgSrc}
-          alt={book.title}
+        <BookCover
+          title={book.title}
+          url={book.coverImageUrl}
           onLoad={() => setImageLoaded(true)}
-          onError={handleError}
           className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
         />
         {/* An unsummarised import used to advertise a masterclass that does not
