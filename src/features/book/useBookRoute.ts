@@ -21,6 +21,7 @@ export function useBookRoute() {
   const { books, isLoading, getSummary } = useLibrary();
 
   const [summary, setSummary] = useState<Summary | undefined>(undefined);
+  const [summaryFailed, setSummaryFailed] = useState(false);
 
   const book: Book | undefined = books.find((candidate) => candidate.id === id);
   const bookId = book?.id;
@@ -35,15 +36,20 @@ export function useBookRoute() {
     if (!bookId) return;
 
     let cancelled = false;
+    setSummaryFailed(false);
     getSummary(bookId)
       .then((found) => {
         if (!cancelled) setSummary(found);
       })
       .catch((error: unknown) => {
-        // Silently swallowing this rendered the book's "not summarised yet"
-        // state, telling the user it had no summary when the read merely failed.
+        // Reported, not swallowed. Setting undefined and stopping there rendered
+        // the book's "not summarised yet" state — telling the user their book
+        // has no summary when in fact the read failed, and inviting them to pay
+        // for one they already have.
         console.error('[booksum] could not load the summary for this book', error);
-        if (!cancelled) setSummary(undefined);
+        if (cancelled) return;
+        setSummary(undefined);
+        setSummaryFailed(true);
       });
 
     return () => {
@@ -51,5 +57,5 @@ export function useBookRoute() {
     };
   }, [bookId, summaryId, getSummary]);
 
-  return { book, summary, setSummary, isLoading };
+  return { book, summary, setSummary, summaryFailed, isLoading };
 }

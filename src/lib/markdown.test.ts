@@ -103,3 +103,41 @@ describe('libraryToMarkdown', () => {
     expect(libraryToMarkdown([])).toContain('0 books');
   });
 });
+
+describe('field values that are themselves markdown', () => {
+  it('escapes a title that would otherwise change the document structure', () => {
+    // Field values sit inside markdown syntax and are not markdown themselves.
+    // "# 1 Bestseller" opened a heading inside the heading, "*Batman*" came out
+    // italic, and "[Dune](evil)" became a link in the exported file.
+    const md = bookToMarkdown({
+      ...book,
+      title: '# 1 Bestseller *Batman* [Dune](x)',
+      author: 'A_B',
+      category: 'Sci-Fi #2',
+    });
+
+    expect(md).toContain(String.raw`# \# 1 Bestseller \*Batman\* \[Dune\](x)`);
+    expect(md).toContain(String.raw`*by A\_B*`);
+    expect(md).toContain(String.raw`**Category:** Sci-Fi \#2`);
+  });
+
+  it('leaves the summary body and personal notes as written', () => {
+    // These are markdown on purpose — escaping them would defeat the export.
+    const md = bookToMarkdown(
+      { ...book, personalNotes: '## My heading\n\n- a point' },
+      {
+        id: 's1',
+        bookId: 'b1',
+        oneSentenceTakeaway: 'Takeaway.',
+        summary: '## Section\n\n**bold** text',
+        keyInsights: [],
+        actionableSteps: [],
+        generatedAt: '2026-01-01T00:00:00.000Z',
+        model: 'test',
+      },
+    );
+
+    expect(md).toContain('## Section\n\n**bold** text');
+    expect(md).toContain('## My heading\n\n- a point');
+  });
+});

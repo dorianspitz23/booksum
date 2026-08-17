@@ -65,7 +65,13 @@ export function LibraryPage() {
       });
   }, [books, activeCategory, searchQuery, statusFilter]);
 
-  const categories = ['All', ...Array.from(new Set(books.map((b) => b.category)))];
+  // Memoised. This rebuilt a Set over the entire library on every render, and
+  // the search box lives in this component — so a 300-book library re-derived
+  // its whole category list on every keystroke.
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(books.map((b) => b.category)))],
+    [books],
+  );
 
   const refreshRecommendations = async () => {
     if (!profile || isRefreshingRecs) return;

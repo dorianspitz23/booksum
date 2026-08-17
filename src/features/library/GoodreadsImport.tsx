@@ -128,6 +128,16 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
             {preview.rows.filter((r) => r.status === 'Want to Read').length} to read
             {preview.skipped > 0 ? `, ${preview.skipped} rows skipped` : ''}
           </p>
+          {/* What the books will actually look like afterwards, which is the
+              thing being decided here. Books whose shelves say nothing land in
+              'Other', and nothing arrives summarised — importing is free
+              precisely because no AI call is made. */}
+          <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
+            {preview.rows.filter((r) => !r.category).length > 0
+              ? `${preview.rows.filter((r) => !r.category).length} will land in "Other" — the rest keep their Goodreads shelf as a category. `
+              : 'Each keeps its Goodreads shelf as a category. '}
+            None arrive summarised; that is why importing costs nothing.
+          </p>
         </div>
       )}
 

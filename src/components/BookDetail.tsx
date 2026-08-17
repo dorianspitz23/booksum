@@ -107,7 +107,7 @@ interface BookDetailProps {
   onBack: () => void;
   onDelete: (id: string) => void;
   onUpdate: (updatedBook: Book) => void;
-  onOpenReader: (book: Book) => void;
+  onOpenReader: () => void;
   isPreview?: boolean;
   onAdd?: () => void;
   onPlayAudio: (track: AudioTrack) => void;
@@ -115,6 +115,13 @@ interface BookDetailProps {
   onSummarise: () => Promise<void>;
   /** Surfaces an AI failure and opens the key dialog when the key is the problem. */
   onAiError: (error: unknown) => string;
+  /**
+   * True when reading this book's summary out of storage failed, as distinct
+   * from the book genuinely not having one. Without the distinction a failed
+   * read rendered as "not summarised yet" and offered to sell the user a
+   * summary they already own.
+   */
+  summaryFailed?: boolean;
 }
 
 export const BookDetail: React.FC<BookDetailProps> = ({
@@ -131,6 +138,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
   onPlayAudio,
   onSummarise,
   onAiError,
+  summaryFailed,
 }) => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingDeepDive, setIsGeneratingDeepDive] = useState(false);
@@ -187,7 +195,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
 
   const handleMasterclassClick = async () => {
     if (summary?.detailedSummary) {
-      onOpenReader(book);
+      onOpenReader();
       return;
     }
 
@@ -197,7 +205,7 @@ export const BookDetail: React.FC<BookDetailProps> = ({
       const longSummary = await generateDetailedSummary(book, summary);
       const updated = { ...summary, detailedSummary: longSummary };
       onSummaryUpdate(updated);
-      onOpenReader(book);
+      onOpenReader();
     } catch (error) {
       toast.error(reportAiError(error));
     } finally {
@@ -430,6 +438,13 @@ export const BookDetail: React.FC<BookDetailProps> = ({
                 {/* Audio and the deep dive both read the summary. They used to
                     render regardless, set their spinner, then hit an early
                     `if (!summary) return` — so they flashed and did nothing. */}
+                {!isPreview && !summary && summaryFailed && (
+                  <div className="rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-sm p-3 mb-2">
+                    This book&rsquo;s summary could not be read from storage. It may still be there
+                    &mdash; reload before generating a new one, or you will pay for it twice.
+                  </div>
+                )}
+
                 {!isPreview && !summary && (
                   <button
                     onClick={() => void handleSummarise()}

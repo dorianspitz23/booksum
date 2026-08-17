@@ -11,7 +11,7 @@ import { newId } from '../../lib/id';
 import type { Book, Summary } from '../../types';
 
 export function BookDetailPage() {
-  const { book, summary, setSummary, isLoading } = useBookRoute();
+  const { book, summary, setSummary, summaryFailed, isLoading } = useBookRoute();
   const { updateBook, removeBook, saveSummary } = useLibrary();
   const { profile } = useProfile();
   const { playAudio, handleAiError } = useShell();
@@ -67,6 +67,7 @@ export function BookDetailPage() {
     <BookDetail
       book={book}
       summary={summary}
+      summaryFailed={summaryFailed}
       voice={profile.favoriteVoice}
       onSummaryUpdate={(next) => {
         setSummary(next);

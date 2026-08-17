@@ -5,12 +5,29 @@ export interface LibraryEntry {
   summary?: Summary;
 }
 
+/**
+ * Escapes the characters that would change a value's meaning where it lands.
+ *
+ * Field values are interpolated into positions with markdown syntax around them
+ * — a heading, an emphasis pair, a blockquote — and are not markdown themselves.
+ * A book called "*Batman*" came out italic; one called "# 1 Bestseller" opened a
+ * heading inside a heading; a `[title](x)` became a link. This applies only to
+ * *fields*. Summary bodies and the user's own notes are left alone: those are
+ * markdown by intent, and escaping them would ruin the export's whole purpose.
+ */
+const escapeField = (value: string): string => value.replace(/([\\`*_[\]#<>|])/g, '\\$1');
+
 export function bookToMarkdown(book: Book, summary?: Summary): string {
-  const lines: string[] = [`# ${book.title}`, '', `*by ${book.author}*`, ''];
+  const lines: string[] = [
+    `# ${escapeField(book.title)}`,
+    '',
+    `*by ${escapeField(book.author)}*`,
+    '',
+  ];
 
   lines.push(
     `**Status:** ${book.status}  `,
-    `**Category:** ${book.category}  `,
+    `**Category:** ${escapeField(book.category)}  `,
     `**Rating:** ${book.rating}/5  `,
     `**Reading time:** ${book.readingTimeMinutes} min`,
     '',

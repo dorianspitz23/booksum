@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { BookOpen, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProfile } from './ProfileContext';
@@ -18,6 +18,22 @@ export function ProfilePicker() {
   // form. It only ever worked because App gates on isLoading before rendering.
   const [wantsNewProfile, setWantsNewProfile] = useState(false);
   const isCreating = wantsNewProfile || allProfiles.length === 0;
+
+  /**
+   * Names that appear more than once, so only those rows carry a disambiguator.
+   * Nothing stops two profiles being called the same thing, and when they are,
+   * the rows were identical — including the button beside each one that
+   * permanently deletes a library.
+   */
+  const duplicateNames = useMemo(() => {
+    const seen = new Set<string>();
+    const repeated = new Set<string>();
+    for (const candidate of allProfiles) {
+      if (seen.has(candidate.name)) repeated.add(candidate.name);
+      seen.add(candidate.name);
+    }
+    return repeated;
+  }, [allProfiles]);
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -90,6 +106,14 @@ export function ProfilePicker() {
                   </span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {candidate.name}
+                    {/* Only when it is needed. Two profiles sharing a name were
+                        two identical rows, and one of the buttons beside each
+                        permanently deletes a library. */}
+                    {duplicateNames.has(candidate.name) && (
+                      <span className="block text-xs font-normal text-gray-400 dark:text-gray-500">
+                        created {new Date(candidate.createdAt).toLocaleDateString()}
+                      </span>
+                    )}
                   </span>
                   <BookOpen size={18} className="ml-auto text-gray-300 dark:text-gray-600" />
                 </button>
