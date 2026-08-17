@@ -123,7 +123,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       const markdown = libraryToMarkdown(
         data.books.map((b) => ({ book: b, summary: summaryById.get(b.id) })),
       );
-      downloadText(`booksum-library-${new Date().toISOString().split('T')[0]}.md`, markdown);
+      downloadText({
+        filename: `booksum-library-${new Date().toISOString().split('T')[0]}.md`,
+        contents: markdown,
+      });
       toast.success('Library exported as Markdown.');
     } catch {
       toast.error('Could not export your library. Please try again.');
@@ -137,11 +140,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       // helper this file already imports for the Markdown export — performs. The
       // copy also revoked the object URL in the same task as click(), which is
       // the race that silently cancels the download on some browsers.
-      downloadText(
-        `booksum-backup-${new Date().toISOString().split('T')[0]}.json`,
-        JSON.stringify(data, null, 2),
-        'application/json',
-      );
+      downloadText({
+        filename: `booksum-backup-${new Date().toISOString().split('T')[0]}.json`,
+        contents: JSON.stringify(data, null, 2),
+        mimeType: 'application/json',
+      });
       toast.success('Backup downloaded.');
     } catch {
       toast.error('Could not create a backup. Please try again.');

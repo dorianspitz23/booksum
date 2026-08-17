@@ -1,3 +1,4 @@
+import { CATEGORIES } from '../../types';
 import type { Book, Summary } from '../../types';
 // The counts live with the schema that enforces them. Stated in prose here as
 // well, they drifted: this file asked for exactly three questions while the
@@ -13,7 +14,7 @@ export const summarizeBookPrompt = (title: string, author?: string) => `
     4. **One Sentence Takeaway**: A single, punchy, memorable sentence capturing the essence of the book.
 
     Ensure the output matches the JSON schema provided.
-    The 'category' should be one of: Psychology, Productivity, Business, Technology, Philosophy, Health, Biography, Other.
+    The 'category' should be one of: ${CATEGORIES.join(', ')}.
   `;
 
 export const summarizePdfPrompt = () => `Analyze this document as a non-fiction book.

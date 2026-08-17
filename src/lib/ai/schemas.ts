@@ -1,5 +1,6 @@
 import { Type } from '@google/genai';
 import type { Schema } from '@google/genai';
+import { CATEGORIES } from '../../types';
 
 /**
  * Every bound here used to live only in a `description` string — "Array of 4
@@ -36,16 +37,9 @@ export const GENERIC_BOOK_SCHEMA: Schema = {
     author: { type: Type.STRING },
     category: {
       type: Type.STRING,
-      enum: [
-        'Psychology',
-        'Productivity',
-        'Business',
-        'Technology',
-        'Philosophy',
-        'Health',
-        'Biography',
-        'Other',
-      ],
+      // From types.ts, where the list lives. It used to be written out here,
+      // again in prompts.ts, and a third time as a dead `enum Category`.
+      enum: [...CATEGORIES],
       description: 'One of the listed categories.',
     },
     oneSentenceTakeaway: { type: Type.STRING },

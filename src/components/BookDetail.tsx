@@ -505,7 +505,10 @@ export const BookDetail: React.FC<BookDetailProps> = ({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => {
-                    downloadText(`${slugify(book.title)}.md`, bookToMarkdown(book, summary));
+                    downloadText({
+                      filename: `${slugify(book.title)}.md`,
+                      contents: bookToMarkdown(book, summary),
+                    });
                     toast.success('Markdown downloaded.');
                   }}
                   className="flex-1 flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"

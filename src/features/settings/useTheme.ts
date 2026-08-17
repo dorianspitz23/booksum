@@ -8,13 +8,26 @@ export type ResolvedTheme = 'light' | 'dark';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
+const THEME_CHOICES: readonly ThemeChoice[] = ['system', 'light', 'dark'];
+
+/**
+ * `Profile.theme` is declared as a three-literal union, but the value comes back
+ * out of IndexedDB, which validates nothing on read. A record written by an
+ * older build — or hand-edited, or restored from a backup — can hold anything at
+ * all while TypeScript insists it cannot. Anything unrecognised falls back to
+ * following the system, which is the same thing a fresh profile does.
+ */
+function asThemeChoice(value: unknown): ThemeChoice {
+  return THEME_CHOICES.includes(value as ThemeChoice) ? (value as ThemeChoice) : 'system';
+}
+
 function systemPrefersDark(): boolean {
   return typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches;
 }
 
 export function useTheme() {
   const { profile, updateProfile } = useProfile();
-  const theme: ThemeChoice = profile?.theme ?? 'system';
+  const theme: ThemeChoice = asThemeChoice(profile?.theme);
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
 
   useEffect(() => {

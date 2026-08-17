@@ -5,7 +5,7 @@
  * builds. See src/test/setup.ts.
  */
 import { describe, expect, it } from 'vitest';
-import { contrastRatio } from './contrast';
+import { contrastRatio, relativeLuminance } from './contrast';
 
 const PARCHMENT = '#fcfcf9';
 const ORANGE_600 = '#ea580c';
@@ -57,5 +57,27 @@ describe('dark theme meets WCAG AA', () => {
 
   it('confirms the light-mode accent would have failed in dark', () => {
     expect(contrastRatio('#c2410c', NIGHT)).toBeLessThan(4.5);
+  });
+});
+
+describe('rejecting input it cannot read', () => {
+  // This module is the project's own accessibility guardrail, so a wrong answer
+  // here is worse than no answer: it gets trusted. Both failure shapes below
+  // used to produce a number and "pass".
+  it.each([
+    ['a named colour', 'rebeccapurple'],
+    ['an rgb() string', 'rgb(255, 0, 0)'],
+    ['a truncated hex', 'ff'],
+    ['a five-digit hex', '#12345'],
+    ['nonsense', 'not a colour'],
+    ['empty', ''],
+  ])('throws on %s', (_label, value) => {
+    expect(() => relativeLuminance(value)).toThrow(/not a hex colour/i);
+  });
+
+  it('still accepts the forms that are real', () => {
+    expect(relativeLuminance('#fff')).toBeCloseTo(1, 5);
+    expect(relativeLuminance('000000')).toBeCloseTo(0, 5);
+    expect(relativeLuminance('  #FFFFFF  ')).toBeCloseTo(1, 5);
   });
 });

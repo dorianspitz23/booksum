@@ -12,10 +12,37 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
+
+    // Zero-cost today — each was measured at 0 errors before being turned on.
+    // They are here so the property is locked rather than merely true by luck:
+    // unreachable code and unmarked overrides are the kind of thing that walks
+    // back in one commit at a time.
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "forceConsistentCasingInFileNames": true,
+
+    // Deliberately NOT set: noPropertyAccessFromIndexSignature, measured at 60
+    // errors. It would turn `record.key` into `record['key']` throughout, which
+    // is ceremony rather than safety here — noUncheckedIndexedAccess (above)
+    // already forces the undefined check that actually prevents the bug.
     "verbatimModuleSyntax": true,
+
+    // Left on knowingly. Without it @google/genai's type surface fails to
+    // resolve one of its own imports; the alternative is a stub declaration for
+    // a dependency's internals, which rots the moment it publishes a fix.
     "skipLibCheck": true,
+
     "noEmit": true,
-    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
+
+    // `vitest/globals` was dropped: every test file imports describe/it/expect
+    // explicitly, so it added nothing but put test names in production scope.
+    // jest-dom stays — its matchers are used 118 times and there is no way to
+    // scope a global type to a subdirectory without splitting into project
+    // references, which is a lot of build machinery to prevent a mistake that
+    // would fail instantly and loudly the first time anyone made it.
+    "types": ["vite/client", "@testing-library/jest-dom"]
   },
   "include": ["src", "vite.config.ts"]
 }

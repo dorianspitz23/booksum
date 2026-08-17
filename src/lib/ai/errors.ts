@@ -15,7 +15,10 @@ export class AiError extends Error {
   constructor(
     readonly kind: AiErrorKind,
     message: string,
-    readonly cause?: unknown,
+    // `override`, because Error already declares `cause`. Unmarked, this silently
+    // shadowed the built-in — so anything reading `error.cause` through an `Error`
+    // reference got a field this class never intended to be the standard one.
+    override readonly cause?: unknown,
   ) {
     super(message);
     this.name = 'AiError';

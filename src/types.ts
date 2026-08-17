@@ -10,16 +10,31 @@ export const VOICE_NAMES = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Fenrir'] as con
 export type VoiceName = (typeof VOICE_NAMES)[number];
 export type BlobKind = 'pdf' | 'audio-short' | 'audio-long';
 
-export enum Category {
-  PSYCHOLOGY = 'Psychology',
-  PRODUCTIVITY = 'Productivity',
-  BUSINESS = 'Business',
-  TECHNOLOGY = 'Technology',
-  PHILOSOPHY = 'Philosophy',
-  HEALTH = 'Health',
-  BIOGRAPHY = 'Biography',
-  OTHER = 'Other',
-}
+/**
+ * The categories the model is asked to choose from.
+ *
+ * This was an `enum Category` with zero references, while the same eight names
+ * were written out again in the AI schema and a third time in the prompt prose.
+ * Three copies of one list, none of them load-bearing — so a ninth category
+ * added to the schema would have quietly disagreed with the other two.
+ *
+ * `Book.category` stays a plain `string`. It is populated by a model and by
+ * Goodreads shelves, and a record that arrives with something not on this list
+ * must still render rather than fail a type guard on read. This is the list we
+ * *ask* for, not a promise about what is in the database.
+ */
+export const CATEGORIES = [
+  'Psychology',
+  'Productivity',
+  'Business',
+  'Technology',
+  'Philosophy',
+  'Health',
+  'Biography',
+  'Other',
+] as const;
+
+export type Category = (typeof CATEGORIES)[number];
 
 export interface Profile {
   id: string;
@@ -110,15 +125,26 @@ export interface StoredBlob {
   voice?: string;
 }
 
-/** Created in the v1 schema so Phase 3 needs no database version bump. */
-export interface ReviewCard {
-  id: string;
-  profileId: string;
-  bookId: string;
+/**
+ * One multiple-choice question.
+ *
+ * The single definition. This shape was written out three times — here, on
+ * `ReviewCard`, and again as `NewCardInput` in srs.ts — so adding a field
+ * meant finding all three, and any one of them could drift into describing a
+ * question the other two did not recognise.
+ */
+export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswerIndex: number;
   explanation: string;
+}
+
+/** Created in the v1 schema so Phase 3 needs no database version bump. */
+export interface ReviewCard extends QuizQuestion {
+  id: string;
+  profileId: string;
+  bookId: string;
   ease: number;
   intervalDays: number;
   dueAt: string;
@@ -147,11 +173,4 @@ export interface LibraryExport {
   summaries: Summary[];
   profile?: ProfileSettings;
   reviewCards?: ReviewCard[];
-}
-
-export interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswerIndex: number;
-  explanation: string;
 }

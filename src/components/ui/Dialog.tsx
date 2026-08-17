@@ -8,8 +8,15 @@ interface DialogProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** Tailwind max-width class for the panel. */
-  size?: string;
+  /**
+   * Tailwind max-width class for the panel.
+   *
+   * A union rather than a bare string. Tailwind only emits the classes it finds
+   * written out in source, so a caller passing a computed or merely plausible
+   * class — `max-w-2xl`, say — got no CSS at all and a full-width dialog with no
+   * error anywhere. These are the ones that exist.
+   */
+  size?: 'max-w-md' | 'max-w-lg' | 'max-w-xl' | 'max-w-2xl';
   /**
    * Set while the dialog holds input the user would be sorry to lose. Clicking
    * the backdrop is the one dismissal that happens by accident — a click that

@@ -5,8 +5,18 @@ function channel(value: number): number {
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
+/**
+ * Throws on anything that is not a hex colour, rather than returning a number.
+ *
+ * This is the project's own WCAG guardrail — the thing that decides whether a
+ * colour pair is readable. It accepted any string at all: 'rebeccapurple' gave
+ * NaN, so every comparison against a threshold came out false and the pair
+ * "passed"; 'ff' gave a real, plausible, wrong number and passed on merit. A
+ * checker that answers confidently for input it cannot read is worse than none,
+ * because its answer is trusted.
+ */
 export function relativeLuminance(hex: string): number {
-  const clean = hex.replace('#', '');
+  const clean = hex.trim().replace(/^#/, '');
   const full =
     clean.length === 3
       ? clean
@@ -14,6 +24,10 @@ export function relativeLuminance(hex: string): number {
           .map((c) => c + c)
           .join('')
       : clean;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    throw new Error(`Not a hex colour: ${JSON.stringify(hex)}`);
+  }
 
   const r = parseInt(full.slice(0, 2), 16);
   const g = parseInt(full.slice(2, 4), 16);

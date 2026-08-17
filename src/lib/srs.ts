@@ -1,5 +1,5 @@
 import { newId } from './id';
-import type { ReviewCard } from '../types';
+import type { QuizQuestion, ReviewCard } from '../types';
 
 /** 1 = again, 2 = hard, 3 = good, 4 = easy. */
 export type Grade = 1 | 2 | 3 | 4;
@@ -29,13 +29,9 @@ const INTERVAL_MODIFIER: Record<Exclude<Grade, 1>, number> = { 2: 0.6, 3: 1, 4: 
 const clampInterval = (days: number): number =>
   Number.isFinite(days) ? Math.min(MAX_INTERVAL_DAYS, Math.max(1, Math.round(days))) : 1;
 
-export interface NewCardInput {
+export interface NewCardInput extends QuizQuestion {
   profileId: string;
   bookId: string;
-  question: string;
-  options: string[];
-  correctAnswerIndex: number;
-  explanation: string;
 }
 
 export function newCard(input: NewCardInput, now: Date = new Date()): ReviewCard {

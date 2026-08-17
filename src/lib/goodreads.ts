@@ -99,7 +99,16 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
   if (table.length < 2) return { rows: [], skipped: 0 };
 
   const header = (table[0] ?? []).map((h) => h.trim().toLowerCase());
-  const columnOf = (name: string) => header.indexOf(name.toLowerCase());
+  /**
+   * `undefined` rather than `-1`. As a bare `number` the not-found case was a
+   * value the type system could not distinguish from a real column index, and
+   * every reader had to remember to check it — one `cells[columnOf('x')]` would
+   * have silently read the last column instead of failing.
+   */
+  const columnOf = (name: string): number | undefined => {
+    const at = header.indexOf(name.toLowerCase());
+    return at >= 0 ? at : undefined;
+  };
 
   const titleAt = columnOf('title');
   const authorAt = columnOf('author');
@@ -107,7 +116,7 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
   // Without this, any CSV at all parsed to zero rows and reported as an empty
   // library rather than as the wrong file — including a spreadsheet whose first
   // row happens to look like a header.
-  if (titleAt < 0) return { rows: [], skipped: table.length - 1, unrecognised: true };
+  if (titleAt === undefined) return { rows: [], skipped: table.length - 1, unrecognised: true };
 
   const ratingAt = columnOf('my rating');
   const shelfAt = columnOf('exclusive shelf');
@@ -119,7 +128,8 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
   let skipped = 0;
 
   for (const cells of table.slice(1)) {
-    const cell = (index: number) => (index >= 0 ? (cells[index] ?? '').trim() : '');
+    const cell = (index: number | undefined) =>
+      index === undefined ? '' : (cells[index] ?? '').trim();
 
     const title = cell(titleAt);
     if (!title) {

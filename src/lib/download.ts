@@ -1,5 +1,23 @@
-/** Triggers a browser download of in-memory text. */
-export function downloadText(filename: string, contents: string, mimeType = 'text/markdown') {
+interface DownloadTextOptions {
+  filename: string;
+  contents: string;
+  mimeType?: string;
+}
+
+/**
+ * Triggers a browser download of in-memory text.
+ *
+ * Named arguments, because the positional form was `(filename, contents,
+ * mimeType)` — three adjacent strings where swapping the first two compiles
+ * perfectly and produces a file named after its own contents, containing the
+ * filename. Nothing about the types could catch it and nothing at runtime
+ * would either.
+ */
+export function downloadText({
+  filename,
+  contents,
+  mimeType = 'text/markdown',
+}: DownloadTextOptions) {
   const blob = new Blob([contents], { type: `${mimeType};charset=utf-8` });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

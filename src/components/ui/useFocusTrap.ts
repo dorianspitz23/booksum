@@ -27,7 +27,12 @@ export function useFocusTrap(
   useEffect(() => {
     if (!active) return;
 
-    const restoreTo = document.activeElement as HTMLElement | null;
+    // Checked, not asserted. `document.activeElement` is an `Element`, and
+    // `.focus()` lives on `HTMLElement` — an SVG icon inside a trigger is a real
+    // `Element` with no `focus` method at all, so the cast promised a method
+    // that might not be there. `instanceof` covers the null case too.
+    const activeOnOpen = document.activeElement;
+    const restoreTo = activeOnOpen instanceof HTMLElement ? activeOnOpen : null;
     focusable()[0]?.focus();
 
     return () => {
