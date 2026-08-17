@@ -232,3 +232,56 @@ the catch-all route, broken-cover fallbacks, and the "0 min read" untruths.
   Web Worker: the 10MB cap bounds the cost and the machinery is disproportionate.
   The cheap half — letting the base64 string be collected before the storage
   write — is done.
+
+### Wave 3 complete — 188 of 188 mediums
+
+Counts at the boundary: **9/9 critical · 102/102 high · 188/188 medium · 45/142
+low = 344 of 441.** Gate: typecheck, type-aware lint and `format:check` clean;
+36 test files / 406 tests, zero dropped.
+
+What the final batches changed, and what they deliberately did not:
+
+- **`noUncheckedIndexedAccess` is on.** 19 real indexing sites in `src/`, six of
+  them in `QuizModal`, which re-read `questions[currentQuestionIndex]` on every
+  render and assumed the index was in range. Tests get `defined()` rather than
+  non-null assertions: `expect(x).toBeDefined()` proves a value at runtime and
+  narrows nothing.
+- **`exactOptionalPropertyTypes` and `noPropertyAccessFromIndexSignature` are
+  deliberately off**, with reasons in commit `1ec4db5`. Short version: the first
+  flags 17 sites where "absent" is a value the app legitimately constructs, so
+  satisfying it means either 17 conditional spreads or a blanket widening that
+  makes the flag inert — and nothing in `src/` can observe the difference. The
+  second's actual defect (a lying `Record<string, string>` on the Google Books
+  boundary) was fixed at source; 54 of its 57 remaining errors are bracket-
+  notation churn in a validator that already checks its input.
+- **`instanceof` is the wrong check for anything that has been through
+  structured clone.** Measured under jsdom: a stored ArrayBuffer reports
+  `[object ArrayBuffer]` and `constructor.name === 'ArrayBuffer'` while
+  `x instanceof ArrayBuffer` is **false**, because the buffer is constructed in
+  another realm. The first version of the `blobs.get` guard used instanceof and
+  the existing 10 MB round-trip test caught it immediately. Use
+  `Object.prototype.toString.call(x)`.
+- **Do not overload one string with two jobs.** The narration cache stored the
+  voice as a `;voice=Kore` parameter on the blob's MIME type, so the cache key
+  and the type the browser renders by were the same value. Constraining the
+  second (a stored MIME comes back out on a same-origin `blob:` URL) silently
+  defeated the first, and every play regenerated — the exact paid-call bug the
+  cache exists to prevent. The cache's own tests caught it in the same run. The
+  voice now has its own field; IndexedDB object stores are schemaless, so that
+  needed no version bump.
+- **Unused parallel delete paths are how a cascade grows a second, non-atomic
+  version of itself.** `summaries`, `blobs` and `reviewCards` each carried a
+  `removeByBook` with no caller anywhere. Deleted; the one rule is now stated
+  once at the top of `repo.ts`.
+- **Legacy shapes are `unknown`-valued now.** Declaring `favoriteVoice?:
+  VoiceName` for JSON a build that no longer exists wrote is a claim about
+  someone else's data — a stored `"Bob"` satisfied the compiler and was
+  persisted into a `Profile` that says it is one of five voices.
+
+Recorded as decisions rather than changes, with evidence in commit `08c6ad1`:
+F047/F113 (per-read validation of every record vs guarding the consumers that
+do arithmetic), F023/F071 (discriminated loading states — symptom fixed at both
+sites; the union means narrowing at 17 call sites), S138 (import retry measured
+as idempotent by id, with one narrow fail-safe gap).
+
+**Next: 97 open lows.**

@@ -323,3 +323,75 @@ describe('reviewCards index-backed lookups', () => {
     expect(due.map((c) => c.question).sort()).toEqual(['exactly now', 'past']);
   });
 });
+
+describe('reviewCards on their own', () => {
+  const card = (profileId: string, bookId: string, question: string) =>
+    newCard({
+      profileId,
+      bookId,
+      question,
+      options: ['a', 'b'],
+      correctAnswerIndex: 0,
+      explanation: '',
+    });
+
+  it('scopes listByBook to one book', async () => {
+    const p = await seedProfile();
+    await reviewCards.upsert(card(p.id, 'book-a', 'From A'));
+    await reviewCards.upsert(card(p.id, 'book-b', 'From B'));
+
+    const forA = await reviewCards.listByBook('book-a');
+    expect(forA.map((c) => c.question)).toEqual(['From A']);
+  });
+
+  it('makes a card with an unparseable dueAt due now rather than never', async () => {
+    // The by-profile-due index is ordered on dueAt, so a value that is not a
+    // timestamp sorts past every real cutoff: the card became invisible to
+    // listDue *and* to any "is it due?" check, permanently, with nothing to
+    // point at. Falling back to now is the recoverable failure — the user sees
+    // it, grades it, and the next write is well-formed.
+    const p = await seedProfile();
+    const stored = await reviewCards.upsert({ ...card(p.id, 'b1', 'Broken'), dueAt: 'someday' });
+
+    expect(Number.isNaN(Date.parse(stored.dueAt))).toBe(false);
+    const due = await reviewCards.listDue(p.id, new Date(Date.now() + 1000));
+    expect(due.map((c) => c.question)).toEqual(['Broken']);
+  });
+
+  it('replaces a card on upsert rather than storing it twice', async () => {
+    const p = await seedProfile();
+    const first = await reviewCards.upsert(card(p.id, 'b1', 'Same card'));
+    await reviewCards.upsert({ ...first, reviewCount: 3 });
+
+    const all = await reviewCards.listByProfile(p.id);
+    expect(all).toHaveLength(1);
+    expect(all[0]?.reviewCount).toBe(3);
+  });
+});
+
+describe('cascades when there is nothing to cascade', () => {
+  it('removes a book that has no summary, blob or card', async () => {
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+
+    await expect(books.remove(book.id)).resolves.toBeUndefined();
+    await expect(books.get(book.id)).resolves.toBeUndefined();
+  });
+
+  it('treats removing a book that does not exist as a no-op', async () => {
+    // Reachable for real: two tabs open on the same library, both showing the
+    // same book, and the second delete arrives after the first has landed.
+    await expect(books.remove('never-existed')).resolves.toBeUndefined();
+  });
+
+  it('removes a profile that owns no books', async () => {
+    const p = await seedProfile('Empty');
+    await expect(profiles.remove(p.id)).resolves.toBeUndefined();
+    await expect(profiles.list()).resolves.toEqual([]);
+  });
+
+  it('reports no books cleared for a profile with an empty library', async () => {
+    const p = await seedProfile();
+    await expect(books.removeAllForProfile(p.id)).resolves.toBe(0);
+  });
+});
