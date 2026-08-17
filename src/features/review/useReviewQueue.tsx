@@ -83,7 +83,14 @@ function useReviewQueueState() {
 
   return {
     queue,
-    current: queue[0],
+    /**
+     * Annotated rather than inferred. Before `noUncheckedIndexedAccess` this
+     * inferred as a plain `ReviewCard`, telling every consumer the queue always
+     * has a head — when an empty queue is the normal end of a review session,
+     * not an error. Stating it means turning that flag off could not quietly
+     * widen the contract back.
+     */
+    current: queue.at(0),
     remaining: queue.length,
     isLoading,
     isGrading,

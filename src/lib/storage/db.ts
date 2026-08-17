@@ -1,5 +1,5 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Book, Profile, ReviewCard, StoredBlob, Summary } from '../../types';
+import type { BlobKind, Book, Profile, ReviewCard, StoredBlob, Summary } from '../../types';
 
 export const DB_NAME = 'booksum';
 
@@ -10,11 +10,25 @@ export const DB_NAME = 'booksum';
  */
 export const DB_VERSION = 2;
 
+/**
+ * The blobs store's primary key, which is a composite rather than an id.
+ *
+ * Declared as a plain `string` it was indistinguishable from the `by-book`
+ * index key sitting on the same line — two different things spelled the same
+ * way, one scoped to a book and one to a book *and* kind. `blobs.get(bookId)`
+ * typechecked and returned nothing, which the app reads as "no PDF stored"
+ * rather than as the mistake it is. The template literal makes them distinct.
+ */
+export type BlobKey = `${string}:${BlobKind}`;
+
+/** The one place the composite is assembled. */
+export const blobKey = (bookId: string, kind: BlobKind): BlobKey => `${bookId}:${kind}`;
+
 export interface BookSumDB extends DBSchema {
   profiles: { key: string; value: Profile };
   books: { key: string; value: Book; indexes: { 'by-profile': string } };
   summaries: { key: string; value: Summary; indexes: { 'by-book': string } };
-  blobs: { key: string; value: StoredBlob; indexes: { 'by-book': string } };
+  blobs: { key: BlobKey; value: StoredBlob; indexes: { 'by-book': string } };
   reviewCards: {
     key: string;
     value: ReviewCard;

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { paths } from '../../app/paths';
 import { StatsView } from '../../components/StatsView';
 import { useLibrary } from '../library/useLibrary';
 
@@ -18,5 +19,5 @@ export function StatsPage() {
     );
   }
 
-  return <StatsView books={books} onBookClick={(book) => void navigate(`/book/${book.id}`)} />;
+  return <StatsView books={books} onBookClick={(book) => void navigate(paths.book(book.id))} />;
 }

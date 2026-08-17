@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { paths } from './paths';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { BarChart2, BrainCircuit, Library, LogOut, Plus, User as UserIcon } from 'lucide-react';
 import { AudioPlayer } from '../components/AudioPlayer';
@@ -297,7 +298,7 @@ export function AppShell() {
             onClose={() => setShowAddBook(false)}
             onAdd={async (draft, options) => {
               const created = await addBook(draft, options);
-              void navigate(`/book/${created.id}`);
+              void navigate(paths.book(created.id));
             }}
             onAiError={handleAiError}
           />
@@ -314,7 +315,7 @@ export function AppShell() {
             onClose={closeWisdom}
             onReadMore={() => {
               closeWisdom();
-              void navigate(`/book/${dailyBook.id}`);
+              void navigate(paths.book(dailyBook.id));
             }}
           />
         )}

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { paths } from '../../app/paths';
 import { ProfileView } from '../../components/ProfileView';
 import { useProfile } from './ProfileContext';
 import { useLibrary } from '../library/useLibrary';
@@ -36,7 +37,7 @@ export function ProfilePage() {
       for (const key of perProfileKeys(profile.id)) localStorage.removeItem(key);
 
       toast.success(`Removed ${removed} book${removed === 1 ? '' : 's'}.`);
-      void navigate('/');
+      void navigate(paths.library());
     } catch (error) {
       console.error('[booksum] could not clear the library', error);
       toast.error('Could not clear your library. Nothing was removed.');

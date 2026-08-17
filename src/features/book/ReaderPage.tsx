@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { paths } from '../../app/paths';
 import { useNavigate } from 'react-router';
 import { Loader2 } from 'lucide-react';
 import { EReader } from '../../components/EReader';
@@ -34,7 +35,7 @@ export function ReaderPage() {
       book={book}
       summary={summary}
       voice={profile.favoriteVoice}
-      onClose={() => void navigate(`/book/${book.id}`)}
+      onClose={() => void navigate(paths.book(book.id))}
       onPlayAudio={playAudio}
       hasAudioPlayer={hasAudioPlayer}
       onProgress={saveProgress}

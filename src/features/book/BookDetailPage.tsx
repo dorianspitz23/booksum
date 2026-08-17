@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { paths } from '../../app/paths';
 import { Loader2 } from 'lucide-react';
 import { BookDetail } from '../../components/BookDetail';
 import { useBookRoute } from './useBookRoute';
@@ -60,7 +61,7 @@ export function BookDetailPage() {
     });
     if (!confirmed) return;
     await removeBook(id);
-    void navigate('/');
+    void navigate(paths.library());
   };
 
   return (
@@ -73,10 +74,10 @@ export function BookDetailPage() {
         setSummary(next);
         void saveSummary(next);
       }}
-      onBack={() => void navigate('/')}
+      onBack={() => void navigate(paths.library())}
       onDelete={(id) => void handleDelete(id)}
       onUpdate={(next: Book) => void updateBook(next)}
-      onOpenReader={() => void navigate(`/book/${book.id}/read`)}
+      onOpenReader={() => void navigate(paths.reader(book.id))}
       onPlayAudio={playAudio}
       onSummarise={handleSummarise}
       onAiError={handleAiError}

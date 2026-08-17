@@ -463,3 +463,36 @@ describe('numbers that arrive broken', () => {
     await expect(books.get(book.id)).resolves.toMatchObject({ rating: expected });
   });
 });
+
+describe('methods that take different kinds of id but the same type', () => {
+  it('returns nothing when a bookId is passed where a profileId belongs, and vice versa', async () => {
+    // reviewCards.listByProfile and reviewCards.listByBook sit twenty lines
+    // apart with the identical signature `(string) => Promise<ReviewCard[]>`.
+    // Swapping them compiles and returns [], which every caller reads as
+    // "nothing due" rather than as the mistake it is.
+    //
+    // Branding the id types would catch this at compile time; measured at 82
+    // errors, 64 of them casts in fixtures, which is not worth it for a library
+    // this size. This asserts the same distinction behaviourally instead: if
+    // the two lookups ever start answering each other's questions, it fails.
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+    await reviewCards.upsert(
+      newCard({
+        profileId: p.id,
+        bookId: book.id,
+        question: 'q',
+        options: ['a', 'b', 'c', 'd'],
+        correctAnswerIndex: 0,
+        explanation: 'e',
+      }),
+    );
+
+    await expect(reviewCards.listByProfile(p.id)).resolves.toHaveLength(1);
+    await expect(reviewCards.listByBook(book.id)).resolves.toHaveLength(1);
+
+    // The swap.
+    await expect(reviewCards.listByProfile(book.id)).resolves.toHaveLength(0);
+    await expect(reviewCards.listByBook(p.id)).resolves.toHaveLength(0);
+  });
+});

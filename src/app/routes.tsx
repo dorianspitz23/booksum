@@ -10,6 +10,7 @@ import { ReaderPage } from '../features/book/ReaderPage';
 import { StatsPage } from '../features/stats/StatsPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ReviewPage } from '../features/review/ReviewPage';
+import { routePatterns } from './paths';
 
 /**
  * Annotated rather than inferred. Without `RouteObject[]` TypeScript widens this
@@ -19,20 +20,20 @@ import { ReviewPage } from '../features/review/ReviewPage';
  */
 export const routeTable: RouteObject[] = [
   {
-    path: '/',
+    path: routePatterns.library,
     element: <AppShell />,
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <LibraryPage /> },
-      { path: 'book/:id', element: <BookDetailPage /> },
-      { path: 'book/:id/read', element: <ReaderPage /> },
-      { path: 'review', element: <ReviewPage /> },
-      { path: 'stats', element: <StatsPage /> },
-      { path: 'profile', element: <ProfilePage /> },
+      { path: routePatterns.book, element: <BookDetailPage /> },
+      { path: routePatterns.reader, element: <ReaderPage /> },
+      { path: routePatterns.review, element: <ReviewPage /> },
+      { path: routePatterns.stats, element: <StatsPage /> },
+      { path: routePatterns.profile, element: <ProfilePage /> },
       // Without this, any address that is not one of the above fell through to
       // the error boundary and told the user the app had broken. It had not —
       // they had mistyped a URL, or followed a bookmark to a deleted book.
-      { path: '*', element: <NotFoundPage /> },
+      { path: routePatterns.notFound, element: <NotFoundPage /> },
     ],
   },
 ];

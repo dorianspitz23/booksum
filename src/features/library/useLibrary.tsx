@@ -99,7 +99,12 @@ function useLibraryState(): LibraryApi {
 
   /** Empties the active profile's library. Returns how many books were removed. */
   const clearLibrary = useCallback(async (): Promise<number> => {
-    if (!profile) return 0;
+    // Throws rather than reporting a zero-shaped success. This returned 0 with
+    // no profile, and the caller rendered "Removed 0 books" for an operation
+    // that never touched storage. addBook already threw on the same
+    // precondition, so one condition had two different answers depending on
+    // which method you happened to call.
+    if (!profile) throw new Error('No active profile');
     const removed = await bookRepo.removeAllForProfile(profile.id);
     await reload();
     return removed;
@@ -165,7 +170,8 @@ function useLibraryState(): LibraryApi {
   /** Merges a backup into the active profile. Returns how many books were new. */
   const importLibrary = useCallback(
     async (payload: LibraryExport): Promise<number> => {
-      if (!profile) return 0;
+      // Same precondition, same answer — see clearLibrary.
+      if (!profile) throw new Error('No active profile');
 
       const existing = new Set((await bookRepo.listByProfile(profile.id)).map((b) => b.id));
       const imported = new Set<string>();
@@ -259,7 +265,10 @@ function useLibraryState(): LibraryApi {
    */
   const importGoodreadsRows = useCallback(
     async (rows: GoodreadsRow[]): Promise<{ added: number; duplicates: number }> => {
-      if (!profile) return { added: 0, duplicates: 0 };
+      // Same precondition, same answer. Returning { added: 0, duplicates: 0 }
+      // told the user their import found nothing, which sends them looking at
+      // their CSV for a problem that is not there.
+      if (!profile) throw new Error('No active profile');
 
       const keyOf = (title: string, author: string) =>
         `${title.trim().toLowerCase()}|${author.trim().toLowerCase()}`;

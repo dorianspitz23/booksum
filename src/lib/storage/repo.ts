@@ -1,5 +1,5 @@
 import type { IDBPTransaction } from 'idb';
-import { getDb } from './db';
+import { blobKey, getDb } from './db';
 import type { BookSumDB } from './db';
 import { newId } from '../id';
 import type { BlobKind, Book, Profile, ReviewCard, Summary } from '../../types';
@@ -256,8 +256,6 @@ export const summaries = {
     return summary;
   },
 };
-
-const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}`;
 
 /**
  * Brand check, deliberately not `instanceof`.
