@@ -1,5 +1,6 @@
 import React, { useId, useRef } from 'react';
 import { useFocusTrap } from './ui/useFocusTrap';
+import { BookCover } from './BookCover';
 import type { Book, Summary } from '../types';
 import { X, BookOpen, Sun, Sparkles } from 'lucide-react';
 
@@ -62,24 +63,28 @@ export const DailyWisdomModal: React.FC<DailyWisdomModalProps> = ({
               : 'This book has no summary yet.'}
           </blockquote>
 
-          <div
-            className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl w-full mb-8 border border-gray-100 dark:border-gray-800 text-left transition-all hover:bg-white dark:hover:bg-gray-900 hover:shadow-md hover:border-orange-200 cursor-pointer group"
-            onClick={onReadMore}
-          >
+          {/* Presentational, deliberately. This was a div with an onClick —
+              invisible to the keyboard — and it duplicated the "Read summary"
+              button directly beneath it. Two controls doing one job, one of
+              them unreachable. Naming the book is the row's actual purpose. */}
+          <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl w-full mb-8 border border-gray-100 dark:border-gray-800 text-left">
             <div className="w-12 h-16 flex-shrink-0 shadow-sm rounded-md overflow-hidden relative">
-              <img
-                src={book.coverImageUrl}
-                alt={book.title}
+              {/* Shared, so a missing or dead cover falls back here the same way
+                  it does everywhere else. Rendering the URL raw showed the
+                  browser's broken-image glyph. */}
+              <BookCover
+                title={book.title}
+                url={book.coverImageUrl}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">
                 {book.title}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">by {book.author}</p>
             </div>
-            <div className="mr-2 text-orange-300 group-hover:text-orange-500 transition-colors">
+            <div className="mr-2 text-orange-300">
               <BookOpen size={20} />
             </div>
           </div>

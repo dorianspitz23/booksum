@@ -15,6 +15,20 @@ import type { Schema } from '@google/genai';
  *
  * `minItems` / `maxItems` are strings: the API carries them as proto int64.
  */
+
+/**
+ * Shape constants shared by the schemas below and the prose in `prompts.ts`.
+ *
+ * These were stated twice and disagreed: the quiz prompt asked for exactly
+ * three questions while the schema accepted three to five, so a five-question
+ * quiz was simultaneously wrong (per the prompt) and valid (per the schema),
+ * and nothing could tell you which. Now the prompt is built from the same
+ * numbers the schema enforces, and changing one changes both.
+ */
+export const QUIZ_QUESTION_COUNT = 3;
+export const QUIZ_OPTIONS_PER_QUESTION = 4;
+export const RECOMMENDATION_COUNT = 6;
+
 export const GENERIC_BOOK_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -75,8 +89,8 @@ export const RECOMMENDATION_SCHEMA: Schema = {
   properties: {
     recommendations: {
       type: Type.ARRAY,
-      minItems: '6',
-      maxItems: '6',
+      minItems: String(RECOMMENDATION_COUNT),
+      maxItems: String(RECOMMENDATION_COUNT),
       items: {
         type: Type.OBJECT,
         properties: {
@@ -96,8 +110,8 @@ export const QUIZ_SCHEMA: Schema = {
   properties: {
     questions: {
       type: Type.ARRAY,
-      minItems: '3',
-      maxItems: '5',
+      minItems: String(QUIZ_QUESTION_COUNT),
+      maxItems: String(QUIZ_QUESTION_COUNT),
       items: {
         type: Type.OBJECT,
         properties: {
@@ -105,14 +119,14 @@ export const QUIZ_SCHEMA: Schema = {
           options: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            minItems: '4',
-            maxItems: '4',
-            description: 'Exactly four possible answers.',
+            minItems: String(QUIZ_OPTIONS_PER_QUESTION),
+            maxItems: String(QUIZ_OPTIONS_PER_QUESTION),
+            description: `Exactly ${QUIZ_OPTIONS_PER_QUESTION} possible answers.`,
           },
           correctAnswerIndex: {
             type: Type.INTEGER,
             minimum: 0,
-            maximum: 3,
+            maximum: QUIZ_OPTIONS_PER_QUESTION - 1,
             description: 'Zero-based index of the correct answer within options.',
           },
           explanation: {

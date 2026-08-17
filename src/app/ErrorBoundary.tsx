@@ -23,6 +23,21 @@ export function ErrorBoundary() {
   // Kept for whoever is debugging, out of the reader's way.
   if (error) console.error('[booksum] route error', error);
 
+  /**
+   * Something the reader can actually hand over.
+   *
+   * People self-host this, so "check the browser console" is the only path to a
+   * bug report — and the console is wiped by the Reload button sitting right
+   * here. Name and message only: this disclosure exists to make an issue
+   * reportable, not to dump whatever a crash happened to be carrying.
+   */
+  const detail =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : isRouteErrorResponse(error)
+        ? `${error.status} ${error.statusText}`
+        : null;
+
   return (
     <div className="min-h-screen bg-parchment dark:bg-night flex flex-col items-center justify-center p-6 text-center">
       <div className="w-16 h-16 bg-red-50 dark:bg-red-950 rounded-full flex items-center justify-center mb-6">
@@ -46,6 +61,20 @@ export function ErrorBoundary() {
           Reload
         </button>
       </div>
+
+      {detail && !notFound && (
+        <details className="mt-8 max-w-md w-full text-left">
+          <summary className="cursor-pointer text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+            Technical details
+          </summary>
+          <pre className="mt-2 p-3 rounded-xl bg-gray-100 dark:bg-gray-900 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+            {detail}
+          </pre>
+          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+            Include this if you report the problem.
+          </p>
+        </details>
+      )}
     </div>
   );
 }

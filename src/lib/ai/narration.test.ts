@@ -6,9 +6,10 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetDb } from '../storage/db';
-import { blobs, books, profiles } from '../storage/repo';
+import { blobs, books } from '../storage/repo';
+import { seedBook } from '../../test/fixtures';
 import { clearNarration, getOrCreateNarration } from './narration';
-import type { Book, Summary } from '../../types';
+import type { Summary } from '../../types';
 
 const generateAudioSummary = vi.hoisted(() => vi.fn());
 vi.mock('./tts', () => ({ generateAudioSummary }));
@@ -23,21 +24,6 @@ const summary: Summary = {
   generatedAt: '2026-01-01T00:00:00.000Z',
   model: 'test',
 };
-
-async function seedBook(): Promise<Book> {
-  const profile = await profiles.create({ name: 'Dorian' });
-  return books.create({
-    profileId: profile.id,
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    category: 'Productivity',
-    status: 'Finished',
-    rating: 5,
-    readingTimeMinutes: 12,
-    coverImageUrl: '',
-    hasPdf: false,
-  });
-}
 
 beforeEach(async () => {
   await resetDb();

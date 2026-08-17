@@ -6,6 +6,7 @@ import type { Profile } from '../../types';
 
 export { ACTIVE_PROFILE as ACTIVE_PROFILE_KEY } from '../../lib/storageKeys';
 import { ACTIVE_PROFILE as ACTIVE_PROFILE_KEY } from '../../lib/storageKeys';
+import { toast } from '../../components/ui/toastStore';
 
 interface ProfileContextValue {
   profile: Profile | null;
@@ -61,7 +62,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const selectProfile = useCallback(async (id: string) => {
     const found = await profileRepo.get(id);
-    if (!found) return;
+    if (!found) {
+      // The picker's rows come from a list read once at mount, so a profile
+      // deleted in another tab is still on screen and still clickable. Doing
+      // nothing left the user pressing a button that never responded. Refresh
+      // the list so the dead row disappears, and say why.
+      setAllProfiles(await profileRepo.list());
+      toast.error('That profile no longer exists — it was deleted, perhaps in another tab.');
+      return;
+    }
     localStorage.setItem(ACTIVE_PROFILE_KEY, found.id);
     setProfile(found);
   }, []);

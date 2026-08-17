@@ -10,6 +10,30 @@
     />
     <!-- Relative, so it still resolves when the app is served from /<repo>/. -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+    <!--
+      Social preview. Shared with no metadata, a link to this app previewed as a
+      bare URL with no title or description at all.
+
+      No og:image deliberately: the spec requires an absolute URL, and this app
+      is built once and self-hosted anywhere — GitHub Pages, a LAN address, a
+      file server. Any origin baked in here would be wrong for most deployments,
+      and a broken image reads worse than none. `summary` is the card type that
+      does not need one.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BookSum" />
+    <meta property="og:title" content="BookSum — AI book summaries, audio, and review" />
+    <meta
+      property="og:description"
+      content="Turn any book into a summary, key insights, audio, and a quiz. Local-first, bring your own Gemini key."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="BookSum — AI book summaries, audio, and review" />
+    <meta
+      name="twitter:description"
+      content="Turn any book into a summary, key insights, audio, and a quiz. Local-first, bring your own Gemini key."
+    />
     <!--
       Fonts are bundled from @fontsource, not fetched from fonts.googleapis.com.
       See src/index.css.

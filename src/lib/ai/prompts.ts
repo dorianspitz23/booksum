@@ -1,4 +1,8 @@
 import type { Book, Summary } from '../../types';
+// The counts live with the schema that enforces them. Stated in prose here as
+// well, they drifted: this file asked for exactly three questions while the
+// schema accepted three to five.
+import { QUIZ_QUESTION_COUNT, QUIZ_OPTIONS_PER_QUESTION, RECOMMENDATION_COUNT } from './schemas';
 
 export const summarizeBookPrompt = (title: string, author?: string) => `
     Analyze the non-fiction book "${title}" ${author ? `by ${author}` : ''}.
@@ -37,12 +41,12 @@ export const detailedSummaryPrompt = (book: Book, summary: Summary) => `
   `;
 
 export const recommendationsPrompt = (booksList: string) => `
-    Based on the user's library: ${booksList}, recommend 6 similar non-fiction books they haven't read.
+    Based on the user's library: ${booksList}, recommend ${RECOMMENDATION_COUNT} similar non-fiction books they haven't read.
     Return strictly JSON with an array of objects containing title, author, and a 1-sentence description.
   `;
 
 export const quizPrompt = (book: Book, summary: Summary) => `
-    Create a short multiple-choice quiz (3 questions) to test the user's understanding of the book "${book.title}".
+    Create a short multiple-choice quiz (${QUIZ_QUESTION_COUNT} questions, ${QUIZ_OPTIONS_PER_QUESTION} options each) to test the user's understanding of the book "${book.title}".
 
     Use the following context to generate the questions:
     Summary: ${summary.summary}

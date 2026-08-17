@@ -5,6 +5,7 @@ import { resetDb } from '../../lib/storage/db';
 import { books, profiles } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider, useProfile } from './ProfileContext';
 import { defined } from '../../test/defined';
+import { clearToasts, getToasts } from '../../components/ui/toastStore';
 
 function Probe() {
   const { profile, allProfiles, isLoading, createProfile, selectProfile, signOut } = useProfile();
@@ -17,6 +18,7 @@ function Probe() {
       <button onClick={() => void selectProfile(defined(allProfiles[0], 'first profile').id)}>
         select first
       </button>
+      <button onClick={() => void selectProfile('no-such-profile')}>select dead</button>
       <button onClick={signOut}>sign out</button>
     </div>
   );
@@ -32,6 +34,7 @@ function renderProbe() {
 
 beforeEach(async () => {
   await resetDb();
+  clearToasts();
   localStorage.clear();
 });
 
@@ -97,5 +100,27 @@ describe('ProfileContext', () => {
 
     await expect(books.listByProfile(a.id)).resolves.toHaveLength(1);
     await expect(books.listByProfile(b.id)).resolves.toHaveLength(0);
+  });
+});
+
+describe('selecting a profile that is no longer there', () => {
+  it('says so instead of doing nothing', async () => {
+    // The picker's rows come from a list read once at mount, so a profile
+    // deleted in another tab is still on screen and still clickable. The
+    // handler bailed on `!found` with no output at all: the button simply did
+    // not respond, and nothing on screen changed to explain why.
+    await profiles.create({ name: 'Dorian' });
+    renderProbe();
+    await screen.findByTestId('active');
+
+    await userEvent.click(screen.getByRole('button', { name: 'select dead' }));
+
+    // Asserted at the store, not the DOM: this suite renders the provider
+    // without the Toaster, so the message exists but has nowhere to appear.
+    await waitFor(() => {
+      expect(getToasts().some((t) => /no longer exists/i.test(t.message))).toBe(true);
+    });
+    // And the app is untouched — a dead id must not clear the active profile.
+    expect(screen.getByTestId('active').textContent).toBe('none');
   });
 });

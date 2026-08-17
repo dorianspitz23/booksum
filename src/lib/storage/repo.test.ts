@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { getDb, resetDb } from './db';
 import { blobs, books, profiles, reviewCards, summaries } from './repo';
 import { newCard } from '../srs';
+import { bookInput } from '../../test/fixtures';
 
 beforeEach(async () => {
   await resetDb();
@@ -17,25 +18,14 @@ async function seedProfile(name = 'Dorian') {
   return profiles.create({ name });
 }
 
-function bookInput(profileId: string, overrides: Partial<Parameters<typeof books.create>[0]> = {}) {
-  return {
-    profileId,
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    category: 'Productivity',
-    status: 'Finished' as const,
-    rating: 5,
-    readingTimeMinutes: 12,
-    coverImageUrl: 'https://example.test/cover.jpg',
-    hasPdf: false,
-    ...overrides,
-  };
-}
-
 describe('profiles', () => {
   it('creates a profile with defaults and lists it', async () => {
     const created = await seedProfile();
-    expect(created.id).toMatch(/[0-9a-f-]{36}/);
+    // Anchored. Unanchored, this passed for any string that merely *contained*
+    // 36 hex-or-dash characters — a 200-character blob, or a URL. The id
+    // generator has a non-crypto fallback for insecure origins, so the shape it
+    // actually emits is worth pinning rather than gesturing at.
+    expect(created.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(created.monthlyGoal).toBe(4);
     expect(created.favoriteVoice).toBe('Kore');
     expect(created.theme).toBe('system');

@@ -71,6 +71,12 @@ separate libraries, not to provide security.
 
 ## Status
 
-Phases 1–3 of a planned overhaul are complete. Remaining: open-source packaging — LICENSE,
-screenshots, contributing guide and a hosted demo. See `docs/superpowers/` for the design and
-plans.
+Working and tested, not yet packaged for release.
+
+The foundation, quality and feature work is done, and a full audit of the codebase has been
+worked through by severity. What is missing is the packaging a public repository needs — a
+LICENSE, screenshots, a contributing guide and a hosted demo. None of those exist yet, so do
+not go looking for them.
+
+Design notes and plans are in `docs/superpowers/`; the audit findings and what was done about
+each are in `audit-reports/_harvest/`.
