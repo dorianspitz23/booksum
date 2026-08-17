@@ -5,8 +5,28 @@ import type { Book, Summary } from '../../types';
 // schema accepted three to five.
 import { QUIZ_QUESTION_COUNT, QUIZ_OPTIONS_PER_QUESTION, RECOMMENDATION_COUNT } from './schemas';
 
+/**
+ * Neutralises a user-controlled value before it goes inside a quoted slot.
+ *
+ * Titles and authors reach these templates from a text box and from an imported
+ * Goodreads CSV, and were interpolated raw between quote marks — so a title
+ * containing a quote and a line break closed its own slot, and the rest of it
+ * read to the model as instructions. The damage is bounded (the user's own key,
+ * the user's own library) but it is their money being spent, and an imported CSV
+ * is a file they did not necessarily write.
+ *
+ * Not a guarantee — nothing that concatenates text into a prompt can offer one.
+ * It removes the trivial breakout and caps the length so a pathological title
+ * cannot crowd out the instructions around it.
+ */
+const field = (value: string, max = 300): string =>
+  value
+    .replace(/["\n\r]+/g, ' ')
+    .trim()
+    .slice(0, max);
+
 export const summarizeBookPrompt = (title: string, author?: string) => `
-    Analyze the non-fiction book "${title}" ${author ? `by ${author}` : ''}.
+    Analyze the non-fiction book "${field(title)}" ${author ? `by ${field(author)}` : ''}.
 
     1. **Summary**: Write a robust, multi-paragraph summary (approx. 350-500 words) covering the core thesis, major arguments, and the author's conclusion.
     2. **Key Insights**: Provide 8-12 key insights. Each insight should be a **concise paragraph** (approx. 2-3 sentences) capturing the core concept clearly without being overly wordy.
@@ -26,7 +46,7 @@ export const summarizePdfPrompt = () => `Analyze this document as a non-fiction 
         Follow the JSON schema.`;
 
 export const detailedSummaryPrompt = (book: Book, summary: Summary) => `
-    Create a deep-dive "Masterclass" summary for the book "${book.title}" by ${book.author}.
+    Create a deep-dive "Masterclass" summary for the book "${field(book.title)}" by ${field(book.author)}.
 
     Structure the output in Markdown format with:
     1. Introduction
@@ -47,7 +67,7 @@ export const recommendationsPrompt = (booksList: string) => `
   `;
 
 export const quizPrompt = (book: Book, summary: Summary) => `
-    Create a short multiple-choice quiz (${QUIZ_QUESTION_COUNT} questions, ${QUIZ_OPTIONS_PER_QUESTION} options each) to test the user's understanding of the book "${book.title}".
+    Create a short multiple-choice quiz (${QUIZ_QUESTION_COUNT} questions, ${QUIZ_OPTIONS_PER_QUESTION} options each) to test the user's understanding of the book "${field(book.title)}".
 
     Use the following context to generate the questions:
     Summary: ${summary.summary}
@@ -58,7 +78,7 @@ export const quizPrompt = (book: Book, summary: Summary) => `
   `;
 
 export const chatSystemInstruction = (book: Book, summary: Summary) =>
-  `You are an intelligent, friendly AI assistant designed to help the user understand the book "${book.title}" by ${book.author}.
+  `You are an intelligent, friendly AI assistant designed to help the user understand the book "${field(book.title)}" by ${field(book.author)}.
 
       Here is the specific context and summary of the book:
 

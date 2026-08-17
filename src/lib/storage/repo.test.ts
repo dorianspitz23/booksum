@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getDb, resetDb } from './db';
 import { blobs, books, profiles, reviewCards, summaries } from './repo';
-import { newCard } from '../srs';
+import { isDue, newCard } from '../srs';
 import { bookInput } from '../../test/fixtures';
 
 beforeEach(async () => {
@@ -383,5 +383,83 @@ describe('cascades when there is nothing to cascade', () => {
   it('reports no books cleared for a profile with an empty library', async () => {
     const p = await seedProfile();
     await expect(books.removeAllForProfile(p.id)).resolves.toBe(0);
+  });
+});
+
+describe('the two ways a card can be "due"', () => {
+  it('agrees between isDue and listDue for awkward timestamps', async () => {
+    // `isDue` parses dueAt and compares numerically. `listDue` compares it
+    // lexically, because it is an IndexedDB index range. Those two agree only
+    // if every stored dueAt is fixed-width UTC ISO — an offset timestamp like
+    // "+02:00" parses correctly and sorts wrongly, so a card could be due by
+    // one measure and invisible by the other. upsert canonicalises on write;
+    // this asserts the two actually agree rather than assuming they do.
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+    const now = new Date('2026-08-17T12:00:00.000Z');
+
+    const dueAts = [
+      '2026-08-17T10:00:00.000Z', // plainly past
+      '2026-08-17T14:00:00.000Z', // plainly future
+      '2026-08-17T13:00:00+02:00', // past in UTC (11:00Z), future-looking as text
+      '2026-08-17T11:00:00-02:00', // future in UTC (13:00Z), past-looking as text
+      '2026-08-17T12:00:00.000Z', // exactly now — due
+      'not a date at all', // unparseable — normalised to write time
+      '999-01-01T00:00:00.000Z', // short year, sorts before everything
+    ];
+
+    for (const [index, dueAt] of dueAts.entries()) {
+      await reviewCards.upsert({
+        ...newCard({
+          profileId: p.id,
+          bookId: book.id,
+          question: `q${index}`,
+          options: ['a', 'b', 'c', 'd'],
+          correctAnswerIndex: 0,
+          explanation: 'because',
+        }),
+        id: `card-${index}`,
+        dueAt,
+      });
+    }
+
+    const stored = await reviewCards.listByBook(book.id);
+    expect(stored).toHaveLength(dueAts.length);
+
+    const byIndexQuery = (await reviewCards.listDue(p.id, now)).map((c) => c.id).sort();
+    const byPredicate = stored
+      .filter((c) => isDue(c, now))
+      .map((c) => c.id)
+      .sort();
+
+    expect(byIndexQuery).toEqual(byPredicate);
+  });
+});
+
+describe('numbers that arrive broken', () => {
+  it('does not persist NaN as a monthly goal', async () => {
+    // The goal field is a number input read with parseInt, which gives NaN for
+    // an empty box. NaN satisfies `number`, so it stored cleanly and then
+    // poisoned every read — the goal ring divided by it and rendered NaN%.
+    const p = await seedProfile();
+    const saved = await profiles.update({ ...p, monthlyGoal: Number.NaN });
+
+    expect(saved.monthlyGoal).toBe(4);
+    await expect(profiles.get(p.id)).resolves.toMatchObject({ monthlyGoal: 4 });
+  });
+
+  it.each([
+    ['NaN', Number.NaN, 0],
+    ['above the scale', 99, 5],
+    ['negative', -3, 0],
+    ['fractional', 3.7, 4],
+  ])('clamps a %s rating on write', async (_label, given, expected) => {
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+
+    const saved = await books.update({ ...book, rating: given });
+
+    expect(saved.rating).toBe(expected);
+    await expect(books.get(book.id)).resolves.toMatchObject({ rating: expected });
   });
 });

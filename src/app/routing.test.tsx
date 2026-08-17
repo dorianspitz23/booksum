@@ -88,7 +88,12 @@ describe('routing', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: /your library/i })).toBeInTheDocument(),
     );
-    expect(document.documentElement).toHaveClass('dark');
+    // Waited on rather than asserted immediately after the heading. The heading
+    // and the theme class come from two independent effects, so this only ever
+    // passed by winning a race — and it lost that race once the suite grew busy
+    // enough. Still a real assertion: it fails on timeout if the class never
+    // arrives, which is exactly the regression it exists to catch.
+    await waitFor(() => expect(document.documentElement).toHaveClass('dark'));
   });
 
   it('redirects an unknown book id back to the library', async () => {

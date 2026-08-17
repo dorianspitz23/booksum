@@ -1,9 +1,10 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { resetDb } from '../../lib/storage/db';
 import { profiles } from '../../lib/storage/repo';
 import { useTheme } from './useTheme';
+import type { ThemeChoice } from './useTheme';
 
 let api: ReturnType<typeof useTheme>;
 
@@ -12,7 +13,7 @@ function Probe() {
   return <p data-testid="resolved">{api.resolved}</p>;
 }
 
-async function renderWithTheme(theme: 'system' | 'light' | 'dark') {
+async function renderWithTheme(theme: ThemeChoice) {
   const profile = await profiles.create({ name: 'Dorian', theme });
   localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
   render(
@@ -23,20 +24,54 @@ async function renderWithTheme(theme: 'system' | 'light' | 'dark') {
   return profile;
 }
 
+/**
+ * A matchMedia stub that can actually change.
+ *
+ * The previous one had `addEventListener: vi.fn()` — it recorded the listener
+ * and could never call it. So the hook's entire reason for subscribing was
+ * untestable, and "follows the system" was only ever verified at the instant of
+ * mount. Someone unplugging the subscription would have broken switching your OS
+ * to dark while the app is open, with every test still green.
+ *
+ * Returns a setter so a test can flip the preference and fire the event the
+ * browser would fire.
+ */
 function mockPrefersDark(matches: boolean) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  let current = matches;
+
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({
-      matches,
+      get matches() {
+        return current;
+      },
       media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+        listeners.delete(listener);
+      },
       addListener: vi.fn(),
       removeListener: vi.fn(),
       dispatchEvent: vi.fn(),
       onchange: null,
     })),
   );
+
+  return {
+    /** Flip the system preference and fire the event a real browser would. */
+    set(next: boolean) {
+      current = next;
+      for (const listener of listeners) {
+        listener({ matches: next } as MediaQueryListEvent);
+      }
+    },
+    get listenerCount() {
+      return listeners.size;
+    },
+  };
 }
 
 beforeEach(async () => {
@@ -97,5 +132,38 @@ describe('useTheme', () => {
     });
 
     await expect(profiles.list()).resolves.toHaveLength(0);
+  });
+});
+
+describe('the system preference changing while the app is open', () => {
+  it('follows it, and unsubscribes on unmount', async () => {
+    // The old stub recorded listeners and could never call them, so this whole
+    // path was unverifiable — "follows the system" was only ever checked at the
+    // instant of mount.
+    const system = mockPrefersDark(false);
+    await renderWithTheme('system');
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+    expect(system.listenerCount).toBeGreaterThan(0);
+
+    act(() => {
+      system.set(true);
+    });
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+
+    act(() => {
+      system.set(false);
+    });
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    // And it lets go afterwards — a listener left behind writes to the document
+    // for a component that no longer exists.
+    cleanup();
+    expect(system.listenerCount).toBe(0);
   });
 });

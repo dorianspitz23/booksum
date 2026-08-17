@@ -190,6 +190,18 @@ export function categoryFromShelves(shelves: string): string | undefined {
  * library showed rows of empty grey rectangles rather than the generated
  * initials placeholder.
  */
+/**
+ * Validates rather than trusting. The parse path already runs `cleanIsbn`, but
+ * this is exported and the value it returns is persisted on the book and put
+ * straight into an `img src` — so the guarantee belongs on the function that
+ * makes the URL, not on one of its callers.
+ *
+ * `?default=false` is load-bearing: without it OpenLibrary answers 200 with a
+ * blank 1x1 for an ISBN it has no cover for, so the image "succeeds", the
+ * onError fallback never fires, and an imported library renders rows of empty
+ * rectangles instead of initials.
+ */
 export function coverForIsbn(isbn13: string | undefined): string | undefined {
-  return isbn13 ? `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg?default=false` : undefined;
+  const isbn = cleanIsbn(isbn13);
+  return isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false` : undefined;
 }

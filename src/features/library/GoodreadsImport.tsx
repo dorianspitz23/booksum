@@ -33,6 +33,14 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
     event.target.value = '';
     if (!file) return;
 
+    // Any new pick invalidates the last preview, before anything can fail.
+    // Every rejection below used to return with the previous file's preview
+    // still on screen and its Import button still armed — so after an error
+    // toast about the file you just chose, pressing Import brought in the rows
+    // from the one before it.
+    setPreview(null);
+    setFilename(null);
+
     if (file.size > MAX_CSV_BYTES) {
       toast.error(
         `That file is ${Math.round(file.size / 1024 / 1024)}MB. A Goodreads export of a large library is well under ${MAX_CSV_BYTES / 1024 / 1024}MB.`,

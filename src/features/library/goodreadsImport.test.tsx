@@ -5,6 +5,7 @@ import { books as bookRepo, profiles } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { LibraryProvider, useLibrary } from './useLibrary';
 import { parseGoodreadsCsv } from '../../lib/goodreads';
+import { defined } from '../../test/defined';
 import type * as AiClientModule from '../../lib/ai/client';
 
 /**
@@ -67,14 +68,20 @@ describe('Goodreads import', () => {
     const imported = await bookRepo.listByProfile(profile.id);
     expect(imported).toHaveLength(2);
 
-    const atomic = imported.find((b) => b.title === 'Atomic Habits');
+    const atomic = defined(
+      imported.find((b) => b.title === 'Atomic Habits'),
+      'Atomic Habits should have been imported',
+    );
     expect(atomic).toMatchObject({ status: 'Finished', rating: 5, readingTimeMinutes: 0 });
-    expect(atomic?.summaryId).toBeUndefined();
-    expect(atomic?.coverImageUrl).toContain('9780735211292');
+    expect(atomic.summaryId).toBeUndefined();
+    expect(atomic.coverImageUrl).toContain('9780735211292');
 
-    const deep = imported.find((b) => b.title === 'Deep Work');
-    expect(deep?.status).toBe('Want to Read');
-    expect(deep?.coverImageUrl.startsWith('data:image/svg+xml,')).toBe(true);
+    const deep = defined(
+      imported.find((b) => b.title === 'Deep Work'),
+      'Deep Work should have been imported',
+    );
+    expect(deep.status).toBe('Want to Read');
+    expect(deep.coverImageUrl.startsWith('data:image/svg+xml,')).toBe(true);
   });
 
   it('skips duplicates on a second import of the same file', async () => {

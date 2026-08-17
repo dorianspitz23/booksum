@@ -188,3 +188,31 @@ describe('coverForIsbn', () => {
     expect(coverForIsbn(undefined)).toBeUndefined();
   });
 });
+
+describe('coverForIsbn with input that is not an ISBN', () => {
+  // Whatever this returns is persisted on the book and rendered in an img src,
+  // and the value reaching it came out of a CSV the user picked off disk. It
+  // used to build a URL from anything at all.
+  it.each([
+    ['a URL', 'https://evil.test/x.jpg'],
+    ['a path traversal', '../../../etc/passwd'],
+    ['a query injection', '123?foo=bar'],
+    ['a quoted Goodreads cell', '="9780735211292"'],
+    ['too short', '12345'],
+    ['letters', 'not-an-isbn'],
+    ['empty', ''],
+  ])('returns undefined for %s', (_label, value) => {
+    const url = coverForIsbn(value);
+    // The quoted-cell case is a real ISBN in Goodreads' own escaping, so it is
+    // allowed through — but only after being unwrapped to bare digits.
+    if (url !== undefined) {
+      expect(url).toBe('https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg?default=false');
+    } else {
+      expect(url).toBeUndefined();
+    }
+  });
+
+  it('accepts the ISBN-10 X check digit', () => {
+    expect(coverForIsbn('097522980X')).toContain('097522980X');
+  });
+});

@@ -5,6 +5,24 @@ import { newId } from '../id';
 import type { BlobKind, Book, Profile, ReviewCard, Summary } from '../../types';
 
 /**
+ * A number that survived the round trip through a form field.
+ *
+ * `parseInt('')` is NaN, and NaN satisfies `number` — so it wrote to IndexedDB
+ * cleanly and then poisoned everything downstream, since every arithmetic
+ * result involving it is also NaN. Clamped at the persistence boundary, which
+ * is the last place a bad value can be stopped before it becomes durable.
+ */
+function positiveIntOr(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;
+}
+
+/** Ratings are 0-5; anything else came from a corrupt record or a bad parse. */
+function ratingOr(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(5, Math.max(0, Math.round(value)));
+}
+
+/**
  * One rule about deletion, stated once so the modules below cannot drift apart:
  *
  * **Deleting cascades downwards, and only `profiles` and `books` delete.**
@@ -52,8 +70,13 @@ export const profiles = {
   },
 
   async update(profile: Profile): Promise<Profile> {
-    await (await getDb()).put('profiles', profile);
-    return profile;
+    // monthlyGoal comes from a number input via parseInt, which returns NaN for
+    // an empty field. NaN is a `number` as far as the type is concerned, so it
+    // wrote cleanly and then poisoned every read: the goal ring divided by it
+    // and rendered "NaN%" with no way to recover except editing the field again.
+    const sanitised: Profile = { ...profile, monthlyGoal: positiveIntOr(profile.monthlyGoal, 4) };
+    await (await getDb()).put('profiles', sanitised);
+    return sanitised;
   },
 
   /**
@@ -127,8 +150,17 @@ export const books = {
   },
 
   async update(book: Book): Promise<Book> {
-    await (await getDb()).put('books', book);
-    return book;
+    // Same reasoning as profiles.update: the rating and reading-time fields are
+    // fed by parsed form input and by model output, and NaN is a valid `number`.
+    const sanitised: Book = {
+      ...book,
+      rating: ratingOr(book.rating, 0),
+      readingTimeMinutes: Number.isFinite(book.readingTimeMinutes)
+        ? Math.max(0, Math.round(book.readingTimeMinutes))
+        : 0,
+    };
+    await (await getDb()).put('books', sanitised);
+    return sanitised;
   },
 
   /**
