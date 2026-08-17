@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from './db';
 import { migrateLegacyData, MIGRATION_MARKER } from './migrate';
 import { blobs, books, profiles, summaries } from './repo';
+import { defined } from '../../test/defined';
 
 const LEGACY_USER_ID = 'user_abc123';
 
@@ -91,7 +92,7 @@ describe('migrateLegacyData', () => {
     expect(result.migrated).toBe(true);
     expect(result.profiles).toBe(1);
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     expect(profile?.name).toBe('Dorian');
     expect(profile?.monthlyGoal).toBe(8);
     expect(profile?.favoriteVoice).toBe('Puck');
@@ -101,7 +102,7 @@ describe('migrateLegacyData', () => {
     seedLegacyLocalStorage();
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     const migrated = await books.listByProfile(profile.id);
     expect(migrated).toHaveLength(2);
 
@@ -124,7 +125,7 @@ describe('migrateLegacyData', () => {
     seedLegacyLocalStorage();
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     const migrated = await books.listByProfile(profile.id);
     const atomic = migrated.find((b) => b.title === 'Atomic Habits');
 
@@ -163,7 +164,7 @@ describe('migrateLegacyData', () => {
     localStorage.setItem(`booksum_library_orphan`, JSON.stringify([]));
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     expect(profile?.name).toBe('Reader');
   });
 });
@@ -207,7 +208,7 @@ describe('migrateLegacyData with unreadable legacy data', () => {
     expect(result.books).toBe(2);
     expect(result.blobs).toBe(0);
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     const migrated = await books.listByProfile(profile.id);
     expect(migrated).toHaveLength(2);
   });
@@ -216,7 +217,7 @@ describe('migrateLegacyData with unreadable legacy data', () => {
     seedWithOneBadBook();
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     const migrated = await books.listByProfile(profile.id);
     const corrupt = migrated.find((b) => b.title === 'Corrupt Attachment');
 
@@ -243,7 +244,7 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     seedLegacyLocalStorage();
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     const all = await books.listByProfile(profile.id);
     const atomic = all.find((book) => book.title === 'Atomic Habits');
 
@@ -262,8 +263,8 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
 
     const result = await migrateLegacyData();
 
-    const [profile] = await profiles.list();
-    const [book] = await books.listByProfile(profile.id);
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    const book = defined((await books.listByProfile(profile.id))[0], 'migrated book');
     // Every legacy book used to get a summaryId plus a Summary made of empty
     // strings, so "has a summary?" answered yes and "what does it say?" answered
     // nothing -- and the AI features that need a summary offered themselves anyway.
@@ -285,7 +286,7 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     // An asserted generic made every field read off this string compile fine and
     // resolve to undefined at runtime; the name fallback is what keeps it usable.
     expect(result.profiles).toBe(1);
-    const [profile] = await profiles.list();
+    const profile = defined((await profiles.list())[0], 'migrated profile');
     expect(profile?.name).toBe('Reader');
     await expect(books.listByProfile(profile.id)).resolves.toHaveLength(1);
   });
@@ -341,8 +342,8 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
 
     await migrateLegacyData();
 
-    const [profile] = await profiles.list();
-    const [book] = await books.listByProfile(profile.id);
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    const book = defined((await books.listByProfile(profile.id))[0], 'migrated book');
     expect(book.coverImageUrl).toBe('');
   });
 });

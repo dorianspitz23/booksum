@@ -53,8 +53,8 @@ const SummaryRenderer: React.FC<{ text: string }> = ({ text }) => {
 
         const headerMatch = trimmed.match(/^(#{1,6})\s+(.*)/);
         if (headerMatch) {
-          const level = headerMatch[1].length;
-          const content = headerMatch[2];
+          const [, hashes = '', content = ''] = headerMatch;
+          const level = hashes.length;
           if (level === 1 || level === 2) {
             return (
               <h3

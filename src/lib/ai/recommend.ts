@@ -40,19 +40,21 @@ export async function getAIRecommendations(userBooks: Book[]): Promise<Recommend
         typeof rec.author === 'string',
     );
 
-    // allSettled, not all: one cover lookup throwing used to reject the whole
-    // batch and discard all six recommendations from a call that had already
-    // been paid for. A recommendation with no cover is still a recommendation.
-    const settled = await Promise.allSettled(
-      usable.map(async (rec) => ({ ...rec, coverUrl: await fetchCover(rec.title, rec.author) })),
+    // Each cover lookup catches its own failure rather than the batch settling
+    // as a whole: one lookup throwing used to reject all six recommendations
+    // from a call that had already been paid for. A recommendation with no
+    // cover is still a recommendation. Recovering in place also keeps `rec` in
+    // scope, so the fallback branch cannot pair a result with the wrong record.
+    return await Promise.all(
+      usable.map(async (rec) => {
+        const base = { ...rec, description: rec.description ?? '' };
+        try {
+          return { ...base, coverUrl: await fetchCover(rec.title, rec.author) };
+        } catch {
+          return { ...base, coverUrl: placeholderCover(rec.title) };
+        }
+      }),
     );
-
-    return settled.map((result, index) => {
-      const rec = usable[index];
-      return result.status === 'fulfilled'
-        ? result.value
-        : { ...rec, description: rec.description ?? '', coverUrl: placeholderCover(rec.title) };
-    });
   } catch (error) {
     throw toAiError(error);
   }

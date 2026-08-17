@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddBookModal } from './AddBookModal';
 import type * as AiClientModule from '../lib/ai/client';
 import type { AddBookOptions, BookDraft } from '../features/library/useLibrary';
+import { defined } from '../test/defined';
 
 /** Typed so mock.calls carries the real argument shape. */
 const addSpy = () => vi.fn((_draft: BookDraft, _options?: AddBookOptions) => Promise.resolve());
@@ -46,11 +47,11 @@ describe('adding a book without an API key', () => {
     // user could import three hundred books at once and not add one.
     expect(aiClient.getClient).not.toHaveBeenCalled();
 
-    const draft = onAdd.mock.calls[0][0];
+    const draft = defined(onAdd.mock.calls[0], 'onAdd call')[0];
     expect(draft.title).toBe('Deep Work');
     // No summary: the book is added unsummarised, exactly like an import, and
     // the detail page's "Summarise this book" button takes it from there.
-    expect(onAdd.mock.calls[0][1]).toBeUndefined();
+    expect(defined(onAdd.mock.calls[0], 'onAdd call')[1]).toBeUndefined();
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -62,7 +63,7 @@ describe('adding a book without an API key', () => {
     await userEvent.click(screen.getByRole('button', { name: /add without ai/i }));
 
     await waitFor(() => expect(onAdd).toHaveBeenCalled());
-    const draft = onAdd.mock.calls[0][0];
+    const draft = defined(onAdd.mock.calls[0], 'onAdd call')[0];
     expect(draft.coverImageUrl).toBe('https://example.test/cover.jpg');
   });
 

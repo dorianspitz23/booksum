@@ -93,12 +93,17 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
     // paid generateContent call every time the parent handed down a new object.
   }, [book.id, summary.id, summary.generatedAt]);
 
+  // Read once. Six separate `questions[currentQuestionIndex]` lookups each
+  // assumed the index was in range; hoisting turns that assumption into a value
+  // the "could not generate quiz" branch below already knows how to handle.
+  const question = questions[currentQuestionIndex];
+
   const handleOptionClick = (index: number) => {
-    if (isAnswered) return;
+    if (isAnswered || !question) return;
     setSelectedOption(index);
     setIsAnswered(true);
 
-    if (index === questions[currentQuestionIndex].correctAnswerIndex) {
+    if (index === question.correctAnswerIndex) {
       setScore((s) => s + 1);
     }
   };
@@ -145,7 +150,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
             </p>
             <Loader2 className="animate-spin text-orange-500 mt-4" size={24} />
           </div>
-        ) : questions.length === 0 ? (
+        ) : !question ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <AlertCircle size={48} className="text-red-400 mb-4" />
             <p className="text-gray-900 dark:text-gray-100 font-bold mb-2">
@@ -197,12 +202,12 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
             {/* Question Area */}
             <div className="flex-1 p-6 md:p-8 overflow-y-auto">
               <h3 className="text-xl font-serif font-bold text-gray-900 dark:text-gray-100 mb-6 leading-relaxed">
-                {questions[currentQuestionIndex].question}
+                {question.question}
               </h3>
 
               <div className="space-y-3">
-                {questions[currentQuestionIndex].options.map((option, idx) => {
-                  const isCorrect = idx === questions[currentQuestionIndex].correctAnswerIndex;
+                {question.options.map((option, idx) => {
+                  const isCorrect = idx === question.correctAnswerIndex;
                   const isSelected = selectedOption === idx;
 
                   let buttonStyle =
@@ -261,14 +266,10 @@ export const QuizModal: React.FC<QuizModalProps> = ({ book, summary, onClose }) 
                   className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-100 dark:border-blue-900 animate-in fade-in slide-in-from-bottom-2"
                 >
                   <p className="font-bold text-sm mb-1">
-                    {selectedOption === questions[currentQuestionIndex].correctAnswerIndex
-                      ? 'Correct.'
-                      : 'Not quite.'}{' '}
+                    {selectedOption === question.correctAnswerIndex ? 'Correct.' : 'Not quite.'}{' '}
                     Explanation:
                   </p>
-                  <p className="text-sm leading-relaxed opacity-90">
-                    {questions[currentQuestionIndex].explanation}
-                  </p>
+                  <p className="text-sm leading-relaxed opacity-90">{question.explanation}</p>
                 </div>
               )}
             </div>

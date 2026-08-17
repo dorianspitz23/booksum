@@ -12,6 +12,7 @@ import { newCard } from '../../lib/srs';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { LibraryProvider, useLibrary } from './useLibrary';
 import type { Book, LibraryExport, Summary } from '../../types';
+import { defined } from '../../test/defined';
 
 let api: ReturnType<typeof useLibrary>;
 
@@ -358,11 +359,11 @@ describe('useLibrary.importLibrary', () => {
     // And the importer got its own copy, under a fresh id.
     const mine = await bookRepo.listByProfile(profile.id);
     expect(mine).toHaveLength(1);
-    expect(mine[0].id).not.toBe(theirs.id);
+    expect(defined(mine[0], 'imported copy').id).not.toBe(theirs.id);
 
     // The summary followed that copy rather than being left pointing at a book
     // belonging to someone else.
-    const summary = await summaryRepo.getByBook(mine[0].id);
+    const summary = await summaryRepo.getByBook(defined(mine[0], 'imported copy').id);
     expect(summary?.summary).toBe('From the backup');
   });
 });

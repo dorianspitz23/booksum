@@ -151,7 +151,7 @@ export function categoryFromShelves(shelves: string): string | undefined {
     return shelf
       .split(/[-_\s]+/)
       .filter(Boolean)
-      .map((word) => word[0].toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   }
   return undefined;

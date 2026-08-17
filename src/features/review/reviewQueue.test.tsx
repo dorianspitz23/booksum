@@ -6,6 +6,7 @@ import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
 import { ReviewQueueProvider, useReviewQueue } from './useReviewQueue';
 import { newCard } from '../../lib/srs';
 import type { Profile } from '../../types';
+import { defined } from '../../test/defined';
 
 let api: ReturnType<typeof useReviewQueue>;
 
@@ -157,7 +158,7 @@ describe('useReviewQueue', () => {
 
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('0'));
 
-    const [stored] = await reviewCards.listByProfile(profile.id);
+    const stored = defined((await reviewCards.listByProfile(profile.id))[0], 'graded card');
     expect(stored?.id).toBe(seeded.id);
     expect(Date.parse(stored.dueAt)).toBeGreaterThan(Date.now());
     expect(stored?.reviewCount).toBe(1);
@@ -174,7 +175,7 @@ describe('useReviewQueue', () => {
       await api.grade(1);
     });
 
-    const [stored] = await reviewCards.listByProfile(profile.id);
+    const stored = defined((await reviewCards.listByProfile(profile.id))[0], 'graded card');
     expect(stored?.intervalDays).toBe(1);
     expect(Date.parse(stored.dueAt)).toBeGreaterThan(Date.now());
   });

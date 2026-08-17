@@ -479,7 +479,11 @@ export const EReader: React.FC<EReaderProps> = ({
           className={`max-w-2xl mx-auto px-6 py-12 md:py-20 ${fontSize} transition-all duration-300`}
         >
           <div key={page} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <RenderFormattedContent content={pages[page]} isFirstPage={page === 0} theme={theme} />
+            <RenderFormattedContent
+              content={pages[page] ?? ''}
+              isFirstPage={page === 0}
+              theme={theme}
+            />
           </div>
 
           {/* Chapter End Navigation (In-Flow) */}

@@ -33,10 +33,22 @@ export function tryBase64ToBytes(base64: string | undefined): Uint8Array<ArrayBu
   }
 }
 
+/**
+ * Chunked rather than byte-by-byte. The one-character-at-a-time concatenation
+ * this replaces ran the whole length of a PDF on the main thread, appending to
+ * a string that the engine has to keep flattening — a 10 MB upload froze the
+ * tab for the duration. Converting 8 KB at a time hands the same work to the
+ * engine in blocks it can do natively.
+ *
+ * 8192 is well inside the argument-count limit for a spread call on every
+ * engine this runs in; larger chunks risk a "too many arguments" RangeError.
+ */
+const CHUNK = 8192;
+
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   return btoa(binary);
 }

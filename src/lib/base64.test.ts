@@ -17,6 +17,16 @@ describe('base64', () => {
     expect(new TextDecoder().decode(base64ToBytes('Qm9va1N1bQ=='))).toBe('BookSum');
   });
 
+  it('round-trips across the chunk boundary', () => {
+    // bytesToBase64 encodes 8192 bytes at a time rather than one at a time, so
+    // the seams between chunks are the only place a length or offset slip can
+    // hide. 20000 spans two full chunks and lands mid-way through a third.
+    const bytes = new Uint8Array(20000);
+    for (let i = 0; i < bytes.length; i += 1) bytes[i] = (i * 7) % 256;
+
+    expect(base64ToBytes(bytesToBase64(bytes))).toEqual(bytes);
+  });
+
   it('throws on input outside the alphabet', () => {
     // Documented here because the signature reads as total and is not: this is
     // fed legacy localStorage written by a different version of the app, so

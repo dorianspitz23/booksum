@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BookDetail } from './BookDetail';
 import type { Book, Summary } from '../types';
+import { defined } from '../test/defined';
 
 /**
  * A book with no summary is a first-class state: `importGoodreadsRows` creates
@@ -119,7 +120,12 @@ describe('BookDetail summarise action', () => {
   it('calls back when pressed and shows progress', async () => {
     const onSummarise = renderDetail(undefined);
 
-    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]);
+    await userEvent.click(
+      defined(
+        screen.getAllByRole('button', { name: /summarise this book/i })[0],
+        'summarise button',
+      ),
+    );
 
     expect(onSummarise).toHaveBeenCalledTimes(1);
   });
@@ -128,10 +134,20 @@ describe('BookDetail summarise action', () => {
     const failing = vi.fn(() => Promise.reject(new Error('nope')));
     renderDetail(undefined, failing);
 
-    await userEvent.click(screen.getAllByRole('button', { name: /summarise this book/i })[0]);
+    await userEvent.click(
+      defined(
+        screen.getAllByRole('button', { name: /summarise this book/i })[0],
+        'summarise button',
+      ),
+    );
 
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: /summarise this book/i })[0]).toBeEnabled(),
+      expect(
+        defined(
+          screen.getAllByRole('button', { name: /summarise this book/i })[0],
+          'summarise button',
+        ),
+      ).toBeEnabled(),
     );
   });
 });

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearToasts, dismissToast, getToasts, subscribeToToasts, toast } from './toastStore';
+import { defined } from '../../test/defined';
 
 beforeEach(() => {
   clearToasts();
@@ -22,12 +23,12 @@ describe('toastStore', () => {
     toast.success('one');
     toast.success('two');
     const [a, b] = getToasts();
-    expect(a.id).not.toBe(b.id);
+    expect(defined(a, 'first toast').id).not.toBe(defined(b, 'second toast').id);
   });
 
   it('dismisses by id', () => {
     toast.error('gone soon');
-    dismissToast(getToasts()[0].id);
+    dismissToast(defined(getToasts()[0], 'toast').id);
     expect(getToasts()).toHaveLength(0);
   });
 

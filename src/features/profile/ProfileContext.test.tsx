@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from '../../lib/storage/db';
 import { books, profiles } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider, useProfile } from './ProfileContext';
+import { defined } from '../../test/defined';
 
 function Probe() {
   const { profile, allProfiles, isLoading, createProfile, selectProfile, signOut } = useProfile();
@@ -13,7 +14,9 @@ function Probe() {
       <p data-testid="active">{profile?.name ?? 'none'}</p>
       <p data-testid="count">{allProfiles.length}</p>
       <button onClick={() => void createProfile('Dorian')}>create</button>
-      <button onClick={() => void selectProfile(allProfiles[0].id)}>select first</button>
+      <button onClick={() => void selectProfile(defined(allProfiles[0], 'first profile').id)}>
+        select first
+      </button>
       <button onClick={signOut}>sign out</button>
     </div>
   );

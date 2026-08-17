@@ -32,10 +32,13 @@ export function newId(): string {
   }
 
   const bytes = randomBytes(16);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
-  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+  // `?? 0` is unreachable — randomBytes(16) always fills all sixteen — but the
+  // compiler cannot see that through an index, and a silent 0 here is a correct
+  // (if less random) byte rather than a NaN that would corrupt the whole id.
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40; // version 4
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80; // variant 10xx
 
-  const hex = Array.from(bytes, (byte) => HEX[byte]);
+  const hex = Array.from(bytes, (byte) => HEX[byte] ?? '00');
   return [
     hex.slice(0, 4).join(''),
     hex.slice(4, 6).join(''),
