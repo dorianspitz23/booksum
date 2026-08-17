@@ -25,6 +25,9 @@ is public — several are genuinely well-shaped starter tasks for a contributor.
 | F020 | **Surface `ease` / `intervalDays` / `reviewCount`.** Every grade writes all three and nothing ever reads them back. | A "next due in N days" line on a card, or a retention stat, would make the schedule legible instead of invisible. |
 | F007 | **Preview-before-add.** `BookDetail` still contains a fully-built preview mode (`isPreview`, `onAdd`) that no caller can reach. | Removed from the flow in Phase 1. Either wire it back or delete the branch — right now it is dead weight that reads as a feature. |
 
+| F039 | **Show what the AI is costing.** Every Gemini response carries a `usageMetadata` block with token counts, and every call throws it away. | This is a bring-your-own-key product: the user pays Google directly and the app never tells them how much of their quota a summary, a quiz, or a narration just spent. A running per-book or per-session token figure would need somewhere to store it and somewhere to show it — a small feature, not a defect fix. |
+| F047 | **Show a book's retention on its own page.** Every graded card writes `ease`, `intervalDays` and `reviewCount` against a bookId, and the book's page never reads any of it. | Closely related to F020, which asks for the same numbers on the card. The data is already there and already correct; what is missing is a place to render it. |
+
 ## Partially addressed
 
 | id | What | Where it stands |

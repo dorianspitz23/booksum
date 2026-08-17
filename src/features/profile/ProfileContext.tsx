@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { migrateLegacyData } from '../../lib/storage/migrate';
+import { migrateThenListProfiles } from '../../lib/storage/migrate';
 import { profiles as profileRepo } from '../../lib/storage/repo';
 import type { Profile } from '../../types';
 
@@ -30,16 +30,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        // The migration reads data this app did not write. A throw here used to
-        // skip setIsLoading(false) entirely, pinning the app on the loading
-        // spinner forever, on every reload, with no way out from inside the app.
-        await migrateLegacyData();
-      } catch (error) {
-        console.error('[booksum] legacy migration failed; continuing without it', error);
-      }
-
-      try {
-        const list = await profileRepo.list();
+        // Migrate-then-list, as one call. These were two adjacent statements
+        // here, and the order between them is load-bearing: list first and a
+        // returning user meets an empty "Who's reading?" screen and concludes
+        // their library is gone. Nothing but adjacency held them in that order.
+        // `migrateThenListProfiles` also swallows a failed migration, because it
+        // reads data this app did not write and whatever is already in
+        // IndexedDB is still worth showing — a throw here used to skip
+        // setIsLoading(false) and pin the app on the spinner on every reload.
+        const list = await migrateThenListProfiles();
         if (cancelled) return;
 
         setAllProfiles(list);

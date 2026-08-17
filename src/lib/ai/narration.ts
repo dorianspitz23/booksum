@@ -8,16 +8,20 @@ const kindFor = (type: NarrationType): BlobKind =>
   type === 'short' ? 'audio-short' : 'audio-long';
 
 /**
- * The voice is recorded as a MIME parameter on the stored blob so that changing
- * the profile's voice invalidates the cache rather than silently replaying the
- * old one. `audio/wav;voice=Kore` is well-formed and survives the round trip.
+ * The voice that generated a cached narration is stored in its own field on the
+ * blob record, so changing the profile's voice invalidates the cache rather
+ * than silently replaying the old one.
+ *
+ * It used to ride as a `;voice=Kore` parameter on the stored MIME type, which
+ * made one string do two jobs: the cache key, and the value the browser is told
+ * to render those bytes as. Constraining the second (a stored MIME comes back
+ * out on a same-origin `blob:` URL) broke the first, and the cache silently
+ * regenerated on every play. Compared case-insensitively because the Blob
+ * constructor lowercased the old tag, and records written then are still out
+ * there.
  */
-// Compared case-insensitively: the Blob constructor lowercases `type`, so a tag
-// written as `voice=Kore` reads back as `voice=kore` and a naive equality check
-// misses every time -- which silently defeated the cache entirely.
-const mimeFor = (voice: VoiceName) => `audio/wav;voice=${voice}`;
-const voiceOf = (mime: string) => mime.split('voice=')[1]?.trim().toLowerCase();
-const isVoice = (mime: string, voice: VoiceName) => voiceOf(mime) === voice.toLowerCase();
+const sameVoice = (stored: string | undefined, voice: VoiceName) =>
+  stored?.trim().toLowerCase() === voice.toLowerCase();
 
 /**
  * Narration used to be regenerated on every single play. The blob store already
@@ -32,13 +36,14 @@ export async function getOrCreateNarration(
 ): Promise<Blob> {
   const kind = kindFor(type);
 
-  const cached = await blobs.get(book.id, kind);
-  if (cached && isVoice(cached.type, voice)) return cached;
+  const cached = await blobs.getWithVoice(book.id, kind);
+  if (cached && sameVoice(cached.voice, voice)) return cached.blob;
 
   const fresh = await generateAudioSummary(book, summary, type, voice);
-  const tagged = new Blob([await fresh.arrayBuffer()], { type: mimeFor(voice) });
-  await blobs.put(book.id, kind, tagged);
-  return tagged;
+  await blobs.put(book.id, kind, fresh, voice);
+  // Read back rather than returned directly, so the caller gets the same
+  // constrained-MIME Blob every later play will get.
+  return (await blobs.get(book.id, kind)) ?? fresh;
 }
 
 /** Drops any cached narration for a book, e.g. after its summary is regenerated. */

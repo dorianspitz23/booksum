@@ -21,7 +21,7 @@ export interface AddBookOptions {
   pdf?: Blob;
 }
 
-function useLibraryState() {
+function useLibraryState(): LibraryApi {
   const { profile, isLoading: profileLoading, updateProfile } = useProfile();
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +59,13 @@ function useLibraryState() {
         profileId: profile.id,
         summaryId,
         ...(options.summary && { oneSentenceTakeaway: options.summary.oneSentenceTakeaway }),
+        // Derived for the same reason. `hasPdf` is a denormalised copy of "is
+        // there a row in the blob store", and every caller was asked to state it
+        // a second time alongside the blob it was already handing over —
+        // `Boolean(pdf)` in one place, a hardcoded `false` in two others. Two
+        // statements of one fact drift, and a book claiming a PDF it does not
+        // have shows a Read button that opens an empty reader.
+        hasPdf: Boolean(options.pdf),
       });
 
       if (options.summary && summaryId) {
@@ -316,7 +323,38 @@ function useLibraryState() {
   };
 }
 
-export type LibraryApi = ReturnType<typeof useLibraryState>;
+/**
+ * The library's public contract, written out rather than inferred.
+ *
+ * This was `ReturnType<typeof useLibraryState>`, which means the contract is
+ * whatever the implementation happens to return today. Rename a field, widen a
+ * return type, drop a method by accident — the type follows silently and the
+ * only thing that notices is a consumer, at the call site, later. Stating it
+ * here makes the compiler check the hook against the promise instead, and gives
+ * the seven components that consume it one place to read.
+ */
+export interface LibraryApi {
+  /** Every book for the active profile. Empty while `isLoading` is true. */
+  books: Book[];
+  /** True until the first read for the active profile has resolved. */
+  isLoading: boolean;
+
+  addBook: (draft: BookDraft, options?: AddBookOptions) => Promise<Book>;
+  updateBook: (book: Book) => Promise<void>;
+  removeBook: (id: string) => Promise<void>;
+  /** Empties the active profile's library. Returns how many books went. */
+  clearLibrary: () => Promise<number>;
+
+  getSummary: (bookId: string) => Promise<Summary | undefined>;
+  saveSummary: (summary: Summary) => Promise<void>;
+
+  exportLibrary: () => Promise<LibraryExport>;
+  /** Returns how many books were added; existing books are left alone. */
+  importLibrary: (payload: LibraryExport) => Promise<number>;
+  importGoodreadsRows: (rows: GoodreadsRow[]) => Promise<{ added: number; duplicates: number }>;
+
+  reload: () => Promise<void>;
+}
 
 const LibraryContext = createContext<LibraryApi | undefined>(undefined);
 

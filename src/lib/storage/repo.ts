@@ -244,8 +244,27 @@ function isArrayBuffer(value: unknown): value is ArrayBuffer {
   return Object.prototype.toString.call(value) === '[object ArrayBuffer]';
 }
 
+/**
+ * The MIME type a blob is stored and re-served with, decided by what kind of
+ * blob it is rather than by what the incoming Blob claimed.
+ *
+ * `type: blob.type` copied an unconstrained string in from outside — for a PDF,
+ * from a file the user picked off disk — and that string comes back out on a
+ * `blob:` URL that the reader opens. A `blob:` URL inherits this page's origin,
+ * so the stored type decides whether the browser renders those bytes as a
+ * document or as markup with our origin's privileges. There are exactly two
+ * kinds of blob in this app and both have one correct type, so nothing is lost
+ * by naming them here and the question stops existing.
+ */
+const BLOB_MIME: Record<BlobKind, string> = {
+  pdf: 'application/pdf',
+  'audio-short': 'audio/wav',
+  'audio-long': 'audio/wav',
+};
+
 export const blobs = {
-  async put(bookId: string, kind: BlobKind, blob: Blob): Promise<void> {
+  /** `voice` records which voice generated an audio blob; see StoredBlob. */
+  async put(bookId: string, kind: BlobKind, blob: Blob, voice?: string): Promise<void> {
     const bytes = await blob.arrayBuffer();
     await (
       await getDb()
@@ -254,7 +273,8 @@ export const blobs = {
       bookId,
       kind,
       bytes,
-      type: blob.type,
+      type: BLOB_MIME[kind],
+      ...(voice !== undefined && { voice }),
     });
   },
 
@@ -267,13 +287,28 @@ export const blobs = {
    * caller already handles.
    */
   async get(bookId: string, kind: BlobKind): Promise<Blob | undefined> {
+    return (await blobs.getWithVoice(bookId, kind))?.blob;
+  },
+
+  /**
+   * The same read, plus the voice that generated it — one round trip rather
+   * than two for the narration cache, which needs both to decide whether the
+   * stored audio is still the one the profile asked for.
+   */
+  async getWithVoice(
+    bookId: string,
+    kind: BlobKind,
+  ): Promise<{ blob: Blob; voice?: string } | undefined> {
     const record = await (await getDb()).get('blobs', blobKey(bookId, kind));
     if (!record) return undefined;
 
     const bytes: unknown = record.bytes;
     if (!isArrayBuffer(bytes)) return undefined;
 
-    return new Blob([bytes], { type: typeof record.type === 'string' ? record.type : '' });
+    return {
+      blob: new Blob([bytes], { type: BLOB_MIME[kind] }),
+      ...(typeof record.voice === 'string' && { voice: record.voice }),
+    };
   },
 
   async remove(bookId: string, kind: BlobKind): Promise<void> {

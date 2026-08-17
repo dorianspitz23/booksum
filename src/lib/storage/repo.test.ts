@@ -128,6 +128,34 @@ describe('blobs', () => {
     expect(await stored?.text()).toBe('two-longer');
   });
 
+  it('serves the type the kind says, not the one the incoming file claimed', async () => {
+    // `type: blob.type` copied a string in from a file the user picked off disk
+    // and handed it straight back out on a `blob:` URL — and a blob: URL
+    // inherits this page's origin, so that string decides whether the browser
+    // renders the bytes as a document or as markup with our privileges.
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id, { hasPdf: true }));
+
+    await blobs.put(book.id, 'pdf', new Blob(['<script>alert(1)</script>'], { type: 'text/html' }));
+
+    const stored = await blobs.get(book.id, 'pdf');
+    expect(stored?.type).toBe('application/pdf');
+  });
+
+  it('keeps the voice that generated a narration alongside it', async () => {
+    // The voice used to ride as a `;voice=Kore` parameter on the stored MIME,
+    // so one string was both the cache key and the type the browser renders by.
+    // Constraining the second broke the first: the cache regenerated every play.
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+
+    await blobs.put(book.id, 'audio-short', new Blob(['wav bytes']), 'Kore');
+
+    const stored = await blobs.getWithVoice(book.id, 'audio-short');
+    expect(stored?.voice).toBe('Kore');
+    expect(stored?.blob.type).toBe('audio/wav');
+  });
+
   it('reports nothing stored rather than building a Blob out of a corrupt record', async () => {
     // `new Blob([x])` accepts anything and stringifies what it does not
     // recognise, so a record whose `bytes` is not an ArrayBuffer used to come

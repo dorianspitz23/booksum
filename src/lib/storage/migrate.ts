@@ -2,7 +2,7 @@ import { tryBase64ToBytes } from '../base64';
 import { newId } from '../id';
 import { blobs, books, profiles, summaries } from './repo';
 import { VOICE_NAMES } from '../../types';
-import type { Priority, VoiceName } from '../../types';
+import type { Priority, Profile, VoiceName } from '../../types';
 
 export { MIGRATION_MARKER } from '../storageKeys';
 import { MIGRATION_MARKER, LEGACY_LIBRARY_PREFIX, legacyProfileKey } from '../storageKeys';
@@ -74,6 +74,20 @@ const asPositiveInt = (value: unknown): number | undefined =>
 const asVoice = (value: unknown): VoiceName | undefined =>
   VOICE_NAMES.find((voice) => voice === value);
 
+/**
+ * A timestamp only counts if it parses. `createdAt` is the sort key
+ * `profiles.list` orders on, so "2026" or "last Tuesday" coming out of a legacy
+ * record would not fail loudly — it would quietly order the profile picker
+ * wrongly, forever, with nothing to point at. Normalised to real ISO so the
+ * comparison it feeds is a comparison of two dates.
+ */
+const asIsoDate = (value: unknown): string | undefined => {
+  const text = asString(value);
+  if (!text) return undefined;
+  const parsed = Date.parse(text);
+  return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
+};
+
 const EMPTY: MigrationResult = {
   migrated: false,
   profiles: 0,
@@ -128,10 +142,9 @@ function readJson(key: string): unknown {
 /**
  * Legacy attachments are base64 written by the original app. `atob` throws on
  * anything outside the alphabet, so this returns null rather than propagating
- * and taking the whole migration down with it. The guard now lives in
- * `tryBase64ToBytes`, since every caller was hand-rolling this same wrapper.
- */
-/**
+ * and taking the whole migration down with it — the guard itself lives in
+ * `tryBase64ToBytes`, since every caller was hand-rolling the same wrapper.
+ *
  * Takes `unknown` because that is what a legacy record's attachment field
  * actually is. Anything that is not a string is "no attachment", which is the
  * same outcome as a string that will not decode.
@@ -177,7 +190,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
         bio: asString(legacyProfile.bio),
         monthlyGoal: asPositiveInt(legacyProfile.monthlyGoal),
         favoriteVoice: asVoice(legacyProfile.favoriteVoice),
-        createdAt: asString(legacyProfile.joinedAt),
+        createdAt: asIsoDate(legacyProfile.joinedAt),
       });
       result.profiles += 1;
 
@@ -295,4 +308,26 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
   // had already been written -- duplicating the library on every boot.
   localStorage.setItem(MIGRATION_MARKER, new Date().toISOString());
   return result;
+}
+
+/**
+ * The supported way to read profiles at startup.
+ *
+ * Migrating and then listing is a load-bearing order — list first and a
+ * returning user sees an empty "Who's reading?" screen and, reasonably,
+ * concludes their library is gone. That order used to live as two adjacent
+ * statements inside one effect in ProfileContext, held together by nothing but
+ * the fact that nobody had moved them. Here it is a property of a function, so
+ * reordering it means editing the thing whose name says what the order is.
+ *
+ * A failed migration is not fatal: it reads data this app did not write, and
+ * whatever is already in IndexedDB is still worth showing.
+ */
+export async function migrateThenListProfiles(): Promise<Profile[]> {
+  try {
+    await migrateLegacyData();
+  } catch (error) {
+    console.error('[booksum] legacy migration failed; continuing without it', error);
+  }
+  return profiles.list();
 }

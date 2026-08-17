@@ -89,7 +89,25 @@ export interface StoredBlob {
    * converts to and from Blob at its boundary so callers never see this.
    */
   bytes: ArrayBuffer;
+  /**
+   * Decided by `kind`, never copied from the incoming Blob — this value comes
+   * back out on a `blob:` URL, which inherits this page's origin, so it decides
+   * whether the browser treats the bytes as a document or as markup with our
+   * privileges. See BLOB_MIME in the repo.
+   */
   type: string;
+  /**
+   * Which voice generated an audio blob, so changing the profile's voice
+   * invalidates the cached narration instead of replaying the old one.
+   *
+   * A field rather than a `;voice=Kore` parameter on `type`, which is where it
+   * used to live: overloading the MIME meant the cache key and the value the
+   * browser is told to render were the same string, so constraining one broke
+   * the other. IndexedDB object stores are schemaless, so adding this needed no
+   * version bump — records written before it simply have no voice, and are
+   * regenerated once.
+   */
+  voice?: string;
 }
 
 /** Created in the v1 schema so Phase 3 needs no database version bump. */

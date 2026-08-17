@@ -8,10 +8,25 @@ import { newCard } from '../../lib/srs';
 import type { Profile } from '../../types';
 import { defined } from '../../test/defined';
 
-let api: ReturnType<typeof useReviewQueue>;
+/**
+ * Written by the Probe on render and cleared between tests.
+ *
+ * As a bare module-level binding this survived teardown, so a test that never
+ * mounted a Probe silently operated on the *previous* test's api object — a
+ * closure over a component that no longer existed. That fails later, somewhere
+ * else, and blames the wrong test. Reading it through `queue()` turns the same
+ * mistake into "the review queue was read before it was mounted".
+ */
+let mounted: ReturnType<typeof useReviewQueue> | null = null;
+
+function queue(): ReturnType<typeof useReviewQueue> {
+  if (!mounted) throw new Error('the review queue was read before it was mounted');
+  return mounted;
+}
 
 function Probe() {
-  api = useReviewQueue();
+  mounted = useReviewQueue();
+  const api = mounted;
   return <p data-testid="remaining">{api.isLoading ? 'loading' : String(api.remaining)}</p>;
 }
 
@@ -44,6 +59,7 @@ function mount() {
 }
 
 beforeEach(async () => {
+  mounted = null;
   await resetDb();
   localStorage.clear();
 });
@@ -71,7 +87,7 @@ describe('useReviewQueue with unusable cards', () => {
     mount();
 
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
-    expect(api.current?.question).toBe('Answerable');
+    expect(queue().current?.question).toBe('Answerable');
   });
 
   it('skips a card whose correct answer is out of range', async () => {
@@ -121,7 +137,7 @@ describe('useReviewQueue', () => {
     mount();
 
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
-    expect(api.current?.question).toBe('What is a habit stack?');
+    expect(queue().current?.question).toBe('What is a habit stack?');
   });
 
   it('ignores cards that are not due yet', async () => {
@@ -142,7 +158,7 @@ describe('useReviewQueue', () => {
     mount();
 
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
-    expect(api.current?.question).toBe('Mine');
+    expect(queue().current?.question).toBe('Mine');
   });
 
   it('removes a card from the queue when graded good and pushes it into the future', async () => {
@@ -153,7 +169,7 @@ describe('useReviewQueue', () => {
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
 
     await act(async () => {
-      await api.grade(3);
+      await queue().grade(3);
     });
 
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('0'));
@@ -172,7 +188,7 @@ describe('useReviewQueue', () => {
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('1'));
 
     await act(async () => {
-      await api.grade(1);
+      await queue().grade(1);
     });
 
     const stored = defined((await reviewCards.listByProfile(profile.id))[0], 'graded card');
@@ -187,13 +203,13 @@ describe('useReviewQueue', () => {
 
     mount();
     await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('2'));
-    expect(api.current?.question).toBe('First');
+    expect(queue().current?.question).toBe('First');
 
     await act(async () => {
-      await api.grade(3);
+      await queue().grade(3);
     });
 
-    await waitFor(() => expect(api.current?.question).toBe('Second'));
+    await waitFor(() => expect(queue().current?.question).toBe('Second'));
   });
 
   it('drops a book cards when the book is deleted', async () => {
