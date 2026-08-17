@@ -285,3 +285,31 @@ sites; the union means narrowing at 17 call sites), S138 (import retry measured
 as idempotent by id, with one narrow fail-safe gap).
 
 **Next: 97 open lows.**
+
+## Wave 4 — lows — COMPLETE
+
+142 / 142. Total **441 / 441**.
+
+Gate on every commit: `tsc` clean, type-aware ESLint clean, `prettier --check`
+clean, 37 test files / 446 tests with 0 dropped, `vite build` clean.
+
+### Recorded as decisions, not fixes
+
+Each was measured before being declined; the number is the argument.
+
+| Finding | Measured | Decision |
+|---|---|---|
+| F094 per-read validation of every IndexedDB row | — | Declined. Every read that could actually be poisoned (profile sort key, blob bytes, card `dueAt`, quiz options) is guarded at its own boundary, and each was a real bug now fixed. A blanket validator is a second schema to keep in sync with the first. |
+| F100 / F104 branded id types | **82 errors**: 18 in source across 6 files, 64 casts in test fixtures | Declined. The concrete risk is one adjacent pair (`reviewCards.listByProfile` / `listByBook`, identical signatures, a swap returns `[]` and reads as "nothing due"). That swap now has a behavioural test asserting each rejects the other's id kind. |
+| `noPropertyAccessFromIndexSignature` | **60 errors** | Declined. Ceremony — `noUncheckedIndexedAccess` (now on) forces the check that prevents the actual bug. |
+| Splitting jest-dom types out of app scope | — | Declined. Needs project references; prevents a mistake that would fail instantly and loudly. |
+| S137 architectural complexity | — | **Negative result.** Layering is proportionate; no speculative abstraction, no layer with one consumer. |
+| S053 conflicting display utilities | **0 sites** | Refuted by measurement. Scanner kept at `audit-reports/_harvest/display-conflicts.mjs` so it stays re-checkable. |
+| S130 API key in logs | — | Refuted. The SDK sends the key as a header; its one URL-embedded key builds a music-streaming socket this app never opens; its error objects carry only message and status. |
+
+### Feature requests, not defects
+
+Moved to `FEATURE-REQUESTS.md` rather than built: whole-library chat, bulk
+multi-select, resumable chat history, token-usage reporting, per-book retention,
+saving generated narration, a local-model endpoint setting, a storage-usage
+surface, and a multi-book listening queue.
