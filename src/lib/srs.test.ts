@@ -148,3 +148,41 @@ describe('isAnswerable', () => {
     expect(isAnswerable(card({ options: ['a', 'b'], correctAnswerIndex: 1.5 }))).toBe(false);
   });
 });
+
+describe('a card whose stored numbers are not numbers', () => {
+  const broken = (over: Partial<ReviewCard>): ReviewCard => ({
+    ...newCard({
+      profileId: 'p',
+      bookId: 'b',
+      question: 'q',
+      options: ['a', 'b'],
+      correctAnswerIndex: 0,
+      explanation: '',
+    }),
+    ...over,
+  });
+
+  it('does not throw a RangeError when intervalDays is not finite', () => {
+    // `new Date(NaN).toISOString()` throws. Grading a card whose stored interval
+    // had gone non-finite therefore took the whole review page down mid-session,
+    // and there was no way past that card to reach any of the others.
+    const scheduled = scheduleCard(broken({ intervalDays: Number.NaN }), 3);
+    expect(Number.isNaN(Date.parse(scheduled.dueAt))).toBe(false);
+    expect(scheduled.intervalDays).toBe(1);
+  });
+
+  it('recovers a non-finite ease to the starting value', () => {
+    const scheduled = scheduleCard(broken({ ease: Number.POSITIVE_INFINITY }), 3);
+    expect(Number.isFinite(scheduled.ease)).toBe(true);
+    expect(Number.isNaN(Date.parse(scheduled.dueAt))).toBe(false);
+  });
+
+  it('caps ease so repeated Easy grades cannot run the interval away', () => {
+    let card = broken({});
+    for (let i = 0; i < 40; i += 1) card = scheduleCard(card, 4);
+
+    expect(card.ease).toBeLessThanOrEqual(3);
+    expect(card.intervalDays).toBeLessThanOrEqual(10_000);
+    expect(Number.isNaN(Date.parse(card.dueAt))).toBe(false);
+  });
+});

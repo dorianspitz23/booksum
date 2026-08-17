@@ -111,7 +111,15 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, onClose, autoPl
     }
   };
 
+  /**
+   * `HTMLMediaElement.duration` is NaN until metadata loads and Infinity for a
+   * stream of unknown length, and both went straight through this arithmetic —
+   * the player showed "NaN:NaN" beside the scrubber for as long as the metadata
+   * never arrived, which is precisely when the user is already wondering
+   * whether anything is happening at all. An em dash says "not known yet".
+   */
   const formatTime = (time: number) => {
+    if (!Number.isFinite(time) || time < 0) return '—:—';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;

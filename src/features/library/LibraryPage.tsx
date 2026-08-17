@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Bookmark, CheckCircle, Filter, Layers, Library, Search } from 'lucide-react';
 import { BookCard } from '../../components/BookCard';
-import { RecommendationCarousel } from './RecommendationCarousel';
+import { RecommendationCarousel, recKey } from './RecommendationCarousel';
 import { useLibrary } from './useLibrary';
 import { useProfile } from '../profile/ProfileContext';
 import { useShell } from '../../app/ShellContext';
@@ -25,7 +25,7 @@ export function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>(RECOMMENDED_BOOKS);
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
-  const [addingBookTitle, setAddingBookTitle] = useState<string | null>(null);
+  const [addingBookKey, setAddingBookKey] = useState<string | null>(null);
 
   // Cached recommendations. No AI call fires on load — refreshing is explicit.
   useEffect(() => {
@@ -97,9 +97,15 @@ export function LibraryPage() {
     }
   };
 
-  const previewRecommendation = async (rec: Recommendation) => {
-    if (addingBookTitle) return;
-    setAddingBookTitle(rec.title);
+  /**
+   * Named for what it does. It was `previewRecommendation`, which is what the
+   * original flow did — show the book first, add it if you liked it. It has
+   * summarised, saved and navigated away since Phase 1, and a name describing a
+   * flow that no longer exists is worse than no name.
+   */
+  const summariseAndAddRecommendation = async (rec: Recommendation) => {
+    if (addingBookKey) return;
+    setAddingBookKey(recKey(rec));
     try {
       const { book, summary } = await summarizeBook(rec.title, rec.author);
       const created = await addBook(
@@ -111,7 +117,7 @@ export function LibraryPage() {
     } catch (error) {
       toast.error(handleAiError(error));
     } finally {
-      setAddingBookTitle(null);
+      setAddingBookKey(null);
     }
   };
 
@@ -263,8 +269,8 @@ export function LibraryPage() {
           isRefreshing={isRefreshingRecs}
           canRefresh={books.length > 0}
           onRefresh={() => void refreshRecommendations()}
-          onPreview={(rec) => void previewRecommendation(rec)}
-          addingBookTitle={addingBookTitle}
+          onPreview={(rec) => void summariseAndAddRecommendation(rec)}
+          addingBookKey={addingBookKey}
           // Identity comparison, not a length check: `recommendations` only
           // stops being this exact array once a real generation replaces it.
           isPersonalised={recommendations !== RECOMMENDED_BOOKS}

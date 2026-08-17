@@ -1,6 +1,19 @@
 import { useRef } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { placeholderCover } from '../../lib/covers';
+
+/** Matches the `gap-6` on the scroll container below. */
+const CARD_GAP = 24;
+
+/**
+ * A recommendation's identity, for React keys and for the in-flight marker.
+ *
+ * Both used the title alone. A title is not unique — a series, a reissue, or
+ * two different books the model happened to name the same thing gave React two
+ * siblings with one key, and started the spinner on both cards while only one
+ * was being added.
+ */
+export const recKey = (rec: Recommendation) => `${rec.title}—${rec.author}`;
 import type { Recommendation } from '../../lib/ai/recommend';
 
 interface RecommendationCarouselProps {
@@ -9,7 +22,7 @@ interface RecommendationCarouselProps {
   canRefresh: boolean;
   onRefresh: () => void;
   onPreview: (rec: Recommendation) => void;
-  addingBookTitle: string | null;
+  addingBookKey: string | null;
   /**
    * False while these are the built-in starter list rather than anything derived
    * from the user's library. The heading read "Recommended For You" either way,
@@ -34,7 +47,7 @@ export function RecommendationCarousel({
   canRefresh,
   onRefresh,
   onPreview,
-  addingBookTitle,
+  addingBookKey,
   isPersonalised,
 }: RecommendationCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -42,7 +55,12 @@ export function RecommendationCarousel({
   const scroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    container.scrollBy({ left: direction === 'left' ? -340 : 340, behavior: 'smooth' });
+    // Measured, not guessed. This was a hardcoded 340 against cards that are
+    // 280px wide below md and 320px above it, so every press left a sliver of
+    // the next card showing and the row walked out of phase with itself.
+    const card = container.firstElementChild;
+    const step = card instanceof HTMLElement ? card.offsetWidth + CARD_GAP : container.clientWidth;
+    container.scrollBy({ left: direction === 'left' ? -step : step, behavior: 'smooth' });
   };
 
   return (
@@ -85,9 +103,9 @@ export function RecommendationCarousel({
         aria-label="Recommended books"
         className="flex gap-6 overflow-x-auto pb-24 pt-4 px-4 -mx-4 scroll-smooth snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
       >
-        {recommendations.map((rec) => (
+        {recommendations.map((rec, index) => (
           <div
-            key={rec.title}
+            key={`${recKey(rec)}—${index}`}
             className="relative group h-full hover:z-50 focus-within:z-50 min-w-[280px] md:min-w-[320px] snap-center"
           >
             {/* The card itself is the control, so it is reachable by keyboard. */}
@@ -115,7 +133,7 @@ export function RecommendationCarousel({
                   {rec.description}
                 </span>
                 <span className="mt-auto flex items-center text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-400 gap-1.5 transition-all">
-                  {addingBookTitle === rec.title ? (
+                  {addingBookKey === recKey(rec) ? (
                     <>
                       <Loader2 size={12} className="animate-spin" /> Generating...
                     </>
@@ -155,7 +173,7 @@ export function RecommendationCarousel({
                     {rec.author}
                   </p>
                   <div className="mt-auto flex items-center text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-400 gap-1.5">
-                    {addingBookTitle === rec.title ? (
+                    {addingBookKey === recKey(rec) ? (
                       <>
                         <Loader2 size={12} className="animate-spin" /> Generating...
                       </>

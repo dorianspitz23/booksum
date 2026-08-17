@@ -74,10 +74,20 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** Goodreads writes ISBNs as `="9780735211292"` to stop spreadsheets mangling them. */
+/**
+ * Goodreads writes ISBNs as `="9780735211292"` so spreadsheets do not eat the
+ * leading zero. Stripping that wrapper is not the same as validating what is
+ * left: this is a file the user picked off disk, and whatever came out went
+ * unencoded into a cover URL that is persisted on the book and rendered in an
+ * `img src`. Only a real ISBN shape gets through now — 10 or 13 digits, with
+ * the X check digit ISBN-10 allows.
+ */
 function cleanIsbn(raw: string | undefined): string | undefined {
-  const digits = (raw ?? '').replace(/^="?|"?$/g, '').trim();
-  return digits.length > 0 ? digits : undefined;
+  const digits = (raw ?? '')
+    .replace(/^="?|"?$/g, '')
+    .trim()
+    .toUpperCase();
+  return /^(\d{9}[\dX]|\d{13})$/.test(digits) ? digits : undefined;
 }
 
 function toStatus(shelf: string): BookStatus {

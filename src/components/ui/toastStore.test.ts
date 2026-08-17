@@ -40,3 +40,20 @@ describe('toastStore', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+describe('the queue is bounded', () => {
+  it('keeps the newest four and drops the oldest', () => {
+    // Unbounded, the thing most likely to fill this queue is the thing it
+    // exists to report: a failing bulk import raises one toast per item, so a
+    // 300-book Goodreads import against a dead network stacked 300 of them and
+    // buried the app behind a wall of identical messages.
+    for (let i = 1; i <= 7; i += 1) toast.error(`failure ${i}`);
+
+    expect(getToasts().map((t) => t.message)).toEqual([
+      'failure 4',
+      'failure 5',
+      'failure 6',
+      'failure 7',
+    ]);
+  });
+});

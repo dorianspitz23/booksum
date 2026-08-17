@@ -1,9 +1,11 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDb } from '../../lib/storage/db';
 import { books as bookRepo, profiles, reviewCards } from '../../lib/storage/repo';
 import { ACTIVE_PROFILE_KEY, ProfileProvider } from '../profile/ProfileContext';
+import { MemoryRouter } from 'react-router';
 import { ReviewQueueProvider, useReviewQueue } from './useReviewQueue';
+import { ReviewPage } from './ReviewPage';
 import { newCard } from '../../lib/srs';
 import type { Profile } from '../../types';
 import { defined } from '../../test/defined';
@@ -55,6 +57,19 @@ function mount() {
         <Probe />
       </ReviewQueueProvider>
     </ProfileProvider>,
+  );
+}
+
+/** The real page, for behaviour that lives in it rather than in the hook. */
+function mountPage() {
+  render(
+    <MemoryRouter>
+      <ProfileProvider>
+        <ReviewQueueProvider>
+          <ReviewPage />
+        </ReviewQueueProvider>
+      </ProfileProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -239,5 +254,31 @@ describe('useReviewQueue', () => {
     await bookRepo.remove(book.id);
 
     await expect(reviewCards.listByProfile(profile.id)).resolves.toHaveLength(0);
+  });
+});
+
+describe('grading from the keyboard', () => {
+  it('picks an answer with a number key, then grades with one', async () => {
+    // A review session is read-decide-rate, dozens of times over. Reaching for
+    // the mouse between every card is most of the friction, which is why every
+    // desk spaced-repetition tool grades from the number row.
+    const profile = await renderQueue();
+    await seedCard(profile, 'Only card', '2026-01-01T00:00:00.000Z');
+    mountPage();
+
+    await waitFor(() => expect(screen.getByText('Only card')).toBeInTheDocument());
+
+    act(() => {
+      fireEvent.keyDown(window, { key: '1' });
+    });
+    expect(screen.getByText(/how well did you know it/i)).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.keyDown(window, { key: '3' });
+    });
+
+    await waitFor(() => expect(screen.getByText(/deck cleared/i)).toBeInTheDocument());
+    const stored = defined((await reviewCards.listByProfile(profile.id))[0], 'graded card');
+    expect(stored.reviewCount).toBe(1);
   });
 });

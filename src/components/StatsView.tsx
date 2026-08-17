@@ -31,10 +31,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
     // then `acc + "4"` concatenated instead of adding, turning the average into
     // "04.5" and .toFixed into a crash.
     const rated = finished.filter((b) => typeof b.rating === 'number' && b.rating > 0);
+    // One type out of both branches. This returned a number from one and the
+    // string '—' from the other, so every consumer had to know which it had
+    // before it could do anything with it. Formatting is the caller's job and
+    // the caller is right here.
     const avgRating =
-      rated.length > 0
-        ? (rated.reduce((acc, b) => acc + b.rating, 0) / rated.length).toFixed(1)
-        : '—';
+      rated.length > 0 ? rated.reduce((acc, b) => acc + b.rating, 0) / rated.length : null;
 
     const categoryMap: Record<string, number> = {};
     books.forEach((b) => {
@@ -115,7 +117,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
         <StatCard
           icon={<Star className="text-rose-500" />}
           label="Avg. Rating"
-          value={stats.avgRating}
+          value={stats.avgRating === null ? '—' : stats.avgRating.toFixed(1)}
           subValue={stats.ratedCount > 0 ? `across ${stats.ratedCount} rated` : 'none rated yet'}
         />
       </div>

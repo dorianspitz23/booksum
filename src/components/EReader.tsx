@@ -146,8 +146,12 @@ const RenderFormattedContent: React.FC<{ content: string; isFirstPage: boolean; 
           );
         }
 
-        // Numbered Lists
-        if (/^\d+\./.test(trimmed)) {
+        // Numbered lists. The trailing `\s` is load-bearing: without it a
+        // paragraph opening "3.5 million people..." matched, and rendered as a
+        // list item numbered 3 whose body began "5 million people". Markdown
+        // requires the space, and summaries open with a figure often enough
+        // that this was visible in ordinary use.
+        if (/^\d+\.\s/.test(trimmed)) {
           const [num, ...rest] = trimmed.split('.');
           return (
             <div key={idx} className="flex gap-4 ml-1 mb-4">

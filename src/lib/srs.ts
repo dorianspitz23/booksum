@@ -7,9 +7,27 @@ export type Grade = 1 | 2 | 3 | 4;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STARTING_EASE = 2.5;
 const MIN_EASE = 1.3;
+/**
+ * Ease had a floor and no ceiling. Nothing in the app grows it quickly — Easy
+ * adds 0.1 — but it is read back from storage on every grade, so a corrupt or
+ * hand-edited record could carry any number at all straight into the interval
+ * multiplication below. 3.0 is where Anki caps it too.
+ */
+const MAX_EASE = 3.0;
+/** ~27 years. Past this the schedule stops meaning anything; a Date does not. */
+const MAX_INTERVAL_DAYS = 10_000;
 
 const EASE_DELTA: Record<Grade, number> = { 1: -0.2, 2: -0.15, 3: 0, 4: 0.1 };
-const INTERVAL_MODIFIER: Record<Grade, number> = { 1: 0, 2: 0.6, 3: 1, 4: 1.3 };
+/**
+ * No entry for grade 1: a failed recall resets to one day and never reaches
+ * this table, so the `1: 0` that used to sit here was unreachable — and read as
+ * though a failure multiplied the interval by zero, which is a different rule.
+ */
+const INTERVAL_MODIFIER: Record<Exclude<Grade, 1>, number> = { 2: 0.6, 3: 1, 4: 1.3 };
+
+/** Finite, positive, and inside the bounds above — or the fallback. */
+const clampInterval = (days: number): number =>
+  Number.isFinite(days) ? Math.min(MAX_INTERVAL_DAYS, Math.max(1, Math.round(days))) : 1;
 
 export interface NewCardInput {
   profileId: string;
@@ -41,10 +59,15 @@ export function newCard(input: NewCardInput, now: Date = new Date()): ReviewCard
  * down; success multiplies the interval by ease and a per-grade modifier.
  */
 export function scheduleCard(card: ReviewCard, grade: Grade, now: Date = new Date()): ReviewCard {
-  const ease = Math.max(MIN_EASE, card.ease + EASE_DELTA[grade]);
+  // Bounded on both sides, and NaN-safe. `ease` and `intervalDays` are read
+  // back from IndexedDB on every grade, so a record carrying a non-finite value
+  // reached `new Date(NaN).toISOString()` — which throws a RangeError, taking
+  // down the review page mid-session with no way to get past that one card.
+  const priorEase = Number.isFinite(card.ease) ? card.ease : STARTING_EASE;
+  const ease = Math.min(MAX_EASE, Math.max(MIN_EASE, priorEase + EASE_DELTA[grade]));
 
   const intervalDays =
-    grade === 1 ? 1 : Math.max(1, Math.round(card.intervalDays * ease * INTERVAL_MODIFIER[grade]));
+    grade === 1 ? 1 : clampInterval(card.intervalDays * ease * INTERVAL_MODIFIER[grade]);
 
   return {
     ...card,
