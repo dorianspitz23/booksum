@@ -347,3 +347,76 @@ describe('migrateLegacyData with malformed legacy JSON', () => {
     expect(book.coverImageUrl).toBe('');
   });
 });
+
+describe('legacy values that are not what the type said they were', () => {
+  beforeEach(() => {
+    localStorage.setItem(
+      'booksum_db_users',
+      JSON.stringify([{ id: LEGACY_USER_ID, name: 'Dorian' }]),
+    );
+  });
+
+  it('drops a favoriteVoice that is not one of the five, rather than persisting it', async () => {
+    // LegacyProfile declared `favoriteVoice?: VoiceName`, which is a claim about
+    // JSON a build that no longer exists wrote. A stored "Bob" satisfied the
+    // compiler and was written into a Profile that says it is one of five
+    // voices; every narration request after that failed with an error about the
+    // API key rather than about the voice, and the picker showed nothing chosen.
+    localStorage.setItem(
+      `booksum_profile_${LEGACY_USER_ID}`,
+      JSON.stringify({ name: 'Dorian', favoriteVoice: 'Bob', monthlyGoal: 'four' }),
+    );
+    localStorage.setItem(`booksum_library_${LEGACY_USER_ID}`, JSON.stringify([]));
+
+    await migrateLegacyData();
+
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    expect(profile.favoriteVoice).toBe('Kore');
+    expect(profile.monthlyGoal).toBe(4);
+  });
+
+  it('keeps a book whose priority is a value the app no longer has', async () => {
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([{ id: 'b1', title: 'Atomic Habits', priority: 'Urgent!!!' }]),
+    );
+
+    await migrateLegacyData();
+
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    const book = defined((await books.listByProfile(profile.id))[0], 'migrated book');
+    expect(book.title).toBe('Atomic Habits');
+    expect(book.priority).toBeUndefined();
+  });
+
+  it('leaves the attachment behind but keeps the book when pdfData is not a string', async () => {
+    localStorage.setItem(
+      `booksum_library_${LEGACY_USER_ID}`,
+      JSON.stringify([{ id: 'b1', title: 'Atomic Habits', pdfData: { bytes: [1, 2, 3] } }]),
+    );
+
+    await migrateLegacyData();
+
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    const book = defined((await books.listByProfile(profile.id))[0], 'migrated book');
+    expect(book.hasPdf).toBe(false);
+    await expect(blobs.get(book.id, 'pdf')).resolves.toBeUndefined();
+  });
+
+  it('never leaves base64 attachment data on the book record itself', async () => {
+    // The invariant the storage rewrite exists for: attachments live in the
+    // blob store, and a Book is small enough that a 300-book library is one
+    // cheap read. The only fixture that exercised it could not produce a fat
+    // record in the first place, so nothing was actually being guarded.
+    seedLegacyLocalStorage();
+    await migrateLegacyData();
+
+    const profile = defined((await profiles.list())[0], 'migrated profile');
+    for (const book of await books.listByProfile(profile.id)) {
+      const record = book as unknown as Record<string, unknown>;
+      expect(record.pdfData).toBeUndefined();
+      expect(record.audioData).toBeUndefined();
+      expect(JSON.stringify(book).length).toBeLessThan(1_000);
+    }
+  });
+});

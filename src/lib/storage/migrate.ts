@@ -1,7 +1,8 @@
 import { tryBase64ToBytes } from '../base64';
 import { newId } from '../id';
 import { blobs, books, profiles, summaries } from './repo';
-import type { BookStatus, Priority, VoiceName } from '../../types';
+import { VOICE_NAMES } from '../../types';
+import type { Priority, VoiceName } from '../../types';
 
 export { MIGRATION_MARKER } from '../storageKeys';
 import { MIGRATION_MARKER, LEGACY_LIBRARY_PREFIX, legacyProfileKey } from '../storageKeys';
@@ -18,34 +19,60 @@ export interface MigrationResult {
   failed: number;
 }
 
+/**
+ * Unknown-valued for the same reason as `LegacyProfile` below: this is JSON from
+ * a build that no longer exists, and naming a field `keyInsights?: string[]`
+ * here told the compiler an array of strings was guaranteed when the stored
+ * value could be a string, a number, or null. Every read below goes through a
+ * checking helper, so the declaration says what is actually known — the key may
+ * be there, and nothing more.
+ */
 interface LegacyBook {
-  id?: string;
-  title?: string;
-  author?: string;
-  category?: string;
-  oneSentenceTakeaway?: string;
-  summary?: string;
-  keyInsights?: string[];
-  actionableSteps?: string[];
-  detailedSummary?: string;
-  personalNotes?: string;
-  coverImageUrl?: string;
-  rating?: number;
-  priority?: Priority;
-  readingTimeMinutes?: number;
-  addedAt?: string;
-  status?: BookStatus;
-  audioData?: string;
-  pdfData?: string;
+  id?: unknown;
+  title?: unknown;
+  author?: unknown;
+  category?: unknown;
+  oneSentenceTakeaway?: unknown;
+  summary?: unknown;
+  keyInsights?: unknown;
+  actionableSteps?: unknown;
+  detailedSummary?: unknown;
+  personalNotes?: unknown;
+  coverImageUrl?: unknown;
+  rating?: unknown;
+  priority?: unknown;
+  readingTimeMinutes?: unknown;
+  addedAt?: unknown;
+  status?: unknown;
+  audioData?: unknown;
+  pdfData?: unknown;
 }
 
+/**
+ * Every field is `unknown` on purpose. This shape describes JSON written by a
+ * build of the app that no longer exists, so declaring `favoriteVoice?:
+ * VoiceName` here was a claim about someone else's data: a stored
+ * `favoriteVoice: "Bob"` satisfied the compiler and was then persisted into a
+ * `Profile` that says it is one of five voices. Every narration request after
+ * that failed with an error about the API rather than about the voice, and the
+ * voice picker showed nothing selected with no way to tell why.
+ */
 interface LegacyProfile {
-  name?: string;
-  monthlyGoal?: number;
-  joinedAt?: string;
-  bio?: string;
-  favoriteVoice?: VoiceName;
+  name?: unknown;
+  monthlyGoal?: unknown;
+  joinedAt?: unknown;
+  bio?: unknown;
+  favoriteVoice?: unknown;
 }
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asPositiveInt = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : undefined;
+
+const asVoice = (value: unknown): VoiceName | undefined =>
+  VOICE_NAMES.find((voice) => voice === value);
 
 const EMPTY: MigrationResult = {
   migrated: false,
@@ -104,7 +131,12 @@ function readJson(key: string): unknown {
  * and taking the whole migration down with it. The guard now lives in
  * `tryBase64ToBytes`, since every caller was hand-rolling this same wrapper.
  */
-const decodeAttachment = tryBase64ToBytes;
+/**
+ * Takes `unknown` because that is what a legacy record's attachment field
+ * actually is. Anything that is not a string is "no attachment", which is the
+ * same outcome as a string that will not decode.
+ */
+const decodeAttachment = (value: unknown) => tryBase64ToBytes(str(value));
 
 function legacyUserIds(): string[] {
   const ids: string[] = [];
@@ -141,11 +173,11 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
           ? rawProfile
           : {};
       const profile = await profiles.create({
-        name: legacyProfile?.name?.trim() || 'Reader',
-        bio: legacyProfile?.bio,
-        monthlyGoal: legacyProfile?.monthlyGoal,
-        favoriteVoice: legacyProfile?.favoriteVoice,
-        createdAt: legacyProfile?.joinedAt,
+        name: asString(legacyProfile.name)?.trim() || 'Reader',
+        bio: asString(legacyProfile.bio),
+        monthlyGoal: asPositiveInt(legacyProfile.monthlyGoal),
+        favoriteVoice: asVoice(legacyProfile.favoriteVoice),
+        createdAt: asString(legacyProfile.joinedAt),
       });
       result.profiles += 1;
 
@@ -195,9 +227,7 @@ export async function migrateLegacyData(): Promise<MigrationResult> {
             author: str(legacy.author) ?? 'Unknown',
             category: str(legacy.category) ?? 'Other',
             status,
-            priority: PRIORITIES.includes(legacy.priority as Priority)
-              ? legacy.priority
-              : undefined,
+            priority: PRIORITIES.find((value) => value === legacy.priority),
             rating: num(legacy.rating, 0, 5) ?? 0,
             personalNotes: str(legacy.personalNotes),
             // The original app stringified a missing cover, so records carry the

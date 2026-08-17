@@ -82,6 +82,16 @@ describe('useLibrary', () => {
       );
     });
 
+    // This assertion is also the only guard on a realm trap in blobs.get, and
+    // it is worth knowing why. That method validates the stored bytes before
+    // building a Blob out of them, and the obvious check — `instanceof
+    // ArrayBuffer` — is wrong: a structured-cloned buffer can arrive
+    // constructed in another realm, where instanceof compares against the wrong
+    // prototype and reports false for a perfectly good buffer. This suite runs
+    // under jsdom, which is exactly such a boundary, so an instanceof guard
+    // fails here (undefined instead of 10 MB) while repo.test.ts, running in
+    // node, passes. If this line ever fails with `undefined`, look at the
+    // brand check in blobs.get before looking anywhere else.
     const stored = await blobs.get(created.id, 'pdf');
     expect(stored?.size).toBe(bytes.byteLength);
 

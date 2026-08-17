@@ -18,13 +18,19 @@ export const StatsView: React.FC<StatsViewProps> = ({ books, onBookClick }) => {
     // imported and hand-added book. Summing those in made "Total Learning" read
     // 0m for an entire imported library — a real number stated with confidence
     // and no basis. Count what has an estimate, and say how many that was.
-    const timed = finished.filter((b) => b.readingTimeMinutes > 0);
+    const timed = finished.filter(
+      (b) => typeof b.readingTimeMinutes === 'number' && b.readingTimeMinutes > 0,
+    );
     const totalTime = timed.reduce((acc, b) => acc + b.readingTimeMinutes, 0);
 
     // Only books the user actually rated. Averaging in the zeros dragged the
     // headline figure toward 0.0 for anyone who imported a finished-but-unrated
     // library from Goodreads.
-    const rated = finished.filter((b) => b.rating > 0);
+    // `typeof === 'number'` as well as `> 0`, because a legacy migrated record
+    // can carry a *string* rating: "4" > 0 is true, so it passed the filter and
+    // then `acc + "4"` concatenated instead of adding, turning the average into
+    // "04.5" and .toFixed into a crash.
+    const rated = finished.filter((b) => typeof b.rating === 'number' && b.rating > 0);
     const avgRating =
       rated.length > 0
         ? (rated.reduce((acc, b) => acc + b.rating, 0) / rated.length).toFixed(1)

@@ -124,7 +124,11 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
       title,
       author: cell(authorAt) || 'Unknown',
       status: toStatus(cell(shelfAt)),
-      rating: Number.isFinite(rating) ? rating : 0,
+      // Clamped, not merely finite. Goodreads writes 0-5, but this is a file the
+      // user picked off disk: a hand-edited or non-Goodreads CSV with 99 in that
+      // column produced a 99-star book that skewed the library average and drew
+      // a row of stars off the end of the card.
+      rating: Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.trunc(rating))) : 0,
       isbn13: cleanIsbn(cell(isbnAt)),
       dateRead: dateRead || undefined,
       category: categoryFromShelves(cell(shelvesAt)),

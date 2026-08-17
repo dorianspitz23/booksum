@@ -4,10 +4,33 @@ import type { BookSumDB } from './db';
 import { newId } from '../id';
 import type { BlobKind, Book, Profile, ReviewCard, Summary } from '../../types';
 
+/**
+ * One rule about deletion, stated once so the modules below cannot drift apart:
+ *
+ * **Deleting cascades downwards, and only `profiles` and `books` delete.**
+ * `books.remove` takes the book's summaries, blobs and review cards with it;
+ * `profiles.remove` does that for every book it owns. The child modules
+ * (`summaries`, `blobs`, `reviewCards`) deliberately expose no delete-by-book
+ * of their own.
+ *
+ * Each of them used to carry a `removeByBook`, none of which had a single
+ * caller: the real cascade is `removeBookWithin`, which does the deletes inside
+ * the caller's transaction. Keeping unused parallel paths around is how a
+ * cascade quietly acquires a second, non-atomic version of itself.
+ */
+
 export const profiles = {
+  /**
+   * Sorted defensively. `a.createdAt.localeCompare(...)` called a string method
+   * on a value the schema declares but nothing enforces: a profile row written
+   * by an older build without `createdAt` threw here, and this is the first read
+   * of the session, so the failure was the picker never rendering at all — no
+   * profiles, no way in, no error the user could act on. Coercing instead sorts
+   * an undated profile first and lets the app start.
+   */
   async list(): Promise<Profile[]> {
     const all = await (await getDb()).getAll('profiles');
-    return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return all.sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')));
   },
 
   async get(id: string): Promise<Profile | undefined> {
@@ -185,14 +208,6 @@ export const reviewCards = {
     await (await getDb()).put('reviewCards', normalised);
     return normalised;
   },
-
-  async removeByBook(bookId: string): Promise<void> {
-    const db = await getDb();
-    const keys = await db.getAllKeysFromIndex('reviewCards', 'by-book', bookId);
-    const tx = db.transaction('reviewCards', 'readwrite');
-    for (const key of keys) await tx.store.delete(key);
-    await tx.done;
-  },
 };
 
 export const summaries = {
@@ -208,21 +223,26 @@ export const summaries = {
     await (await getDb()).put('summaries', summary);
     return summary;
   },
-
-  async remove(id: string): Promise<void> {
-    await (await getDb()).delete('summaries', id);
-  },
-
-  async removeByBook(bookId: string): Promise<void> {
-    const db = await getDb();
-    const keys = await db.getAllKeysFromIndex('summaries', 'by-book', bookId);
-    const tx = db.transaction('summaries', 'readwrite');
-    for (const key of keys) await tx.store.delete(key);
-    await tx.done;
-  },
 };
 
 const blobKey = (bookId: string, kind: BlobKind) => `${bookId}:${kind}`;
+
+/**
+ * Brand check, deliberately not `instanceof`.
+ *
+ * A value that has been through structured clone — which is what IndexedDB
+ * does on the way in and out — can come back constructed in a different realm,
+ * and `instanceof` compares against *this* realm's prototype. Measured here
+ * under jsdom: the stored buffer reports `[object ArrayBuffer]` and
+ * `constructor.name === 'ArrayBuffer'` while `x instanceof ArrayBuffer` is
+ * false. An `instanceof` guard would therefore have rejected perfectly good
+ * PDFs wherever a realm boundary sits between the store and the page.
+ * `Object.prototype.toString` reads the internal slot instead, so it is true
+ * of a real ArrayBuffer and of nothing else, in any realm.
+ */
+function isArrayBuffer(value: unknown): value is ArrayBuffer {
+  return Object.prototype.toString.call(value) === '[object ArrayBuffer]';
+}
 
 export const blobs = {
   async put(bookId: string, kind: BlobKind, blob: Blob): Promise<void> {
@@ -238,20 +258,25 @@ export const blobs = {
     });
   },
 
+  /**
+   * The stored bytes are checked, not trusted. `new Blob([x])` accepts anything
+   * — hand it a string, a number, or the `{}` that fake-indexeddb returns for a
+   * value it could not clone, and it happily builds a Blob out of that value's
+   * text. The result is a "PDF" the reader opens to garbage, with no error
+   * anywhere. Returning undefined instead takes the "no PDF stored" path every
+   * caller already handles.
+   */
   async get(bookId: string, kind: BlobKind): Promise<Blob | undefined> {
     const record = await (await getDb()).get('blobs', blobKey(bookId, kind));
-    return record ? new Blob([record.bytes], { type: record.type }) : undefined;
+    if (!record) return undefined;
+
+    const bytes: unknown = record.bytes;
+    if (!isArrayBuffer(bytes)) return undefined;
+
+    return new Blob([bytes], { type: typeof record.type === 'string' ? record.type : '' });
   },
 
   async remove(bookId: string, kind: BlobKind): Promise<void> {
     await (await getDb()).delete('blobs', blobKey(bookId, kind));
-  },
-
-  async removeByBook(bookId: string): Promise<void> {
-    const db = await getDb();
-    const keys = await db.getAllKeysFromIndex('blobs', 'by-book', bookId);
-    const tx = db.transaction('blobs', 'readwrite');
-    for (const key of keys) await tx.store.delete(key);
-    await tx.done;
   },
 };

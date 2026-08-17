@@ -98,6 +98,23 @@ describe('parseGoodreadsCsv', () => {
   });
 });
 
+describe('a rating column that is not a Goodreads rating', () => {
+  // Only checked for finiteness before, so the number went through unchanged.
+  // This is a file the user picks off disk — a hand-edited export, or a CSV
+  // from somewhere else that happens to have a "My Rating" column — and a
+  // 99-star book skewed the library average and drew stars off the card.
+  it.each([
+    ['99', 5],
+    ['-3', 0],
+    ['4.8', 4],
+    ['not a number', 0],
+    ['', 0],
+  ])('clamps %s to %i', (cell, expected) => {
+    const { rows } = parseGoodreadsCsv(csv(`1,Atomic Habits,James Clear,${cell},read,,`));
+    expect(rows[0]?.rating).toBe(expected);
+  });
+});
+
 describe('categories from shelves', () => {
   const withShelves = (shelves: string) =>
     parseGoodreadsCsv(

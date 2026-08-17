@@ -5,7 +5,7 @@
  * builds. See src/test/setup.ts.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { resetDb } from './db';
+import { getDb, resetDb } from './db';
 import { blobs, books, profiles, reviewCards, summaries } from './repo';
 import { newCard } from '../srs';
 
@@ -126,6 +126,45 @@ describe('blobs', () => {
 
     const stored = await blobs.get(book.id, 'audio-short');
     expect(await stored?.text()).toBe('two-longer');
+  });
+
+  it('reports nothing stored rather than building a Blob out of a corrupt record', async () => {
+    // `new Blob([x])` accepts anything and stringifies what it does not
+    // recognise, so a record whose `bytes` is not an ArrayBuffer used to come
+    // back as a readable-looking PDF full of "[object Object]". The reader then
+    // showed garbage with no error anywhere. Undefined puts the caller on the
+    // "no PDF stored" path it already handles.
+    const p = await seedProfile();
+    const book = await books.create(bookInput(p.id));
+
+    const db = await getDb();
+    await db.put('blobs', {
+      key: `${book.id}:pdf`,
+      bookId: book.id,
+      kind: 'pdf',
+      bytes: { not: 'an ArrayBuffer' } as unknown as ArrayBuffer,
+      type: 'application/pdf',
+    });
+
+    await expect(blobs.get(book.id, 'pdf')).resolves.toBeUndefined();
+  });
+});
+
+describe('reading records an older build wrote', () => {
+  it('lists a profile that has no createdAt instead of failing to render any', async () => {
+    // profiles.list sorted with `a.createdAt.localeCompare(...)`, a string method
+    // on a field the schema declares and nothing enforces. This is the first read
+    // of the session, so one undated row did not degrade the picker — it threw
+    // before the picker existed, leaving no profiles and no way into the app.
+    const dated = await profiles.create({ name: 'Has a date' });
+
+    const db = await getDb();
+    const undated: Record<string, unknown> = { ...dated, id: 'legacy-row', name: 'No date' };
+    delete undated.createdAt;
+    await db.put('profiles', undated as unknown as typeof dated);
+
+    const listed = await profiles.list();
+    expect(listed.map((p) => p.name)).toEqual(['No date', 'Has a date']);
   });
 });
 
