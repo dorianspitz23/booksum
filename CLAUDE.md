@@ -7,7 +7,11 @@ for AI. No server, no accounts, no backend.
 
 All four phases are complete: foundation, quality, features, and a defect sweep that worked an
 audit backlog of **441 findings** through to zero by severity. The project is published under MIT
-at `dorianspitz23/booksum`, with a GitHub Pages demo built from `main`.
+at `dorianspitz23/booksum`.
+
+There is **no hosted demo**, deliberately: the app asks each visitor for their own Gemini key, and
+hosting a page that collects keys is a decision rather than a default. `deploy.yml` can still
+publish one to GitHub Pages, but only when run by hand — do not make it automatic without asking.
 
 - `audit-reports/_harvest/PROGRESS.md` — what was done in each wave, and the traps hit along the
   way. Worth reading before a large change.

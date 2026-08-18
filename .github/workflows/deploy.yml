@@ -1,13 +1,17 @@
 name: Deploy to GitHub Pages
 
-# The README points at a hosted demo and nothing published one. Deploy runs only
-# after CI passes on main, so a broken build cannot replace a working demo.
+# Manual only, on purpose. This app asks each visitor for their own Gemini API
+# key, so a public demo is a page that collects keys — worth hosting as a
+# deliberate decision rather than as a side effect of merging to main.
+#
+# It also cannot run by accident: with Pages not enabled on the repository,
+# `configure-pages` fails, and an automatic trigger would put a permanent red
+# cross on every push for a demo nobody asked for.
+#
+# To publish one: enable Pages (Settings -> Pages -> Source: GitHub Actions),
+# then run this workflow from the Actions tab. The build is already verified
+# against a real project-page path.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
-  # Manual runs are useful for the very first deploy, before any CI run exists.
   workflow_dispatch:
 
 permissions:
@@ -23,7 +27,6 @@ concurrency:
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

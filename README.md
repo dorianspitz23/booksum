@@ -13,7 +13,7 @@ Everything is stored in your browser. No server, no account, no database of your
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
 [![Tests](https://img.shields.io/badge/tests-446%20passing-3fb950)](#testing)
 
-[**Live demo**](https://dorianspitz23.github.io/booksum/) · [Getting started](#getting-started) · [How your data is handled](#your-data-and-your-key) · [Contributing](CONTRIBUTING.md)
+[Getting started](#getting-started) · [How your data is handled](#your-data-and-your-key) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -134,11 +134,15 @@ npm run build     # typechecks, then builds to dist/
 npm run preview   # serves the built output
 ```
 
-Deploying under a sub-path (as GitHub Pages does) needs the base path baked in:
+`dist/` is static files — host them anywhere, or open them from a local server. Serving from a
+sub-path rather than a domain root needs that path baked in, or the assets and routes both break:
 
 ```bash
 BASE_PATH=/booksum/ npm run build
 ```
+
+There is no hosted demo. It is a client-side app that asks for your own API key, and a page that
+collects keys is a thing worth hosting deliberately rather than by default.
 
 ## Tech stack
 
@@ -234,4 +238,4 @@ the commit that closed it. The findings and what was done about each are in
 
 ## License
 
-[MIT](LICENSE) © 2026 Dorian Spitz
+[MIT](LICENSE) © 2026 drnblds

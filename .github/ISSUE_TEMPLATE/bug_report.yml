@@ -60,8 +60,10 @@ body:
     id: version
     attributes:
       label: Version or commit
-      description: The commit you built from, or "live demo".
-      placeholder: live demo
+      description: >-
+        The commit you built from. `git rev-parse --short HEAD` prints it. There is no hosted
+        version, so everyone is running their own build.
+      placeholder: 2218415
     validations:
       required: false
 

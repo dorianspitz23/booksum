@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "description": "Local-first book summariser: AI summaries, narrated audio, quizzes and spaced-repetition review, stored entirely in your browser.",
   "license": "MIT",
-  "author": "Dorian Spitz",
-  "homepage": "https://dorianspitz23.github.io/booksum/",
+  "author": "drnblds",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dorianspitz23/booksum.git"
