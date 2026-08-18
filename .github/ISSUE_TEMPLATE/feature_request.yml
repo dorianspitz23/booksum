@@ -1,0 +1,62 @@
+name: Feature request
+description: Suggest something BookSum should do
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing this up, it is worth checking
+        [`audit-reports/_harvest/FEATURE-REQUESTS.md`](https://github.com/dorianspitz23/booksum/blob/main/audit-reports/_harvest/FEATURE-REQUESTS.md).
+        It holds requests that came out of the codebase audit and were deliberately not built, with
+        notes on why — yours may already be there, which is a useful place to add your reasoning.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >-
+        Describe the situation you are actually in, rather than the feature. The best version of
+        this explains what you were trying to do and where the app got in the way.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What are you doing instead today?
+      description: Workarounds are useful — sometimes the workaround is the better feature.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: cost
+    attributes:
+      label: Would this cost the user money to run?
+      description: >-
+        Anything that calls Gemini is billed to the user's own key. Features that spend money need a
+        clear reason and usually need to be opt-in, so it helps to have thought about it.
+      options:
+        - 'No — it does not need any AI call'
+        - 'Yes — it needs one or more AI calls'
+        - 'Not sure'
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Does it fit the project?
+      description: >-
+        BookSum is local-first with no server and no accounts. Anything requiring a backend, a
+        hosted database or a login is out of scope by design.
+      options:
+        - label: This works without a server, an account, or any hosted state
+          required: false

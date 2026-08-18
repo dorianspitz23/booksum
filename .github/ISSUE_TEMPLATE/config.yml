@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/dorianspitz23/booksum/security/advisories/new
+    about: Please report security issues privately, not as a public issue. See SECURITY.md for what is in scope.
+  - name: Question or idea
+    url: https://github.com/dorianspitz23/booksum/discussions
+    about: For anything that is not a bug report or a concrete feature request.

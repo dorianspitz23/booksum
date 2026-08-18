@@ -3,24 +3,21 @@
 Local-first book summariser. React 19 + Vite 8 + TypeScript, IndexedDB for storage, Google Gemini
 for AI. No server, no accounts, no backend.
 
-## ⚠️ Current state — read before starting work
+## Current state
 
-Phases 1–3 of the overhaul are complete. A **defect sweep is in progress** on branch
-`fix/wave-1-criticals`, working an audit backlog of 441 findings by severity.
+All four phases are complete: foundation, quality, features, and a defect sweep that worked an
+audit backlog of **441 findings** through to zero by severity. The project is published under MIT
+at `dorianspitz23/booksum`, with a GitHub Pages demo built from `main`.
 
-- `audit-reports/_harvest/PROGRESS.md` — what is done, what is next, and the traps hit so far.
-  **Read this first.**
+- `audit-reports/_harvest/PROGRESS.md` — what was done in each wave, and the traps hit along the
+  way. Worth reading before a large change.
 - `audit-reports/_harvest/live-findings.json` and `findings-session*.json` — the findings
   themselves, each with a file, a line and a stated mechanism.
 - `node audit-reports/_harvest/closed.mjs` counts what is closed; `open.mjs <severity> <n>` lists
-  what remains. A finding counts as closed only when **its id is named in a commit message** —
-  keep doing that or the counter drifts.
-- `audit-reports/_harvest/FEATURE-REQUESTS.md` — findings that are feature requests rather than
+  what remains. A finding counts as closed only when **its id is named in a commit message**. If
+  you reopen this workflow, keep naming ids or the counter drifts.
+- `audit-reports/_harvest/FEATURE-REQUESTS.md` — findings that were feature requests rather than
   defects. Deliberately not built. Do not implement these without asking.
-
-Still ahead: **Phase 4, the open-source launch** — LICENSE (MIT), README screenshots, CONTRIBUTING,
-SECURITY, issue templates, public repo at `dorianspitz23/booksum`, GitHub Pages demo. The user
-reviews before anything is pushed.
 
 History: `docs/superpowers/specs/` holds the design; `docs/superpowers/plans/` holds one plan per
 phase. Commit `670b5fe` is the untouched Google AI Studio original, so any change is a diff
@@ -28,20 +25,14 @@ against it.
 
 ### The audit worktrees are dead — do not wait on them
 
-`git worktree list` shows ~30 worktrees under `.worktrees/` on `audit/*` and `apply/*` branches.
-**None are running.** The Nighty Tidy plugin that created them stopped responding on every CLI
-route and its runs were killed mid-flight. They are frozen copies of the repo at older commits,
-kept only because four of them hold audit reports that were paid for.
+`git worktree list` may show ~30 worktrees under `.worktrees/` on `audit/*` and `apply/*` branches.
+**None are running.** They are frozen copies of the repo at older commits, kept only because four of
+them hold audit reports whose findings are **already harvested** into `_harvest/live-findings.json`.
+Do not go re-reading the worktrees for findings.
 
-- Those reports' verified findings are **already harvested** into `_harvest/live-findings.json`.
-  Do not go re-reading the worktrees for findings.
-- Each is a full copy of the source, so any tool that walks the tree scans ~30 codebases unless
-  told not to. ESLint, Vitest and Prettier are each configured to ignore `.worktrees`. If a check
-  suddenly reports hundreds of problems in files you never touched, that exclusion is the first
-  thing to check.
-- Nothing is concurrently editing this repo. An earlier version of this file claimed
-  `apply/file-decomposition` was "actively editing `BookDetail.tsx`". It is not, and has not been
-  since 13 Aug.
+Each is a full copy of the source, so any tool that walks the tree scans ~30 codebases unless told
+not to. ESLint, Vitest and Prettier each ignore `.worktrees`. If a check suddenly reports hundreds
+of problems in files you never touched, that exclusion is the first thing to check.
 
 ## Invariants — do not break these
 
@@ -111,7 +102,13 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
   before committing rather than landing an unreviewable diff.
 - `vitest run` can fail to start worker threads under memory pressure, reporting **fewer test files
   than exist** plus N "errors". The tests that did run still pass, so a short run looks like a pass
-  unless you check the count. There are **33 test files** — if the run reports fewer, it did not
+  unless you check the count. There are **37 test files** — if the run reports fewer, it did not
   test what you think it did. Re-run before believing either a pass or a regression.
+- A `useEffect` that registers a `window` listener has not run at the moment its component's output
+  first appears in the DOM. A test that waits for the rendered text and then immediately fires a
+  key can lose that key, and a synchronous assertion after it cannot retry — it fails only under
+  load, which is when CI runs. Flush with `await act(async () => {})` before firing. Re-firing the
+  key inside `waitFor` is the usual fix and is wrong in `ReviewPage`, where the same 1-4 keys grade
+  once an answer is selected.
 - jsdom has no `scrollIntoView`; `src/test/setup.ts` stubs it. Without that, any component that
   scrolls a transcript into view throws on mount and is untestable.

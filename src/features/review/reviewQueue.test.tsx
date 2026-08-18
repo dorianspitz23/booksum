@@ -268,10 +268,22 @@ describe('grading from the keyboard', () => {
 
     await waitFor(() => expect(screen.getByText('Only card')).toBeInTheDocument());
 
+    // The question being on screen does not yet mean the key listener exists.
+    // It attaches in an effect gated on `current`, which commits after the
+    // render that painted the question. Under load the gap is wide enough for a
+    // keypress to land in it and be dropped, and the assertion that followed was
+    // synchronous, so it could not retry — this test failed only under a loaded
+    // machine, which is exactly when CI runs it.
+    //
+    // Re-firing the key inside a `waitFor` is the usual remedy and is wrong
+    // here: once an answer is selected the same 1-4 keys grade instead of
+    // select, so a second press would silently grade the card "Again".
+    await act(async () => {});
+
     act(() => {
       fireEvent.keyDown(window, { key: '1' });
     });
-    expect(screen.getByText(/how well did you know it/i)).toBeInTheDocument();
+    expect(await screen.findByText(/how well did you know it/i)).toBeInTheDocument();
 
     act(() => {
       fireEvent.keyDown(window, { key: '3' });

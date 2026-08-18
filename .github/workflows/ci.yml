@@ -22,3 +22,16 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run build
+
+      # BookSum is bring-your-own-key: the key belongs in the user's browser and
+      # must never be baked into a build. Nothing in the source does that today,
+      # but a `define` in vite.config.ts or an inlined .env value would leak one
+      # silently — invisible in review, and irreversible once published. grep
+      # exits non-zero when it finds nothing, which is the passing case here.
+      - name: No API key in the bundle
+        run: |
+          if grep -rIoE "AIza[0-9A-Za-z_-]{35}" dist/; then
+            echo "::error::A Google API key-shaped string is present in dist/"
+            exit 1
+          fi
+          echo "dist/ contains no key-shaped strings"

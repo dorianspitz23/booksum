@@ -1,0 +1,88 @@
+name: Bug report
+description: Something behaves incorrectly
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this.
+
+        **Please do not paste your API key anywhere in this issue.** If you already have, revoke it
+        at https://aistudio.google.com/apikey first.
+
+        BookSum runs entirely in your browser, so there are no server logs to check — the steps you
+        give here are genuinely all there is to go on.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+      placeholder: I clicked X and the page showed Y. I expected Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Please be specific about the starting state — an empty library behaves differently from an imported one.
+      placeholder: |
+        1. Create a profile
+        2. Import a Goodreads CSV with 200 books
+        3. Open the third book
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >-
+        Open your browser's developer tools, reload, reproduce the problem, and paste anything red
+        from the Console tab. If the app showed a crash screen, its "Technical details" section is
+        exactly what is wanted here. Check it for personal data before pasting.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Firefox 141 on Windows 11
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The commit you built from, or "live demo".
+      placeholder: live demo
+    validations:
+      required: false
+
+  - type: dropdown
+    id: ai-involved
+    attributes:
+      label: Did this involve an AI feature?
+      description: Summarising, audio, chat, quizzes and recommendations call Gemini. Everything else does not.
+      options:
+        - 'No — it happened without any AI feature'
+        - 'Yes — while using an AI feature'
+        - 'Not sure'
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have not included my API key or any personal data in this report
+          required: true
+        - label: I searched existing issues for this
+          required: false
