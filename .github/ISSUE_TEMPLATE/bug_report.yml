@@ -63,7 +63,11 @@ body:
       description: >-
         The commit you built from. `git rev-parse --short HEAD` prints it. There is no hosted
         version, so everyone is running their own build.
-      placeholder: 2218415
+      # Quoted deliberately. Unquoted, YAML reads this as the integer 2218415,
+      # GitHub's issue-form schema requires a string, and the whole form is then
+      # dropped from the template chooser with no error shown anywhere — the
+      # only symptom is that "Bug report" silently stops being offered.
+      placeholder: '2218415'
     validations:
       required: false
 
