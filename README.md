@@ -11,7 +11,7 @@ Everything is stored in your browser. No server, no account, no database of your
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![Tests](https://img.shields.io/badge/tests-446%20passing-3fb950)](#testing)
+[![Tests](https://img.shields.io/badge/tests-490%20passing-3fb950)](#testing)
 
 [Getting started](#getting-started) · [How your data is handled](#your-data-and-your-key) · [Contributing](CONTRIBUTING.md)
 
@@ -66,20 +66,20 @@ ours, because there isn't one.
 
 ## Features
 
-|                         |                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **AI summaries**        | By title, or from an uploaded PDF. Structured into a takeaway, a summary, key insights and actionable steps. |
-| **Narrated audio**      | Five voices. Generated once and cached, so replaying costs nothing.                                          |
-| **Chat with a book**    | Ask follow-up questions grounded in the summary.                                                             |
-| **Quizzes**             | Multiple choice with explanations, validated before they are stored.                                         |
-| **Spaced repetition**   | Quiz questions become cards on an SM-2-style schedule. Grade from the number row.                            |
-| **Goodreads import**    | Drop in the official CSV export. Makes **zero** AI calls, so a 300-book library imports for free.            |
-| **Reader**              | Full-screen reading view with its own light, sepia and dark themes, and remembered position.                 |
-| **Markdown export**     | One book or the whole library, ready for Obsidian or Notion.                                                 |
-| **Backup and restore**  | A JSON file carrying your books, summaries, settings and review schedule.                                    |
-| **Local profiles**      | Several readers can share one browser and keep separate libraries.                                           |
-| **Dark mode**           | Follows your system by default, with an explicit override.                                                   |
-| **Works without a key** | Library, notes, reading, import/export, stats, review and profiles never ask for one.                        |
+|                         |                                                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **AI summaries**        | By title, or from an uploaded PDF. Structured into a takeaway, a summary, key insights and actionable steps.     |
+| **Narrated audio**      | Five voices. Generated once and cached, so replaying costs nothing.                                              |
+| **Chat with a book**    | Ask follow-up questions grounded in the summary.                                                                 |
+| **Quizzes**             | Multiple choice with explanations, validated before they are stored.                                             |
+| **Spaced repetition**   | Quiz questions become cards on an SM-2-style schedule. Grade from the number row.                                |
+| **Goodreads import**    | Drop in the official CSV export. Makes **zero** AI calls, so a 300-book library imports for free.                |
+| **Reader**              | Full-screen reading view with its own light, sepia and dark themes, and remembered position.                     |
+| **Obsidian export**     | The library as a zip of one note per book — YAML properties, tags and `[[author]]` links. Or one book at a time. |
+| **Backup and restore**  | A JSON file carrying your books, summaries, settings and review schedule.                                        |
+| **Local profiles**      | Several readers can share one browser and keep separate libraries.                                               |
+| **Dark mode**           | Follows your system by default, with an explicit override.                                                       |
+| **Works without a key** | Library, notes, reading, import/export, stats, review and profiles never ask for one.                            |
 
 ## Your data and your key
 
@@ -155,7 +155,7 @@ collects keys is a thing worth hosting deliberately rather than by default.
 | Storage | IndexedDB via `idb`            | Holds books, summaries, blobs and review cards          |
 | AI      | `@google/genai` (Gemini)       | Summaries, audio, chat, quizzes, recommendations        |
 | Icons   | `lucide-react`                 |                                                         |
-| Testing | Vitest + Testing Library       | 446 tests across 37 files                               |
+| Testing | Vitest + Testing Library       | 490 tests across 39 files                               |
 | Quality | ESLint (type-aware) + Prettier | Both run in CI and must pass                            |
 
 ## Architecture
@@ -201,7 +201,7 @@ Unit and integration tests only; there is no E2E suite. Tests live beside their 
 
 > **One thing to watch:** under memory pressure Vitest can fail to _start_ worker threads and report
 > fewer test files than exist. It exits non-zero when that happens, but the summary line still reads
-> as a pass at a glance. There are **37 test files** — if a run reports fewer, it did not test what
+> as a pass at a glance. There are **39 test files** — if a run reports fewer, it did not test what
 > you think it did.
 
 ## Scripts

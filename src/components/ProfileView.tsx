@@ -3,9 +3,10 @@ import type { Book, LibraryExport, Profile } from '../types';
 import { toast } from './ui/toastStore';
 import { useConfirm } from './ui/ConfirmDialog';
 import { ThemeToggle } from '../features/settings/ThemeToggle';
-import { libraryToMarkdown } from '../lib/markdown';
+import { libraryToVaultNotes } from '../lib/vaultExport';
+import { createZip } from '../lib/zip';
 import { parseLibraryExport } from '../lib/storage/libraryExport';
-import { downloadText } from '../lib/download';
+import { downloadBytes, downloadText } from '../lib/download';
 import { monthlyProgress } from '../lib/stats';
 import { ApiKeyCard } from '../features/settings/ApiKeyCard';
 import { VOICE_NAMES } from '../types';
@@ -116,18 +117,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
    * to catch, so the button did nothing at all and the user was left to guess
    * whether their backup had been written.
    */
+  /**
+   * A zip of one markdown note per book, for a vault.
+   *
+   * Was a single concatenated document, which Obsidian cannot make anything of:
+   * links, backlinks and the graph all need a file per note, and the `---` that
+   * separated the books reads as frontmatter rather than a rule.
+   */
   const handleExportMarkdown = async () => {
     try {
       const data = await buildExport();
       const summaryById = new Map(data.summaries.map((s) => [s.bookId, s]));
-      const markdown = libraryToMarkdown(
+      const notes = libraryToVaultNotes(
         data.books.map((b) => ({ book: b, summary: summaryById.get(b.id) })),
       );
-      downloadText({
-        filename: `booksum-library-${new Date().toISOString().split('T')[0]}.md`,
-        contents: markdown,
+      downloadBytes({
+        filename: `booksum-vault-${new Date().toISOString().split('T')[0]}.zip`,
+        bytes: createZip(notes),
       });
-      toast.success('Library exported as Markdown.');
+      toast.success(`Exported ${notes.length} note${notes.length === 1 ? '' : 's'}.`);
     } catch {
       toast.error('Could not export your library. Please try again.');
     }
@@ -388,7 +396,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 onClick={() => void handleExportMarkdown()}
                 className="flex items-center gap-2 px-5 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold hover:bg-stone-200 transition-colors"
               >
-                <FileText size={18} /> Export Markdown
+                <FileText size={18} /> Export for Obsidian
               </button>
 
               <div className="relative">

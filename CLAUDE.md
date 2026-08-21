@@ -59,7 +59,8 @@ of problems in files you never touched, that exclusion is the first thing to che
 ## Architecture
 
 ```
-src/lib/         React-free: storage (IndexedDB), ai, covers, audio, srs, markdown, goodreads
+src/lib/         React-free: storage (IndexedDB), ai, covers, audio, srs, markdown, goodreads,
+                 vaultExport + zip (the Obsidian export)
 src/features/    Feature folders: library, book, profile, review, settings, stats
 src/components/  Shared UI; components/ui holds Dialog, ConfirmDialog, Toast, useFocusTrap
 src/app/         Shell, routes, error boundary
@@ -106,7 +107,7 @@ import free. `readingTimeMinutes` and `oneSentenceTakeaway` are deliberately den
   before committing rather than landing an unreviewable diff.
 - `vitest run` can fail to start worker threads under memory pressure, reporting **fewer test files
   than exist** plus N "errors". The tests that did run still pass, so a short run looks like a pass
-  unless you check the count. There are **37 test files** — if the run reports fewer, it did not
+  unless you check the count. There are **39 test files** — if the run reports fewer, it did not
   test what you think it did. Re-run before believing either a pass or a regression.
 - A `useEffect` that registers a `window` listener has not run at the moment its component's output
   first appears in the DOM. A test that waits for the rendered text and then immediately fires a

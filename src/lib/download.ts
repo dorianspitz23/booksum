@@ -4,6 +4,33 @@ interface DownloadTextOptions {
   mimeType?: string;
 }
 
+interface DownloadBytesOptions {
+  filename: string;
+  /**
+   * Pinned to `ArrayBuffer` rather than the default `ArrayBufferLike`: a
+   * `SharedArrayBuffer` view is not a valid `BlobPart`, and the bare
+   * `Uint8Array` alias admits one.
+   */
+  bytes: Uint8Array<ArrayBuffer>;
+  mimeType?: string;
+}
+
+/** The anchor dance, shared by both entry points so only one of them can drift. */
+function saveBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+
+  // Deferred by a tick. Revoking in the same task as click() races the browser's
+  // read of the URL, and a cancelled download looks to the user like a button
+  // that simply did nothing. The blob is still freed either way.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 /**
  * Triggers a browser download of in-memory text.
  *
@@ -18,19 +45,23 @@ export function downloadText({
   contents,
   mimeType = 'text/markdown',
 }: DownloadTextOptions) {
-  const blob = new Blob([contents], { type: `${mimeType};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
+  saveBlob(filename, new Blob([contents], { type: `${mimeType};charset=utf-8` }));
+}
 
-  // Deferred by a tick. Revoking in the same task as click() races the browser's
-  // read of the URL, and a cancelled download looks to the user like a button
-  // that simply did nothing. The blob is still freed either way.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+/**
+ * The same, for binary payloads.
+ *
+ * Separate from `downloadText` rather than a widened parameter, because the two
+ * differ in more than their body type: text carries `;charset=utf-8` and binary
+ * must not. A zip labelled with a charset invites a tool to treat it as text
+ * and re-encode it, which corrupts it silently.
+ */
+export function downloadBytes({
+  filename,
+  bytes,
+  mimeType = 'application/zip',
+}: DownloadBytesOptions) {
+  saveBlob(filename, new Blob([bytes], { type: mimeType }));
 }
 
 /** Filesystem-safe slug for export filenames. */

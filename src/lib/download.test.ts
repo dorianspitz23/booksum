@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { downloadText, slugify } from './download';
+import { downloadBytes, downloadText, slugify } from './download';
 
 describe('slugify', () => {
   it('lowercases and hyphenates', () => {
@@ -94,5 +94,45 @@ describe('downloadText', () => {
     const spy = vi.spyOn(globalThis, 'Blob');
     downloadText({ filename: 'x.json', contents: '{}', mimeType: 'application/json' });
     expect(spy).toHaveBeenCalledWith(['{}'], { type: 'application/json;charset=utf-8' });
+  });
+
+  describe('downloadBytes', () => {
+    const bytes = () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+
+    it('names the file and hands the bytes to the blob', () => {
+      const spy = vi.spyOn(globalThis, 'Blob');
+      const payload = bytes();
+      downloadBytes({ filename: 'library.zip', bytes: payload });
+
+      expect(clicked?.download).toBe('library.zip');
+      expect(spy).toHaveBeenCalledWith([payload], { type: 'application/zip' });
+    });
+
+    it('does not append a charset to a binary type', () => {
+      // `application/zip;charset=utf-8` is meaningless, and some tools take the
+      // charset as a hint that the body is text and re-encode it.
+      const spy = vi.spyOn(globalThis, 'Blob');
+      downloadBytes({ filename: 'x.zip', bytes: bytes() });
+
+      expect(spy.mock.calls[0]?.[1]).toEqual({ type: 'application/zip' });
+    });
+
+    it('leaves nothing in the document afterwards', () => {
+      downloadBytes({ filename: 'x.zip', bytes: bytes() });
+      expect(document.querySelectorAll('a[download]')).toHaveLength(0);
+    });
+
+    it('defers the revoke past the click rather than racing it', () => {
+      vi.useFakeTimers();
+      try {
+        downloadBytes({ filename: 'x.zip', bytes: bytes() });
+        expect(revoked).toHaveLength(0);
+
+        vi.runAllTimers();
+        expect(revoked).toEqual(created);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

@@ -17,11 +17,80 @@ export interface LibraryEntry {
  */
 const escapeField = (value: string): string => value.replace(/([\\`*_[\]#<>|])/g, '\\$1');
 
+/**
+ * A double-quoted YAML scalar.
+ *
+ * Deliberately not `escapeField`: the two formats fear different characters. A
+ * quote ends a YAML scalar early and takes the whole property block down with
+ * it, while `#` is inert inside quotes — and in markdown it is the reverse.
+ * Escaping for the wrong one of the two corrupts the value either way.
+ */
+const yamlString = (value: string): string =>
+  `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, '\\n')}"`;
+
+/**
+ * A category as an Obsidian tag.
+ *
+ * Not `slugify` from download.ts, which falls back to 'untitled' for a value
+ * with no alphanumerics — correct for a filename, wrong here, where the honest
+ * answer is that there is no tag to write.
+ */
+const tagSlug = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+/**
+ * The inside of a `[[wikilink]]`.
+ *
+ * These five characters each end or re-aim a link: `]` closes it, `[` nests,
+ * `#` jumps to a heading, `^` to a block and `|` starts the display alias. They
+ * are removed rather than escaped, because a wikilink target is matched against
+ * a note's name literally — a backslash in it would look for a different note.
+ */
+const wikilinkTarget = (value: string): string =>
+  value
+    .replace(/[[\]#|^]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** The date half of an ISO timestamp, and nothing if it is not one. */
+const isoDate = (value: string | undefined): string | undefined =>
+  /^\d{4}-\d{2}-\d{2}/.test(value ?? '') ? value?.slice(0, 10) : undefined;
+
+function frontmatter(book: Book): string[] {
+  const added = isoDate(book.addedAt);
+  const finished = isoDate(book.finishedAt);
+  const category = tagSlug(book.category);
+
+  return [
+    '---',
+    `title: ${yamlString(book.title)}`,
+    `author: ${yamlString(book.author)}`,
+    `status: ${yamlString(book.status)}`,
+    `category: ${yamlString(book.category)}`,
+    `rating: ${book.rating}`,
+    `readingTimeMinutes: ${book.readingTimeMinutes}`,
+    ...(added ? [`added: ${added}`] : []),
+    ...(finished ? [`finished: ${finished}`] : []),
+    `tags: [${['book', ...(category ? [category] : [])].join(', ')}]`,
+    '---',
+    '',
+  ];
+}
+
 export function bookToMarkdown(book: Book, summary?: Summary): string {
+  const linkTarget = wikilinkTarget(book.author);
+
   const lines: string[] = [
+    ...frontmatter(book),
     `# ${escapeField(book.title)}`,
     '',
-    `*by ${escapeField(book.author)}*`,
+    // A link, so every book by one author backlinks to a single note and shows
+    // up as one cluster in the graph. Nothing inside `[[ ]]` is markdown, which
+    // is why the escape is skipped on this branch and kept on the other.
+    linkTarget ? `*by [[${linkTarget}]]*` : `*by ${escapeField(book.author)}*`,
     '',
   ];
 
@@ -54,18 +123,4 @@ export function bookToMarkdown(book: Book, summary?: Summary): string {
   }
 
   return lines.join('\n');
-}
-
-export function libraryToMarkdown(entries: LibraryEntry[]): string {
-  const header = [
-    '# My BookSum Library',
-    '',
-    `${entries.length} book${entries.length === 1 ? '' : 's'}`,
-    '',
-    '---',
-    '',
-  ];
-
-  const body = entries.map(({ book, summary }) => bookToMarkdown(book, summary));
-  return [...header, body.join('\n---\n\n')].join('\n');
 }
