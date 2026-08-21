@@ -173,6 +173,97 @@ describe('rejecting a file that is not a Goodreads export', () => {
   });
 });
 
+/**
+ * Calibre and StoryGraph both write a `title` column, so both clear the
+ * not-a-Goodreads-export guard and import — and then every other column name
+ * differs, so before this each book arrived as 'Unknown' / 'Want to Read' / 0
+ * stars behind a preview reporting success.
+ */
+describe('exports from other libraries', () => {
+  // Calibre's default CSV catalog columns.
+  const CALIBRE = 'title,authors,series,series_index,isbn,publisher,pubdate,rating,tags';
+  const calibre = (row: string) => parseGoodreadsCsv([CALIBRE, row].join('\n'));
+
+  it('reads a Calibre author from the plural column', () => {
+    const { rows } = calibre('Dune,Frank Herbert,,,9780441013593,Ace,2005,4,sci-fi');
+    expect(rows[0]?.author).toBe('Frank Herbert');
+  });
+
+  it('reads a Calibre rating and ISBN', () => {
+    const { rows } = calibre('Dune,Frank Herbert,,,9780441013593,Ace,2005,4,sci-fi');
+    expect(rows[0]?.rating).toBe(4);
+    expect(rows[0]?.isbn13).toBe('9780441013593');
+  });
+
+  it('takes a Calibre category from tags', () => {
+    const { rows } = calibre('Dune,Frank Herbert,,,,Ace,2005,4,philosophy');
+    expect(rows[0]?.category).toBe('Philosophy');
+  });
+
+  it('leaves a Calibre book unread, because Calibre does not track that', () => {
+    // Not a shortcoming to fix here: a Calibre catalog has no read-state column
+    // at all, so 'Want to Read' is the honest answer rather than a guess.
+    const { rows } = calibre('Dune,Frank Herbert,,,,Ace,2005,4,sci-fi');
+    expect(rows[0]?.status).toBe('Want to Read');
+  });
+
+  // StoryGraph's export columns, trimmed to the ones that carry data.
+  const STORYGRAPH = 'Title,Authors,ISBN/UID,Read Status,Last Date Read,Star Rating,Tags';
+  const storygraph = (row: string) => parseGoodreadsCsv([STORYGRAPH, row].join('\n'));
+
+  it('reads a StoryGraph author, status and date', () => {
+    const { rows } = storygraph('Dune,Frank Herbert,9780441013593,read,2026/02/01,4.0,sci-fi');
+    expect(rows[0]).toMatchObject({
+      author: 'Frank Herbert',
+      status: 'Finished',
+      dateRead: '2026/02/01',
+    });
+  });
+
+  it('truncates a StoryGraph half-star rating', () => {
+    // StoryGraph rates in halves and the app's scale is whole stars.
+    const { rows } = storygraph('Dune,Frank Herbert,,read,,4.5,');
+    expect(rows[0]?.rating).toBe(4);
+  });
+
+  it('accepts a StoryGraph ISBN and ignores a non-ISBN UID', () => {
+    expect(storygraph('Dune,F H,9780441013593,read,,4,').rows[0]?.isbn13).toBe('9780441013593');
+    expect(storygraph('Dune,F H,b4a1-not-an-isbn,read,,4,').rows[0]?.isbn13).toBeUndefined();
+  });
+
+  it('maps StoryGraph to-read to Want to Read', () => {
+    expect(storygraph('Dune,F H,,to-read,,0,').rows[0]?.status).toBe('Want to Read');
+  });
+});
+
+describe('column precedence between formats', () => {
+  it('prefers the Goodreads column when a file carries both spellings', () => {
+    // Pins the order so adding an alias later cannot silently change what a
+    // real Goodreads export parses to.
+    const { rows } = parseGoodreadsCsv(
+      ['Title,Author,Authors,My Rating,Rating', 'Dune,Real Author,Other Author,5,1'].join('\n'),
+    );
+
+    expect(rows[0]?.author).toBe('Real Author');
+    expect(rows[0]?.rating).toBe(5);
+  });
+
+  it('does not mistake the Goodreads average rating for the user rating', () => {
+    // 'Average Rating' is every other reader's score, not this reader's. The
+    // aliases match a column name exactly, which is what keeps them apart.
+    const { rows } = parseGoodreadsCsv(
+      ['Title,Author,My Rating,Average Rating', 'Dune,Frank Herbert,2,5'].join('\n'),
+    );
+
+    expect(rows[0]?.rating).toBe(2);
+  });
+
+  it('still reports a CSV with no title column as the wrong file', () => {
+    const { unrecognised } = parseGoodreadsCsv(['Name,Amount', 'Coffee,3.50'].join('\n'));
+    expect(unrecognised).toBe(true);
+  });
+});
+
 describe('coverForIsbn', () => {
   // `?default=false` is load-bearing, not decoration: without it OpenLibrary
   // serves a blank 1x1 placeholder with a 200 for an ISBN it has no cover for,

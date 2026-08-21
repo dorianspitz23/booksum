@@ -59,14 +59,14 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
         // Distinct from "no books": a CSV with no Title column is the wrong file,
         // and telling the user their library looks empty sends them hunting in
         // the wrong direction.
-        toast.error('That CSV has no Title column, so it is not a Goodreads export.');
+        toast.error('That CSV has no Title column, so it is not a book export.');
         return;
       }
 
       setPreview(parsed);
       setFilename(file.name);
       if (parsed.rows.length === 0) {
-        toast.error('No books found in that file. Is it a Goodreads CSV export?');
+        toast.error('No books found in that file. Is it a library export?');
       }
     } catch {
       toast.error('Could not read that file.');
@@ -101,6 +101,11 @@ export function GoodreadsImport({ onDone }: GoodreadsImportProps) {
         <span className="font-semibold">My Books &rarr; Import and export</span>, then drop the CSV
         here. Books are added instantly and cost nothing &mdash; summaries are generated later, only
         for the books you open.
+      </p>
+
+      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        A <span className="font-semibold">StoryGraph</span> export or a{' '}
+        <span className="font-semibold">Calibre</span> CSV catalogue works here too.
       </p>
 
       <button

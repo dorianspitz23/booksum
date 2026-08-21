@@ -11,7 +11,7 @@ Everything is stored in your browser. No server, no account, no database of your
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![Tests](https://img.shields.io/badge/tests-490%20passing-3fb950)](#testing)
+[![Tests](https://img.shields.io/badge/tests-501%20passing-3fb950)](#testing)
 
 [Getting started](#getting-started) · [How your data is handled](#your-data-and-your-key) · [Contributing](CONTRIBUTING.md)
 
@@ -73,7 +73,7 @@ ours, because there isn't one.
 | **Chat with a book**    | Ask follow-up questions grounded in the summary.                                                                 |
 | **Quizzes**             | Multiple choice with explanations, validated before they are stored.                                             |
 | **Spaced repetition**   | Quiz questions become cards on an SM-2-style schedule. Grade from the number row.                                |
-| **Goodreads import**    | Drop in the official CSV export. Makes **zero** AI calls, so a 300-book library imports for free.                |
+| **Library import**      | Goodreads, StoryGraph or Calibre CSV. Makes **zero** AI calls, so a 300-book library imports for free.           |
 | **Reader**              | Full-screen reading view with its own light, sepia and dark themes, and remembered position.                     |
 | **Obsidian export**     | The library as a zip of one note per book — YAML properties, tags and `[[author]]` links. Or one book at a time. |
 | **Backup and restore**  | A JSON file carrying your books, summaries, settings and review schedule.                                        |
@@ -155,7 +155,7 @@ collects keys is a thing worth hosting deliberately rather than by default.
 | Storage | IndexedDB via `idb`            | Holds books, summaries, blobs and review cards          |
 | AI      | `@google/genai` (Gemini)       | Summaries, audio, chat, quizzes, recommendations        |
 | Icons   | `lucide-react`                 |                                                         |
-| Testing | Vitest + Testing Library       | 490 tests across 39 files                               |
+| Testing | Vitest + Testing Library       | 501 tests across 39 files                               |
 | Quality | ESLint (type-aware) + Prettier | Both run in CI and must pass                            |
 
 ## Architecture

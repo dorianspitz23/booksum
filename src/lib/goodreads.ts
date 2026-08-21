@@ -20,7 +20,7 @@ export interface GoodreadsParseResult {
   rows: GoodreadsRow[];
   /** Rows present in the file but unusable (no title). */
   skipped: number;
-  /** True when the file has no Title column, so it is not a Goodreads export. */
+  /** True when the file has no Title column, so it is not a book export at all. */
   unrecognised?: boolean;
 }
 
@@ -105,24 +105,41 @@ export function parseGoodreadsCsv(text: string): GoodreadsParseResult {
    * every reader had to remember to check it — one `cells[columnOf('x')]` would
    * have silently read the last column instead of failing.
    */
-  const columnOf = (name: string): number | undefined => {
-    const at = header.indexOf(name.toLowerCase());
-    return at >= 0 ? at : undefined;
+  /**
+   * The first of `names` the file actually has.
+   *
+   * Candidates rather than one name, because Calibre and StoryGraph both write
+   * a `title` column — so both clear the guard below and import — and then name
+   * every other column differently. Without the aliases a Calibre catalog
+   * produced a library of correct titles by 'Unknown', all unread and unrated,
+   * behind a preview that reported it as a success.
+   *
+   * Goodreads' own spelling is always listed first, so a real Goodreads export
+   * parses exactly as it did before. Matching is exact for the same reason:
+   * Goodreads ships both `My Rating` and `Average Rating`, and a loose match on
+   * 'rating' would file everyone else's score as the reader's own.
+   */
+  const columnOf = (...names: string[]): number | undefined => {
+    for (const name of names) {
+      const at = header.indexOf(name.toLowerCase());
+      if (at >= 0) return at;
+    }
+    return undefined;
   };
 
   const titleAt = columnOf('title');
-  const authorAt = columnOf('author');
+  const authorAt = columnOf('author', 'authors');
 
   // Without this, any CSV at all parsed to zero rows and reported as an empty
   // library rather than as the wrong file — including a spreadsheet whose first
   // row happens to look like a header.
   if (titleAt === undefined) return { rows: [], skipped: table.length - 1, unrecognised: true };
 
-  const ratingAt = columnOf('my rating');
-  const shelfAt = columnOf('exclusive shelf');
-  const isbnAt = columnOf('isbn13');
-  const dateReadAt = columnOf('date read');
-  const shelvesAt = columnOf('bookshelves');
+  const ratingAt = columnOf('my rating', 'star rating', 'rating');
+  const shelfAt = columnOf('exclusive shelf', 'read status');
+  const isbnAt = columnOf('isbn13', 'isbn/uid', 'isbn');
+  const dateReadAt = columnOf('date read', 'last date read');
+  const shelvesAt = columnOf('bookshelves', 'tags');
 
   const rows: GoodreadsRow[] = [];
   let skipped = 0;
